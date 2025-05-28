@@ -12,6 +12,13 @@ export const loginRequest = z.object({
 });
 export type LoginRequest = z.infer<typeof loginRequest>;
 
+export const registerRequest = z.object({
+  email: z.string().email(),
+  nickname: z.string().trim().min(2).max(8),
+  password: z.string().trim().nonempty(),
+});
+export type RegisterRequest = z.infer<typeof registerRequest>;
+
 export const sessionUpgradeRequest = z.object({
   encPubKey: z.string().base64().nonempty(),
   sigPubKey: z.string().base64().nonempty(),

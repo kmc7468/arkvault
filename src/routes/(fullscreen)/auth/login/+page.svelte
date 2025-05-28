@@ -3,12 +3,20 @@
   import { BottomDiv, Button, FullscreenDiv, TextButton, TextInput } from "$lib/components/atoms";
   import { TitledDiv } from "$lib/components/molecules";
   import { clientKeyStore, masterKeyStore } from "$lib/stores";
-  import { requestLogin, requestSessionUpgrade, requestMasterKeyDownload } from "./service";
+  import NicknameModal from "./NicknameModal.svelte";
+  import {
+    requestLogin,
+    requestRegister,
+    requestSessionUpgrade,
+    requestMasterKeyDownload,
+  } from "./service";
 
   let { data } = $props();
 
   let email = $state("");
   let password = $state("");
+
+  let isNicknameModalOpen = $state(false);
 
   const redirect = async (url: string) => {
     return await goto(`${url}?redirect=${encodeURIComponent(data.redirectPath)}`);
@@ -19,6 +27,34 @@
 
     try {
       if (!(await requestLogin(email, password))) throw new Error("Failed to login");
+
+      if (!$clientKeyStore) return await redirect("/key/generate");
+
+      if (!(await requestSessionUpgrade($clientKeyStore)))
+        throw new Error("Failed to upgrade session");
+
+      // TODO: Multi-user support
+
+      if (
+        $masterKeyStore ||
+        (await requestMasterKeyDownload($clientKeyStore.decryptKey, $clientKeyStore.verifyKey))
+      ) {
+        await goto(data.redirectPath);
+      } else {
+        await redirect("/client/pending");
+      }
+    } catch (e) {
+      // TODO: Alert
+      throw e;
+    }
+  };
+
+  const register = async (nickname: string) => {
+    // TODO: Validation
+
+    try {
+      if (!(await requestRegister(email, nickname, password)))
+        throw new Error("Failed to register");
 
       if (!$clientKeyStore) return await redirect("/key/generate");
 
@@ -60,6 +96,8 @@
   </TitledDiv>
   <BottomDiv class="flex flex-col items-center gap-y-2">
     <Button onclick={login} class="w-full">로그인</Button>
-    <TextButton>계정이 없어요</TextButton>
+    <TextButton onclick={() => (isNicknameModalOpen = true)}>계정이 없어요</TextButton>
   </BottomDiv>
 </FullscreenDiv>
+
+<NicknameModal bind:isOpen={isNicknameModalOpen} onSubmitClick={register} />

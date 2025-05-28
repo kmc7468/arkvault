@@ -9,7 +9,7 @@ import {
   registerSessionUpgradeChallenge,
   consumeSessionUpgradeChallenge,
 } from "$lib/server/db/session";
-import { getUser, getUserByEmail, setUserPassword } from "$lib/server/db/user";
+import { createUser, getUser, getUserByEmail, setUserPassword } from "$lib/server/db/user";
 import env from "$lib/server/loadenv";
 import { startSession } from "$lib/server/modules/auth";
 import { verifySignature, generateChallenge } from "$lib/server/modules/crypto";
@@ -63,6 +63,27 @@ export const login = async (email: string, password: string, ip: string, userAge
 
 export const logout = async (sessionId: string) => {
   await deleteSession(sessionId);
+};
+
+export const register = async (
+  email: string,
+  nickname: string,
+  password: string,
+  ip: string,
+  userAgent: string,
+) => {
+  if (password.length < 8) {
+    error(400, "Too short password");
+  }
+
+  const existingUser = await getUserByEmail(email);
+  if (existingUser) {
+    error(409, "Email already registered");
+  }
+
+  const hashedPassword = await hashPassword(password);
+  const { id } = await createUser(email, nickname, hashedPassword);
+  return { sessionIdSigned: await startSession(id, ip, userAgent) };
 };
 
 export const createSessionUpgradeChallenge = async (
