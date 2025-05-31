@@ -7,15 +7,6 @@ interface User {
   password: string;
 }
 
-export const createUser = async (email: string, nickname: string, password: string) => {
-  const { id } = await db
-    .insertInto("user")
-    .values({ email, nickname, password })
-    .returning("id")
-    .executeTakeFirstOrThrow();
-  return { id, email, nickname, password } satisfies User;
-};
-
 export const getUser = async (userId: number) => {
   const user = await db
     .selectFrom("user")

@@ -3,7 +3,7 @@ import { authenticate, AuthenticationError } from "$lib/server/modules/auth";
 
 export const authenticateMiddleware: Handle = async ({ event, resolve }) => {
   const { pathname, search } = event.url;
-  if (pathname === "/api/auth/login" || pathname === "/api/auth/register") {
+  if (pathname === "/api/auth/login") {
     return await resolve(event);
   }
 

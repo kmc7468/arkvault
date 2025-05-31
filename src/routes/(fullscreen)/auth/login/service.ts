@@ -1,6 +1,6 @@
 import { callPostApi } from "$lib/hooks";
 import { exportRSAKeyToBase64 } from "$lib/modules/crypto";
-import type { LoginRequest, RegisterRequest } from "$lib/server/schemas";
+import type { LoginRequest } from "$lib/server/schemas";
 import { requestSessionUpgrade as requestSessionUpgradeInternal } from "$lib/services/auth";
 import { requestClientRegistration } from "$lib/services/key";
 import type { ClientKeys } from "$lib/stores";
@@ -9,15 +9,6 @@ export { requestMasterKeyDownload } from "$lib/services/key";
 
 export const requestLogin = async (email: string, password: string) => {
   const res = await callPostApi<LoginRequest>("/api/auth/login", { email, password });
-  return res.ok;
-};
-
-export const requestRegister = async (email: string, nickname: string, password: string) => {
-  const res = await callPostApi<RegisterRequest>("/api/auth/register", {
-    email,
-    nickname,
-    password,
-  });
   return res.ok;
 };
 
