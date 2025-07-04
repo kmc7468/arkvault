@@ -16,8 +16,11 @@ export const GET: RequestHandler = async ({ locals, params }) => {
   if (!zodRes.success) error(400, "Invalid path parameters");
   const { id } = zodRes.data;
 
-  const { encContentIv } = await getFileThumbnailInformation(userId, id);
+  const { updatedAt, encContentIv } = await getFileThumbnailInformation(userId, id);
   return json(
-    fileThumbnailInfoResponse.parse({ encContentIv } satisfies FileThumbnailInfoResponse),
+    fileThumbnailInfoResponse.parse({
+      updatedAt: updatedAt.toISOString(),
+      encContentIv,
+    } satisfies FileThumbnailInfoResponse),
   );
 };

@@ -92,7 +92,7 @@ export const getFileThumbnailInformation = async (userId: number, fileId: number
     error(404, "File or its thumbnail not found");
   }
 
-  return { encContentIv: thumbnail.encContentIv };
+  return { updatedAt: thumbnail.updatedAt, encContentIv: thumbnail.encContentIv };
 };
 
 export const getFileThumbnailStream = async (userId: number, fileId: number) => {

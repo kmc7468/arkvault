@@ -6,7 +6,7 @@ interface ThumbnailTable {
   file_id: number | null;
   category_id: number | null;
   path: string;
-  created_at: Date;
+  updated_at: Date;
   encrypted_content_iv: string; // Base64
 }
 

@@ -16,7 +16,7 @@ export const up = async (db: Kysely<any>) => {
       col.references("category.id").onDelete("cascade").unique(),
     )
     .addColumn("path", "text", (col) => col.unique().notNull())
-    .addColumn("created_at", "timestamp(3)", (col) => col.notNull())
+    .addColumn("updated_at", "timestamp(3)", (col) => col.notNull())
     .addColumn("encrypted_content_iv", "text", (col) => col.notNull())
     .addCheckConstraint(
       "thumbnail_ck01",

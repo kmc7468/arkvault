@@ -31,6 +31,7 @@ export const fileRenameRequest = z.object({
 export type FileRenameRequest = z.infer<typeof fileRenameRequest>;
 
 export const fileThumbnailInfoResponse = z.object({
+  updatedAt: z.string().datetime(),
   encContentIv: z.string().base64().nonempty(),
 });
 export type FileThumbnailInfoResponse = z.infer<typeof fileThumbnailInfoResponse>;

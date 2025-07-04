@@ -5,7 +5,7 @@ import db from "./kysely";
 interface Thumbnail {
   id: number;
   path: string;
-  createdAt: Date;
+  updatedAt: Date;
   encContentIv: string;
 }
 
@@ -49,13 +49,13 @@ export const updateFileThumbnail = async (
       .values({
         file_id: fileId,
         path,
-        created_at: now,
+        updated_at: now,
         encrypted_content_iv: encContentIv,
       })
       .onConflict((oc) =>
         oc.column("file_id").doUpdateSet({
           path,
-          created_at: now,
+          updated_at: now,
           encrypted_content_iv: encContentIv,
         }),
       )
@@ -80,7 +80,7 @@ export const getFileThumbnail = async (userId: number, fileId: number) => {
         fileId: thumbnail.file_id,
         path: thumbnail.path,
         encContentIv: thumbnail.encrypted_content_iv,
-        createdAt: thumbnail.created_at,
+        updatedAt: thumbnail.updated_at,
       } satisfies FileThumbnail)
     : null;
 };
