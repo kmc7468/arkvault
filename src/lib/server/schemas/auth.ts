@@ -19,12 +19,13 @@ export const sessionUpgradeRequest = z.object({
 export type SessionUpgradeRequest = z.infer<typeof sessionUpgradeRequest>;
 
 export const sessionUpgradeResponse = z.object({
+  id: z.number().int().positive(),
   challenge: z.string().base64().nonempty(),
 });
 export type SessionUpgradeResponse = z.infer<typeof sessionUpgradeResponse>;
 
 export const sessionUpgradeVerifyRequest = z.object({
-  answer: z.string().base64().nonempty(),
+  id: z.number().int().positive(),
   answerSig: z.string().base64().nonempty(),
 });
 export type SessionUpgradeVerifyRequest = z.infer<typeof sessionUpgradeVerifyRequest>;

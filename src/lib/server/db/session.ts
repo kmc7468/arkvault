@@ -94,7 +94,7 @@ export const registerSessionUpgradeChallenge = async (
   expiresAt: Date,
 ) => {
   try {
-    await db
+    const { id } = await db
       .insertInto("session_upgrade_challenge")
       .values({
         session_id: sessionId,
@@ -103,7 +103,9 @@ export const registerSessionUpgradeChallenge = async (
         allowed_ip: allowedIp,
         expires_at: expiresAt,
       })
-      .execute();
+      .returning("id")
+      .executeTakeFirstOrThrow();
+    return { id };
   } catch (e) {
     if (e instanceof pg.DatabaseError && e.code === "23505") {
       throw new IntegrityError("Challenge already registered");
@@ -113,19 +115,19 @@ export const registerSessionUpgradeChallenge = async (
 };
 
 export const consumeSessionUpgradeChallenge = async (
+  challengeId: number,
   sessionId: string,
-  answer: string,
   ip: string,
 ) => {
   const challenge = await db
     .deleteFrom("session_upgrade_challenge")
+    .where("id", "=", challengeId)
     .where("session_id", "=", sessionId)
-    .where("answer", "=", answer)
     .where("allowed_ip", "=", ip)
     .where("expires_at", ">", new Date())
-    .returning("client_id")
+    .returning(["client_id", "answer"])
     .executeTakeFirst();
-  return challenge ? { clientId: challenge.client_id } : null;
+  return challenge ? { clientId: challenge.client_id, answer: challenge.answer } : null;
 };
 
 export const cleanupExpiredSessionUpgradeChallenges = async () => {

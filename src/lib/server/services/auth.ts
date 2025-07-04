@@ -81,7 +81,7 @@ export const createSessionUpgradeChallenge = async (
   }
 
   const { answer, challenge } = await generateChallenge(32, encPubKey);
-  await registerSessionUpgradeChallenge(
+  const { id } = await registerSessionUpgradeChallenge(
     sessionId,
     client.id,
     answer.toString("base64"),
@@ -89,16 +89,16 @@ export const createSessionUpgradeChallenge = async (
     new Date(Date.now() + env.challenge.sessionUpgradeExp),
   );
 
-  return { challenge: challenge.toString("base64") };
+  return { id, challenge: challenge.toString("base64") };
 };
 
 export const verifySessionUpgradeChallenge = async (
   sessionId: string,
   ip: string,
-  answer: string,
+  challengeId: number,
   answerSig: string,
 ) => {
-  const challenge = await consumeSessionUpgradeChallenge(sessionId, answer, ip);
+  const challenge = await consumeSessionUpgradeChallenge(challengeId, sessionId, ip);
   if (!challenge) {
     error(403, "Invalid challenge answer");
   }
@@ -106,7 +106,9 @@ export const verifySessionUpgradeChallenge = async (
   const client = await getClient(challenge.clientId);
   if (!client) {
     error(500, "Invalid challenge answer");
-  } else if (!verifySignature(Buffer.from(answer, "base64"), answerSig, client.sigPubKey)) {
+  } else if (
+    !verifySignature(Buffer.from(challenge.answer, "base64"), answerSig, client.sigPubKey)
+  ) {
     error(403, "Invalid challenge answer signature");
   }
 

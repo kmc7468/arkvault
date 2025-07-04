@@ -15,6 +15,6 @@ export const POST: RequestHandler = async ({ locals, request }) => {
   if (!zodRes.success) error(400, "Invalid request body");
   const { encPubKey, sigPubKey } = zodRes.data;
 
-  const { challenge } = await registerUserClient(userId, locals.ip, encPubKey, sigPubKey);
-  return json(clientRegisterResponse.parse({ challenge } satisfies ClientRegisterResponse));
+  const { id, challenge } = await registerUserClient(userId, locals.ip, encPubKey, sigPubKey);
+  return json(clientRegisterResponse.parse({ id, challenge } satisfies ClientRegisterResponse));
 };
