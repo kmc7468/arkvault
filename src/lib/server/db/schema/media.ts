@@ -1,4 +1,4 @@
-import type { ColumnType, Generated } from "kysely";
+import type { Generated } from "kysely";
 
 interface ThumbnailTable {
   id: Generated<number>;
@@ -6,7 +6,7 @@ interface ThumbnailTable {
   file_id: number | null;
   category_id: number | null;
   path: string;
-  created_at: ColumnType<Date, Date, never>;
+  created_at: Date;
   encrypted_content_iv: string; // Base64
 }
 

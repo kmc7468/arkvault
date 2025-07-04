@@ -327,7 +327,8 @@ export const getAllFilesByCategory = async (
     .where("user_id", "=", userId)
     .where("file_id", "is not", null)
     .$narrowType<{ file_id: NotNull }>()
-    .orderBy(["file_id", "depth"])
+    .orderBy("file_id")
+    .orderBy("depth")
     .execute();
   return files.map(({ file_id, depth }) => ({ id: file_id, isRecursive: depth > 0 }));
 };

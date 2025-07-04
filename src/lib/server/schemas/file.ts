@@ -30,6 +30,17 @@ export const fileRenameRequest = z.object({
 });
 export type FileRenameRequest = z.infer<typeof fileRenameRequest>;
 
+export const fileThumbnailInfoResponse = z.object({
+  encContentIv: z.string().base64().nonempty(),
+});
+export type FileThumbnailInfoResponse = z.infer<typeof fileThumbnailInfoResponse>;
+
+export const fileThumbnailUploadRequest = z.object({
+  dekVersion: z.string().datetime(),
+  encContentIv: z.string().base64().nonempty(),
+});
+export type FileThumbnailUploadRequest = z.infer<typeof fileThumbnailUploadRequest>;
+
 export const duplicateFileScanRequest = z.object({
   hskVersion: z.number().int().positive(),
   contentHmac: z.string().base64().nonempty(),
