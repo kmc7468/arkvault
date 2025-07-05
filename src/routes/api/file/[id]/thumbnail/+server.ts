@@ -20,7 +20,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
   return json(
     fileThumbnailInfoResponse.parse({
       updatedAt: updatedAt.toISOString(),
-      encContentIv,
+      contentIv: encContentIv,
     } satisfies FileThumbnailInfoResponse),
   );
 };

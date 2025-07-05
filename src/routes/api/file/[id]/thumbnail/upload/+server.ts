@@ -39,7 +39,9 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
         if (fieldname === "metadata") {
           // Ignore subsequent metadata fields
           if (!metadata) {
-            metadata = fileThumbnailUploadRequest.parse(val);
+            const zodRes = fileThumbnailUploadRequest.safeParse(JSON.parse(val));
+            if (!zodRes.success) error(400, "Invalid request body");
+            metadata = zodRes.data;
           }
         } else {
           error(400, "Invalid request body");
@@ -57,7 +59,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
           userId,
           id,
           new Date(metadata.dekVersion),
-          metadata.encContentIv,
+          metadata.contentIv,
           content,
         );
         resolve(text("Thumbnail uploaded", { headers: { "Content-Type": "text/plain" } }));

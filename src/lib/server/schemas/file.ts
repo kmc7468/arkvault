@@ -32,13 +32,13 @@ export type FileRenameRequest = z.infer<typeof fileRenameRequest>;
 
 export const fileThumbnailInfoResponse = z.object({
   updatedAt: z.string().datetime(),
-  encContentIv: z.string().base64().nonempty(),
+  contentIv: z.string().base64().nonempty(),
 });
 export type FileThumbnailInfoResponse = z.infer<typeof fileThumbnailInfoResponse>;
 
 export const fileThumbnailUploadRequest = z.object({
   dekVersion: z.string().datetime(),
-  encContentIv: z.string().base64().nonempty(),
+  contentIv: z.string().base64().nonempty(),
 });
 export type FileThumbnailUploadRequest = z.infer<typeof fileThumbnailUploadRequest>;
 

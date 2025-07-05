@@ -10,6 +10,7 @@ node_modules
 /build
 /data
 /library
+/thumbnails
 
 # OS
 .DS_Store

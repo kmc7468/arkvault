@@ -11,9 +11,11 @@ import {
   digestMessage,
   signMessageHmac,
 } from "$lib/modules/crypto";
+import { generateImageThumbnail, generateVideoThumbnail } from "$lib/modules/thumbnail";
 import type {
   DuplicateFileScanRequest,
   DuplicateFileScanResponse,
+  FileThumbnailUploadRequest,
   FileUploadRequest,
   FileUploadResponse,
 } from "$lib/server/schemas";
@@ -76,6 +78,24 @@ const extractExifDateTime = (fileBuffer: ArrayBuffer) => {
   return new Date(utcDate - offsetMs);
 };
 
+const generateThumbnail = async (file: File, fileType: string) => {
+  let url;
+  try {
+    if (fileType.startsWith("image/")) {
+      url = URL.createObjectURL(file);
+      return await generateImageThumbnail(url);
+    } else if (fileType.startsWith("video/")) {
+      url = URL.createObjectURL(file);
+      return await generateVideoThumbnail(url);
+    }
+    return null;
+  } finally {
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
+  }
+};
+
 const encryptFile = limitFunction(
   async (
     status: Writable<FileUploadStatus>,
@@ -106,6 +126,11 @@ const encryptFile = limitFunction(
       createdAt && (await encryptString(createdAt.getTime().toString(), dataKey));
     const lastModifiedAtEncrypted = await encryptString(file.lastModified.toString(), dataKey);
 
+    const thumbnail = await generateThumbnail(file, fileType);
+    const thumbnailEncrypted = thumbnail
+      ? await encryptData(await thumbnail.arrayBuffer(), dataKey)
+      : null;
+
     status.update((value) => {
       value.status = "upload-pending";
       return value;
@@ -120,13 +145,14 @@ const encryptFile = limitFunction(
       nameEncrypted,
       createdAtEncrypted,
       lastModifiedAtEncrypted,
+      thumbnailEncrypted,
     };
   },
   { concurrency: 4 },
 );
 
 const requestFileUpload = limitFunction(
-  async (status: Writable<FileUploadStatus>, form: FormData) => {
+  async (status: Writable<FileUploadStatus>, form: FormData, thumbnailForm: FormData | null) => {
     status.update((value) => {
       value.status = "uploading";
       return value;
@@ -143,6 +169,15 @@ const requestFileUpload = limitFunction(
       },
     });
     const { file }: FileUploadResponse = res.data;
+
+    if (thumbnailForm) {
+      try {
+        await axios.post(`/api/file/${file}/thumbnail/upload`, thumbnailForm);
+      } catch (e) {
+        // TODO
+        console.error(e);
+      }
+    }
 
     status.update((value) => {
       value.status = "uploaded";
@@ -198,6 +233,7 @@ export const uploadFile = async (
       nameEncrypted,
       createdAtEncrypted,
       lastModifiedAtEncrypted,
+      thumbnailEncrypted,
     } = await encryptFile(status, file, fileBuffer, masterKey);
 
     const form = new FormData();
@@ -223,7 +259,20 @@ export const uploadFile = async (
     form.set("content", new Blob([fileEncrypted.ciphertext]));
     form.set("checksum", fileEncryptedHash);
 
-    const { fileId } = await requestFileUpload(status, form);
+    let thumbnailForm = null;
+    if (thumbnailEncrypted) {
+      thumbnailForm = new FormData();
+      thumbnailForm.set(
+        "metadata",
+        JSON.stringify({
+          dekVersion: dataKeyVersion.toISOString(),
+          contentIv: thumbnailEncrypted.iv,
+        } as FileThumbnailUploadRequest),
+      );
+      thumbnailForm.set("content", new Blob([thumbnailEncrypted.ciphertext]));
+    }
+
+    const { fileId } = await requestFileUpload(status, form, thumbnailForm);
     return { fileId, fileBuffer };
   } catch (e) {
     status.update((value) => {
