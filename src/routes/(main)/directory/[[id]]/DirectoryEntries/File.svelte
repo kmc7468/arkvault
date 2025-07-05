@@ -2,9 +2,10 @@
   import type { Writable } from "svelte/store";
   import { ActionEntryButton } from "$lib/components/atoms";
   import { DirectoryEntryLabel } from "$lib/components/molecules";
+  import { getFileThumbnail } from "$lib/modules/file";
   import type { FileInfo } from "$lib/modules/filesystem";
   import { formatDateTime } from "$lib/modules/util";
-  import { getFileThumbnail } from "./service";
+  import { requestFileThumbnailDownload } from "./service";
   import type { SelectedEntry } from "../service.svelte";
 
   import IconMoreVert from "~icons/material-symbols/more-vert";
@@ -17,7 +18,7 @@
 
   let { info, onclick, onOpenMenuClick }: Props = $props();
 
-  let thumbnail: ArrayBuffer | undefined = $state();
+  let thumbnail: string | undefined = $state();
 
   const openFile = () => {
     const { id, dataKey, dataKeyVersion, name } = $info!;
@@ -35,12 +36,15 @@
 
   $effect(() => {
     if ($info?.dataKey) {
-      getFileThumbnail($info.id, $info.dataKey)
-        .then((thumbnailData) => {
-          thumbnail = thumbnailData ?? undefined;
+      getFileThumbnail($info.id)
+        .then(
+          (thumbnailUrl) => thumbnailUrl || requestFileThumbnailDownload($info.id, $info.dataKey!),
+        )
+        .then((thumbnailUrl) => {
+          thumbnail = thumbnailUrl ?? undefined;
         })
         .catch(() => {
-          // TODO: Error handling
+          // TODO: Error Handling
           thumbnail = undefined;
         });
     } else {

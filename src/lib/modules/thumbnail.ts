@@ -1,3 +1,5 @@
+import { encodeToBase64 } from "$lib/modules/crypto";
+
 const scaleSize = (width: number, height: number, targetSize: number) => {
   if (width <= targetSize || height <= targetSize) {
     return { width, height };
@@ -73,4 +75,8 @@ export const generateVideoThumbnail = (videoUrl: string, time = 0) => {
     video.playsInline = true;
     video.src = videoUrl;
   });
+};
+
+export const getThumbnailUrl = (thumbnailBuffer: ArrayBuffer) => {
+  return `data:image/webp;base64,${encodeToBase64(thumbnailBuffer)}`;
 };

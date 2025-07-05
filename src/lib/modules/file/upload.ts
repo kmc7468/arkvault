@@ -130,9 +130,8 @@ const encryptFile = limitFunction(
     const lastModifiedAtEncrypted = await encryptString(file.lastModified.toString(), dataKey);
 
     const thumbnail = await generateThumbnail(file, fileType);
-    const thumbnailEncrypted = thumbnail
-      ? await encryptData(await thumbnail.arrayBuffer(), dataKey)
-      : null;
+    const thumbnailBuffer = await thumbnail?.arrayBuffer();
+    const thumbnailEncrypted = thumbnailBuffer ? await encryptData(thumbnailBuffer, dataKey) : null;
 
     status.update((value) => {
       value.status = "upload-pending";
@@ -148,7 +147,8 @@ const encryptFile = limitFunction(
       nameEncrypted,
       createdAtEncrypted,
       lastModifiedAtEncrypted,
-      thumbnailEncrypted,
+      thumbnail: thumbnail &&
+        thumbnailEncrypted && { plaintext: thumbnailBuffer, ...thumbnailEncrypted },
     };
   },
   { concurrency: 4 },
@@ -198,7 +198,9 @@ export const uploadFile = async (
   hmacSecret: HmacSecret,
   masterKey: MasterKey,
   onDuplicate: () => Promise<boolean>,
-): Promise<{ fileId: number; fileBuffer: ArrayBuffer } | undefined> => {
+): Promise<
+  { fileId: number; fileBuffer: ArrayBuffer; thumbnailBuffer?: ArrayBuffer } | undefined
+> => {
   const status = writable<FileUploadStatus>({
     name: file.name,
     parentId,
@@ -236,7 +238,7 @@ export const uploadFile = async (
       nameEncrypted,
       createdAtEncrypted,
       lastModifiedAtEncrypted,
-      thumbnailEncrypted,
+      thumbnail,
     } = await encryptFile(status, file, fileBuffer, masterKey);
 
     const form = new FormData();
@@ -263,20 +265,20 @@ export const uploadFile = async (
     form.set("checksum", fileEncryptedHash);
 
     let thumbnailForm = null;
-    if (thumbnailEncrypted) {
+    if (thumbnail) {
       thumbnailForm = new FormData();
       thumbnailForm.set(
         "metadata",
         JSON.stringify({
           dekVersion: dataKeyVersion.toISOString(),
-          contentIv: thumbnailEncrypted.iv,
+          contentIv: thumbnail.iv,
         } satisfies FileThumbnailUploadRequest),
       );
-      thumbnailForm.set("content", new Blob([thumbnailEncrypted.ciphertext]));
+      thumbnailForm.set("content", new Blob([thumbnail.ciphertext]));
     }
 
     const { fileId } = await requestFileUpload(status, form, thumbnailForm);
-    return { fileId, fileBuffer };
+    return { fileId, fileBuffer, thumbnailBuffer: thumbnail?.plaintext };
   } catch (e) {
     status.update((value) => {
       value.status = "error";

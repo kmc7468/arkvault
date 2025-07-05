@@ -10,7 +10,7 @@
     name: string;
     subtext?: string;
     textClass?: ClassValue;
-    thumbnail?: ArrayBuffer;
+    thumbnail?: string;
     type: "directory" | "file";
   }
 
@@ -22,19 +22,12 @@
     thumbnail,
     type,
   }: Props = $props();
-
-  let thumbnailUrl: string | undefined = $state();
-
-  $effect(() => {
-    thumbnailUrl = thumbnail && URL.createObjectURL(new Blob([thumbnail]));
-    return () => thumbnailUrl && URL.revokeObjectURL(thumbnailUrl);
-  });
 </script>
 
 {#snippet iconSnippet()}
   <div class="flex h-10 w-10 items-center justify-center overflow-y-hidden text-xl">
-    {#if thumbnailUrl}
-      <img src={thumbnailUrl} alt={name} loading="lazy" />
+    {#if thumbnail}
+      <img src={thumbnail} alt={name} loading="lazy" />
     {:else if type === "directory"}
       <IconFolder />
     {:else}

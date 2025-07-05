@@ -37,6 +37,7 @@
     "globals": "^15.14.0",
     "heic2any": "^0.0.4",
     "kysely-ctl": "^0.10.1",
+    "lru-cache": "^11.1.0",
     "mime": "^4.0.6",
     "p-limit": "^6.2.0",
     "prettier": "^3.4.2",

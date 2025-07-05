@@ -2,7 +2,7 @@ import { getContext, setContext } from "svelte";
 import { callGetApi, callPostApi } from "$lib/hooks";
 import { storeHmacSecrets } from "$lib/indexedDB";
 import { generateDataKey, wrapDataKey, unwrapHmacSecret, encryptString } from "$lib/modules/crypto";
-import { storeFileCache, deleteFileCache, uploadFile } from "$lib/modules/file";
+import { storeFileCache, deleteFileCache, storeFileThumbnail, uploadFile } from "$lib/modules/file";
 import type {
   DirectoryRenameRequest,
   DirectoryCreateRequest,
@@ -81,6 +81,10 @@ export const requestFileUpload = async (
   if (!res) return false;
 
   storeFileCache(res.fileId, res.fileBuffer); // Intended
+  if (res.thumbnailBuffer) {
+    storeFileThumbnail(res.fileId, res.thumbnailBuffer); // Intended
+  }
+
   return true;
 };
 

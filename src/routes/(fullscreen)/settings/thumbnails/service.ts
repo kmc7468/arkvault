@@ -1,6 +1,6 @@
 import { limitFunction } from "p-limit";
 import { encryptData } from "$lib/modules/crypto";
-import { getFileCache, storeFileCache, downloadFile } from "$lib/modules/file";
+import { getFileCache, storeFileCache, downloadFile, storeFileThumbnail } from "$lib/modules/file";
 import { generateImageThumbnail, generateVideoThumbnail } from "$lib/modules/thumbnail";
 import type { FileThumbnailUploadRequest } from "$lib/server/schemas";
 
@@ -55,7 +55,10 @@ export const requestThumbnailUpload = limitFunction(
     form.set("content", new Blob([thumbnailEncrypted.ciphertext]));
 
     const res = await fetch(`/api/file/${fileId}/thumbnail/upload`, { method: "POST", body: form });
-    return res.ok;
+    if (!res.ok) return false;
+
+    storeFileThumbnail(fileId, thumbnail); // Intended
+    return true;
   },
-  { concurrency: 1 },
+  { concurrency: 4 },
 );
