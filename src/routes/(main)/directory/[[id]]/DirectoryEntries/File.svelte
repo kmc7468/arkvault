@@ -4,6 +4,7 @@
   import { DirectoryEntryLabel } from "$lib/components/molecules";
   import type { FileInfo } from "$lib/modules/filesystem";
   import { formatDateTime } from "$lib/modules/util";
+  import { getFileThumbnail } from "./service";
   import type { SelectedEntry } from "../service.svelte";
 
   import IconMoreVert from "~icons/material-symbols/more-vert";
@@ -15,6 +16,8 @@
   }
 
   let { info, onclick, onOpenMenuClick }: Props = $props();
+
+  let thumbnail: ArrayBuffer | undefined = $state();
 
   const openFile = () => {
     const { id, dataKey, dataKeyVersion, name } = $info!;
@@ -29,6 +32,21 @@
 
     onOpenMenuClick({ type: "file", id, dataKey, dataKeyVersion, name });
   };
+
+  $effect(() => {
+    if ($info?.dataKey) {
+      getFileThumbnail($info.id, $info.dataKey)
+        .then((thumbnailData) => {
+          thumbnail = thumbnailData ?? undefined;
+        })
+        .catch(() => {
+          // TODO: Error handling
+          thumbnail = undefined;
+        });
+    } else {
+      thumbnail = undefined;
+    }
+  });
 </script>
 
 {#if $info}
@@ -40,6 +58,7 @@
   >
     <DirectoryEntryLabel
       type="file"
+      {thumbnail}
       name={$info.name}
       subtext={formatDateTime($info.createdAt ?? $info.lastModifiedAt)}
     />

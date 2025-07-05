@@ -5,7 +5,7 @@
   interface Props {
     children: Snippet;
     class?: ClassValue;
-    icon: Component<SvelteHTMLElements["svg"]>;
+    icon: Component<SvelteHTMLElements["svg"]> | Snippet;
     iconClass?: ClassValue;
     subtext?: Snippet;
     textClass?: ClassValue;
