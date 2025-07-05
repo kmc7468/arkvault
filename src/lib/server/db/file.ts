@@ -345,7 +345,7 @@ export const getAllFileIdsByContentHmac = async (
     .where("hmac_secret_key_version", "=", hskVersion)
     .where("content_hmac", "=", contentHmac)
     .execute();
-  return files.map(({ id }) => ({ id }));
+  return files.map(({ id }) => id);
 };
 
 export const getFile = async (userId: number, fileId: number) => {

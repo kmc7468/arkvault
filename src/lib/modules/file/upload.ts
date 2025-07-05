@@ -89,6 +89,9 @@ const generateThumbnail = async (file: File, fileType: string) => {
       return await generateVideoThumbnail(url);
     }
     return null;
+  } catch {
+    // TODO: Error handling
+    return null;
   } finally {
     if (url) {
       URL.revokeObjectURL(url);
@@ -254,7 +257,7 @@ export const uploadFile = async (
         createdAtIv: createdAtEncrypted?.iv,
         lastModifiedAt: lastModifiedAtEncrypted.ciphertext,
         lastModifiedAtIv: lastModifiedAtEncrypted.iv,
-      } as FileUploadRequest),
+      } satisfies FileUploadRequest),
     );
     form.set("content", new Blob([fileEncrypted.ciphertext]));
     form.set("checksum", fileEncryptedHash);
@@ -267,7 +270,7 @@ export const uploadFile = async (
         JSON.stringify({
           dekVersion: dataKeyVersion.toISOString(),
           contentIv: thumbnailEncrypted.iv,
-        } as FileThumbnailUploadRequest),
+        } satisfies FileThumbnailUploadRequest),
       );
       thumbnailForm.set("content", new Blob([thumbnailEncrypted.ciphertext]));
     }

@@ -16,7 +16,11 @@ import {
   getAllFileCategories,
   type NewFile,
 } from "$lib/server/db/file";
-import { getFileThumbnail, updateFileThumbnail } from "$lib/server/db/media";
+import {
+  updateFileThumbnail,
+  getFileThumbnail,
+  getMissingFileThumbnails,
+} from "$lib/server/db/media";
 import type { Ciphertext } from "$lib/server/db/schema";
 import env from "$lib/server/loadenv";
 
@@ -145,7 +149,12 @@ export const scanDuplicateFiles = async (
   contentHmac: string,
 ) => {
   const fileIds = await getAllFileIdsByContentHmac(userId, hskVersion, contentHmac);
-  return { files: fileIds.map(({ id }) => id) };
+  return { files: fileIds };
+};
+
+export const scanMissingFileThumbnails = async (userId: number) => {
+  const fileIds = await getMissingFileThumbnails(userId);
+  return { files: fileIds };
 };
 
 const safeUnlink = async (path: string) => {

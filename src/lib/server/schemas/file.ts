@@ -53,6 +53,11 @@ export const duplicateFileScanResponse = z.object({
 });
 export type DuplicateFileScanResponse = z.infer<typeof duplicateFileScanResponse>;
 
+export const missingThumbnailFileScanResponse = z.object({
+  files: z.number().int().positive().array(),
+});
+export type MissingThumbnailFileScanResponse = z.infer<typeof missingThumbnailFileScanResponse>;
+
 export const fileUploadRequest = z.object({
   parent: directoryIdSchema,
   mekVersion: z.number().int().positive(),
