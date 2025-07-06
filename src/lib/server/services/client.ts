@@ -34,8 +34,14 @@ const createUserClientChallenge = async (
   encPubKey: string,
 ) => {
   const { answer, challenge } = await generateChallenge(32, encPubKey);
-  await registerUserClientChallenge(userId, clientId, answer.toString("base64"), ip, expiresAt());
-  return challenge.toString("base64");
+  const { id } = await registerUserClientChallenge(
+    userId,
+    clientId,
+    answer.toString("base64"),
+    ip,
+    expiresAt(),
+  );
+  return { id, challenge: challenge.toString("base64") };
 };
 
 export const registerUserClient = async (
@@ -48,7 +54,7 @@ export const registerUserClient = async (
   if (client) {
     try {
       await createUserClient(userId, client.id);
-      return { challenge: await createUserClientChallenge(ip, userId, client.id, encPubKey) };
+      return await createUserClientChallenge(ip, userId, client.id, encPubKey);
     } catch (e) {
       if (e instanceof IntegrityError && e.message === "User client already exists") {
         error(409, "Client already registered");
@@ -64,7 +70,7 @@ export const registerUserClient = async (
 
     try {
       const { id: clientId } = await createClient(encPubKey, sigPubKey, userId);
-      return { challenge: await createUserClientChallenge(ip, userId, clientId, encPubKey) };
+      return await createUserClientChallenge(ip, userId, clientId, encPubKey);
     } catch (e) {
       if (e instanceof IntegrityError && e.message === "Public key(s) already registered") {
         error(409, "Public key(s) already used");
@@ -77,10 +83,10 @@ export const registerUserClient = async (
 export const verifyUserClient = async (
   userId: number,
   ip: string,
-  answer: string,
+  challengeId: number,
   answerSig: string,
 ) => {
-  const challenge = await consumeUserClientChallenge(userId, answer, ip);
+  const challenge = await consumeUserClientChallenge(challengeId, userId, ip);
   if (!challenge) {
     error(403, "Invalid challenge answer");
   }
@@ -88,7 +94,9 @@ export const verifyUserClient = async (
   const client = await getClient(challenge.clientId);
   if (!client) {
     error(500, "Invalid challenge answer");
-  } else if (!verifySignature(Buffer.from(answer, "base64"), answerSig, client.sigPubKey)) {
+  } else if (
+    !verifySignature(Buffer.from(challenge.answer, "base64"), answerSig, client.sigPubKey)
+  ) {
     error(403, "Invalid challenge answer signature");
   }
 

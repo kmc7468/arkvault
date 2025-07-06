@@ -18,12 +18,12 @@ export const requestSessionUpgrade = async (
   });
   if (!res.ok) return false;
 
-  const { challenge }: SessionUpgradeResponse = await res.json();
+  const { id, challenge }: SessionUpgradeResponse = await res.json();
   const answer = await decryptChallenge(challenge, decryptKey);
   const answerSig = await signMessageRSA(answer, signKey);
 
   res = await callPostApi<SessionUpgradeVerifyRequest>("/api/auth/upgradeSession/verify", {
-    answer: encodeToBase64(answer),
+    id,
     answerSig: encodeToBase64(answerSig),
   });
   return res.ok;

@@ -17,12 +17,13 @@ export const clientRegisterRequest = z.object({
 export type ClientRegisterRequest = z.infer<typeof clientRegisterRequest>;
 
 export const clientRegisterResponse = z.object({
+  id: z.number().int().positive(),
   challenge: z.string().base64().nonempty(),
 });
 export type ClientRegisterResponse = z.infer<typeof clientRegisterResponse>;
 
 export const clientRegisterVerifyRequest = z.object({
-  answer: z.string().base64().nonempty(),
+  id: z.number().int().positive(),
   answerSig: z.string().base64().nonempty(),
 });
 export type ClientRegisterVerifyRequest = z.infer<typeof clientRegisterVerifyRequest>;

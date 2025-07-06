@@ -27,12 +27,12 @@ export const requestClientRegistration = async (
   });
   if (!res.ok) return false;
 
-  const { challenge }: ClientRegisterResponse = await res.json();
+  const { id, challenge }: ClientRegisterResponse = await res.json();
   const answer = await decryptChallenge(challenge, decryptKey);
   const answerSig = await signMessageRSA(answer, signKey);
 
   res = await callPostApi<ClientRegisterVerifyRequest>("/api/client/register/verify", {
-    answer: encodeToBase64(answer),
+    id,
     answerSig: encodeToBase64(answerSig),
   });
   return res.ok;
