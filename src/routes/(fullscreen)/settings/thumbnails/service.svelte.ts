@@ -110,7 +110,7 @@ const requestThumbnailUpload = limitFunction(
   { concurrency: 4 },
 );
 
-export const requestFileThumbnailGeneration = async (fileInfo: FileInfo) => {
+export const requestThumbnailGeneration = async (fileInfo: FileInfo) => {
   let status = workingFiles.get(fileInfo.id);
   if (status && get(status) !== "error") return;
 

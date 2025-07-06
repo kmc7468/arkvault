@@ -1,5 +1,5 @@
 import { LRUCache } from "lru-cache";
-import { readFile, writeFile, deleteFile } from "$lib/modules/opfs";
+import { readFile, writeFile, deleteFile, deleteDirectory } from "$lib/modules/opfs";
 import { getThumbnailUrl } from "$lib/modules/thumbnail";
 
 const loadedThumbnails = new LRUCache<number, string>({ max: 100 });
@@ -26,4 +26,9 @@ export const storeFileThumbnail = async (fileId: number, thumbnailBuffer: ArrayB
 export const deleteFileThumbnail = async (fileId: number) => {
   loadedThumbnails.delete(fileId);
   await deleteFile(`/thumbnails/${fileId}`);
+};
+
+export const deleteAllFileThumbnails = async () => {
+  loadedThumbnails.clear();
+  await deleteDirectory("/thumbnails");
 };

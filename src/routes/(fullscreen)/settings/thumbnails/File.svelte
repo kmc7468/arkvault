@@ -32,7 +32,7 @@
   <ActionEntryButton
     class="h-14"
     onclick={() => onclick($info)}
-    actionButtonIcon={IconCamera}
+    actionButtonIcon={!$generationStatus || $generationStatus === "error" ? IconCamera : undefined}
     onActionButtonClick={() => onGenerateThumbnailClick($info)}
     actionButtonClass="text-gray-800"
   >
