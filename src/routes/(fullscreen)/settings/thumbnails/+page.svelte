@@ -1,52 +1,35 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { get, type Writable } from "svelte/store";
+  import { get } from "svelte/store";
   import { goto } from "$app/navigation";
   import { BottomDiv, Button, FullscreenDiv } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
-  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
+  import { getFileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import File from "./File.svelte";
   import {
-    requestFileDownload,
-    generateThumbnail as generateThumbnailInternal,
-    requestThumbnailUpload,
-  } from "./service";
+    persistentStates,
+    getGenerationStatus,
+    requestFileThumbnailGeneration,
+  } from "./service.svelte";
 
   let { data } = $props();
 
-  let fileInfos: Writable<FileInfo | null>[] | undefined = $state();
-
-  const generateThumbnail = async (fileInfo: FileInfo) => {
-    // TODO: Error handling
-
-    const file = await requestFileDownload(fileInfo.id, fileInfo.contentIv!, fileInfo.dataKey!);
-    const thumbnail = await generateThumbnailInternal(file, fileInfo.contentType);
-
-    // TODO: Error handling
-    await requestThumbnailUpload(
-      fileInfo.id,
-      await thumbnail!.arrayBuffer(),
-      fileInfo.dataKey!,
-      fileInfo.dataKeyVersion!,
-    );
-  };
-
   const generateAllThumbnails = async () => {
-    if (!fileInfos) return;
-
-    await Promise.all(
-      fileInfos.map(async (fileInfoStore) => {
-        const fileInfo = get(fileInfoStore);
-        if (fileInfo) {
-          await generateThumbnail(fileInfo);
-        }
-      }),
-    );
+    persistentStates.files.forEach(({ info }) => {
+      const fileInfo = get(info);
+      if (fileInfo) {
+        requestFileThumbnailGeneration(fileInfo);
+      }
+    });
   };
 
   onMount(() => {
-    fileInfos = data.files.map((file) => getFileInfo(file, $masterKeyStore?.get(1)?.key!));
+    persistentStates.files = data.files.map((fileId) => ({
+      id: fileId,
+      info: getFileInfo(fileId, $masterKeyStore?.get(1)?.key!),
+      status: getGenerationStatus(fileId),
+    }));
   });
 </script>
 
@@ -56,19 +39,20 @@
 
 <TopBar title="썸네일" />
 <FullscreenDiv>
-  {#if fileInfos && fileInfos.length > 0}
+  {#if persistentStates.files.length > 0}
     <div class="space-y-4 pb-4">
       <div class="space-y-1 break-keep text-gray-800">
         <p>
-          {fileInfos.length}개 파일의 썸네일이 존재하지 않아요.
+          {persistentStates.files.length}개 파일의 썸네일이 존재하지 않아요.
         </p>
       </div>
       <div class="space-y-2">
-        {#each fileInfos as fileInfo}
+        {#each persistentStates.files as { info, status }}
           <File
-            info={fileInfo}
+            {info}
+            generationStatus={status}
             onclick={({ id }) => goto(`/file/${id}`)}
-            onGenerateThumbnailClick={generateThumbnail}
+            onGenerateThumbnailClick={requestFileThumbnailGeneration}
           />
         {/each}
       </div>

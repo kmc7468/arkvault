@@ -94,7 +94,6 @@ const generateThumbnail = async (file: File, fileType: string) => {
     }
     return null;
   } catch {
-    // TODO: Error handling
     return null;
   } finally {
     if (url) {
