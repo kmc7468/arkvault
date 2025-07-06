@@ -45,10 +45,17 @@ export const getFileInformation = async (userId: number, fileId: number) => {
   };
 };
 
+const safeUnlink = async (path: string | null) => {
+  if (path) {
+    await unlink(path).catch(console.error);
+  }
+};
+
 export const deleteFile = async (userId: number, fileId: number) => {
   try {
-    const { path } = await unregisterFile(userId, fileId);
-    unlink(path); // Intended
+    const { path, thumbnailPath } = await unregisterFile(userId, fileId);
+    safeUnlink(path); // Intended
+    safeUnlink(thumbnailPath); // Intended
   } catch (e) {
     if (e instanceof IntegrityError && e.message === "File not found") {
       error(404, "Invalid file id");
@@ -126,9 +133,7 @@ export const uploadFileThumbnail = async (
     await pipeline(encContentStream, createWriteStream(path, { flags: "wx", mode: 0o600 }));
 
     const oldPath = await updateFileThumbnail(userId, fileId, dekVersion, path, encContentIv);
-    if (oldPath) {
-      safeUnlink(oldPath); // Intended
-    }
+    safeUnlink(oldPath); // Intended
   } catch (e) {
     await safeUnlink(path);
 
@@ -155,10 +160,6 @@ export const scanDuplicateFiles = async (
 export const scanMissingFileThumbnails = async (userId: number) => {
   const fileIds = await getMissingFileThumbnails(userId);
   return { files: fileIds };
-};
-
-const safeUnlink = async (path: string) => {
-  await unlink(path).catch(console.error);
 };
 
 export const uploadFile = async (

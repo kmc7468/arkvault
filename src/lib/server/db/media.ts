@@ -37,7 +37,7 @@ export const updateFileThumbnail = async (
 
     const thumbnail = await trx
       .selectFrom("thumbnail")
-      .select("path as old_path")
+      .select("path as oldPath")
       .where("file_id", "=", fileId)
       .limit(1)
       .forUpdate()
@@ -60,7 +60,7 @@ export const updateFileThumbnail = async (
         }),
       )
       .execute();
-    return thumbnail?.old_path;
+    return thumbnail?.oldPath ?? null;
   });
 };
 

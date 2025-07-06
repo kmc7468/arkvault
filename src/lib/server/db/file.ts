@@ -163,16 +163,24 @@ export const unregisterDirectory = async (userId: number, directoryId: number) =
     .setIsolationLevel("repeatable read") // TODO: Sufficient?
     .execute(async (trx) => {
       const unregisterFiles = async (parentId: number) => {
-        return await trx
+        const files = await trx
+          .selectFrom("file")
+          .leftJoin("thumbnail", "file.id", "thumbnail.file_id")
+          .select(["file.id", "file.path", "thumbnail.path as thumbnailPath"])
+          .where("file.parent_id", "=", parentId)
+          .where("file.user_id", "=", userId)
+          .forUpdate("file")
+          .execute();
+        await trx
           .deleteFrom("file")
           .where("parent_id", "=", parentId)
           .where("user_id", "=", userId)
-          .returning(["id", "path"])
           .execute();
+        return files;
       };
       const unregisterDirectoryRecursively = async (
         directoryId: number,
-      ): Promise<{ id: number; path: string }[]> => {
+      ): Promise<{ id: number; path: string; thumbnailPath: string | null }[]> => {
         const files = await unregisterFiles(directoryId);
         const subDirectories = await trx
           .selectFrom("directory")
@@ -417,16 +425,22 @@ export const setFileEncName = async (
 };
 
 export const unregisterFile = async (userId: number, fileId: number) => {
-  const file = await db
-    .deleteFrom("file")
-    .where("id", "=", fileId)
-    .where("user_id", "=", userId)
-    .returning("path")
-    .executeTakeFirst();
-  if (!file) {
-    throw new IntegrityError("File not found");
-  }
-  return { path: file.path };
+  return await db.transaction().execute(async (trx) => {
+    const file = await trx
+      .selectFrom("file")
+      .leftJoin("thumbnail", "file.id", "thumbnail.file_id")
+      .select(["file.path", "thumbnail.path as thumbnailPath"])
+      .where("file.id", "=", fileId)
+      .where("file.user_id", "=", userId)
+      .forUpdate("file")
+      .executeTakeFirst();
+    if (!file) {
+      throw new IntegrityError("File not found");
+    }
+
+    await trx.deleteFrom("file").where("id", "=", fileId).execute();
+    return file;
+  });
 };
 
 export const addFileToCategory = async (fileId: number, categoryId: number) => {

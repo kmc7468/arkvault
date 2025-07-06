@@ -2,7 +2,13 @@ import { getContext, setContext } from "svelte";
 import { callGetApi, callPostApi } from "$lib/hooks";
 import { storeHmacSecrets } from "$lib/indexedDB";
 import { generateDataKey, wrapDataKey, unwrapHmacSecret, encryptString } from "$lib/modules/crypto";
-import { storeFileCache, deleteFileCache, storeFileThumbnail, uploadFile } from "$lib/modules/file";
+import {
+  storeFileCache,
+  deleteFileCache,
+  storeFileThumbnail,
+  deleteFileThumbnail,
+  uploadFile,
+} from "$lib/modules/file";
 import type {
   DirectoryRenameRequest,
   DirectoryCreateRequest,
@@ -114,10 +120,12 @@ export const requestEntryDeletion = async (entry: SelectedEntry) => {
 
   if (entry.type === "directory") {
     const { deletedFiles }: DirectoryDeleteResponse = await res.json();
-    await Promise.all(deletedFiles.map(deleteFileCache));
+    await Promise.all(
+      deletedFiles.flatMap((fileId) => [deleteFileCache(fileId), deleteFileThumbnail(fileId)]),
+    );
     return true;
   } else {
-    await deleteFileCache(entry.id);
+    await Promise.all([deleteFileCache(entry.id), deleteFileThumbnail(entry.id)]);
     return true;
   }
 };
