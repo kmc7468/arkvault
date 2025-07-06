@@ -13,8 +13,8 @@
 </script>
 
 {#if isFileUploading($status.status)}
-  <div class="flex h-14 items-center gap-x-4 p-2">
-    <div class="flex-shrink-0 text-lg">
+  <div class="flex h-14 gap-x-4 p-2">
+    <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center text-xl">
       <IconDraft class="text-gray-600" />
     </div>
     <div class="flex flex-grow flex-col overflow-hidden text-gray-800">

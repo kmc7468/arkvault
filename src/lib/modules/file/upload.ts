@@ -81,7 +81,11 @@ const extractExifDateTime = (fileBuffer: ArrayBuffer) => {
 const generateThumbnail = async (file: File, fileType: string) => {
   let url;
   try {
-    if (fileType.startsWith("image/")) {
+    if (fileType === "image/heic") {
+      const { default: heic2any } = await import("heic2any");
+      url = URL.createObjectURL((await heic2any({ blob: file, toType: "image/png" })) as Blob);
+      return await generateImageThumbnail(url);
+    } else if (fileType.startsWith("image/")) {
       url = URL.createObjectURL(file);
       return await generateImageThumbnail(url);
     } else if (fileType.startsWith("video/")) {

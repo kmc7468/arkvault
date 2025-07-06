@@ -2,8 +2,9 @@
   import type { Writable } from "svelte/store";
   import { ActionEntryButton } from "$lib/components/atoms";
   import { DirectoryEntryLabel } from "$lib/components/molecules";
+  import { getFileThumbnail } from "$lib/modules/file";
   import type { FileInfo } from "$lib/modules/filesystem";
-  import type { SelectedFile } from "./service";
+  import { requestFileThumbnailDownload, type SelectedFile } from "./service";
 
   import IconClose from "~icons/material-symbols/close";
 
@@ -14,6 +15,8 @@
   }
 
   let { info, onclick, onRemoveClick }: Props = $props();
+
+  let thumbnail: string | undefined = $state();
 
   const openFile = () => {
     const { id, dataKey, dataKeyVersion, name } = $info as FileInfo;
@@ -28,6 +31,24 @@
 
     onRemoveClick!({ id, dataKey, dataKeyVersion, name });
   };
+
+  $effect(() => {
+    if ($info?.dataKey) {
+      getFileThumbnail($info.id)
+        .then(
+          (thumbnailUrl) => thumbnailUrl || requestFileThumbnailDownload($info.id, $info.dataKey!),
+        )
+        .then((thumbnailUrl) => {
+          thumbnail = thumbnailUrl ?? undefined;
+        })
+        .catch(() => {
+          // TODO: Error Handling
+          thumbnail = undefined;
+        });
+    } else {
+      thumbnail = undefined;
+    }
+  });
 </script>
 
 {#if $info}
@@ -37,6 +58,6 @@
     actionButtonIcon={onRemoveClick && IconClose}
     onActionButtonClick={removeFile}
   >
-    <DirectoryEntryLabel type="file" name={$info.name} />
+    <DirectoryEntryLabel type="file" {thumbnail} name={$info.name} />
   </ActionEntryButton>
 {/if}

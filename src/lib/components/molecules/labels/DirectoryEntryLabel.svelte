@@ -25,9 +25,9 @@
 </script>
 
 {#snippet iconSnippet()}
-  <div class="flex h-10 w-10 items-center justify-center overflow-y-hidden text-xl">
+  <div class="flex h-10 w-10 items-center justify-center text-xl">
     {#if thumbnail}
-      <img src={thumbnail} alt={name} loading="lazy" />
+      <img src={thumbnail} alt={name} loading="lazy" class="aspect-square rounded object-cover" />
     {:else if type === "directory"}
       <IconFolder />
     {:else}

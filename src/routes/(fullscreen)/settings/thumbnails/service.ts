@@ -21,7 +21,16 @@ export const generateThumbnail = limitFunction(
   async (fileBuffer: ArrayBuffer, fileType: string) => {
     let url;
     try {
-      if (fileType.startsWith("image/")) {
+      if (fileType === "image/heic") {
+        const { default: heic2any } = await import("heic2any");
+        url = URL.createObjectURL(
+          (await heic2any({
+            blob: new Blob([fileBuffer], { type: fileType }),
+            toType: "image/png",
+          })) as Blob,
+        );
+        return await generateImageThumbnail(url);
+      } else if (fileType.startsWith("image/")) {
         url = URL.createObjectURL(new Blob([fileBuffer], { type: fileType }));
         return await generateImageThumbnail(url);
       } else if (fileType.startsWith("video/")) {
