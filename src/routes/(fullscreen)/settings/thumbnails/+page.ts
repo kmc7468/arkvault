@@ -1,6 +1,6 @@
 import { error } from "@sveltejs/kit";
 import { callPostApi } from "$lib/hooks";
-import type { MissingThumbnailFileScanResponse } from "$lib/server/schemas/file";
+import type { MissingThumbnailFileScanResponse } from "$lib/server/schemas";
 import type { PageLoad } from "./$types";
 
 export const load: PageLoad = async ({ fetch }) => {

@@ -4,7 +4,7 @@
   import { goto } from "$app/navigation";
   import { BottomDiv, Button, FullscreenDiv } from "$lib/components/atoms";
   import { IconEntryButton, TopBar } from "$lib/components/molecules";
-  import { deleteAllFileThumbnails } from "$lib/modules/file";
+  import { deleteAllFileThumbnailCaches } from "$lib/modules/file";
   import { getFileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import File from "./File.svelte";
@@ -44,7 +44,7 @@
 <FullscreenDiv class="bg-gray-100 !px-0">
   <div class="flex flex-grow flex-col space-y-4">
     <div class="flex-shrink-0 bg-white p-4 !pt-0">
-      <IconEntryButton icon={IconDelete} onclick={deleteAllFileThumbnails} class="w-full">
+      <IconEntryButton icon={IconDelete} onclick={deleteAllFileThumbnailCaches} class="w-full">
         저장된 썸네일 모두 삭제하기
       </IconEntryButton>
     </div>

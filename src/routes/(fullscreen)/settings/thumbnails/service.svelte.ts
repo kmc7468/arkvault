@@ -1,7 +1,7 @@
 import { limitFunction } from "p-limit";
 import { get, writable, type Writable } from "svelte/store";
 import { encryptData } from "$lib/modules/crypto";
-import { storeFileThumbnail } from "$lib/modules/file";
+import { storeFileThumbnailCache } from "$lib/modules/file";
 import type { FileInfo } from "$lib/modules/filesystem";
 import { generateImageThumbnail, generateVideoThumbnail } from "$lib/modules/thumbnail";
 import type { FileThumbnailUploadRequest } from "$lib/server/schemas";
@@ -104,7 +104,7 @@ const requestThumbnailUpload = limitFunction(
     workingFiles.delete(fileId);
     persistentStates.files = persistentStates.files.filter(({ id }) => id != fileId);
 
-    storeFileThumbnail(fileId, thumbnail.plaintext); // Intended
+    storeFileThumbnailCache(fileId, thumbnail.plaintext); // Intended
     return true;
   },
   { concurrency: 4 },

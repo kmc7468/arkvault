@@ -5,8 +5,8 @@ import { generateDataKey, wrapDataKey, unwrapHmacSecret, encryptString } from "$
 import {
   storeFileCache,
   deleteFileCache,
-  storeFileThumbnail,
-  deleteFileThumbnail,
+  storeFileThumbnailCache,
+  deleteFileThumbnailCache,
   uploadFile,
 } from "$lib/modules/file";
 import type {
@@ -88,7 +88,7 @@ export const requestFileUpload = async (
 
   storeFileCache(res.fileId, res.fileBuffer); // Intended
   if (res.thumbnailBuffer) {
-    storeFileThumbnail(res.fileId, res.thumbnailBuffer); // Intended
+    storeFileThumbnailCache(res.fileId, res.thumbnailBuffer); // Intended
   }
 
   return true;
@@ -121,11 +121,11 @@ export const requestEntryDeletion = async (entry: SelectedEntry) => {
   if (entry.type === "directory") {
     const { deletedFiles }: DirectoryDeleteResponse = await res.json();
     await Promise.all(
-      deletedFiles.flatMap((fileId) => [deleteFileCache(fileId), deleteFileThumbnail(fileId)]),
+      deletedFiles.flatMap((fileId) => [deleteFileCache(fileId), deleteFileThumbnailCache(fileId)]),
     );
     return true;
   } else {
-    await Promise.all([deleteFileCache(entry.id), deleteFileThumbnail(entry.id)]);
+    await Promise.all([deleteFileCache(entry.id), deleteFileThumbnailCache(entry.id)]);
     return true;
   }
 };

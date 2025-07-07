@@ -1,6 +1,12 @@
 import { callGetApi } from "$lib/hooks";
 import { decryptData } from "$lib/modules/crypto";
-import { getFileCache, storeFileCache, downloadFile, storeFileThumbnail } from "$lib/modules/file";
+import {
+  getFileCache,
+  storeFileCache,
+  getFileThumbnailCache,
+  storeFileThumbnailCache,
+  downloadFile,
+} from "$lib/modules/file";
 import { getThumbnailUrl } from "$lib/modules/thumbnail";
 import type { FileThumbnailInfoResponse } from "$lib/server/schemas";
 
@@ -18,6 +24,9 @@ export const requestFileDownload = async (
 };
 
 export const requestFileThumbnailDownload = async (fileId: number, dataKey: CryptoKey) => {
+  const cache = await getFileThumbnailCache(fileId);
+  if (cache) return cache;
+
   let res = await callGetApi(`/api/file/${fileId}/thumbnail`);
   if (!res.ok) return null;
 
@@ -29,6 +38,6 @@ export const requestFileThumbnailDownload = async (fileId: number, dataKey: Cryp
   const thumbnailEncrypted = await res.arrayBuffer();
   const thumbnail = await decryptData(thumbnailEncrypted, thumbnailEncryptedIv, dataKey);
 
-  storeFileThumbnail(fileId, thumbnail); // Intended
+  storeFileThumbnailCache(fileId, thumbnail); // Intended
   return getThumbnailUrl(thumbnail);
 };
