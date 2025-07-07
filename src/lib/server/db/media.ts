@@ -106,5 +106,5 @@ export const getMissingFileThumbnails = async (userId: number, limit: number = 1
     )
     .limit(limit)
     .execute();
-  return files.map((file) => file.id);
+  return files.map(({ id }) => id);
 };

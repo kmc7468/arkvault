@@ -11,7 +11,7 @@ import {
   digestMessage,
   signMessageHmac,
 } from "$lib/modules/crypto";
-import { generateImageThumbnail, generateVideoThumbnail } from "$lib/modules/thumbnail";
+import { generateThumbnail } from "$lib/modules/thumbnail";
 import type {
   DuplicateFileScanRequest,
   DuplicateFileScanResponse,
@@ -78,30 +78,6 @@ const extractExifDateTime = (fileBuffer: ArrayBuffer) => {
   return new Date(utcDate - offsetMs);
 };
 
-const generateThumbnail = async (file: File, fileType: string) => {
-  let url;
-  try {
-    if (fileType === "image/heic") {
-      const { default: heic2any } = await import("heic2any");
-      url = URL.createObjectURL((await heic2any({ blob: file, toType: "image/png" })) as Blob);
-      return await generateImageThumbnail(url);
-    } else if (fileType.startsWith("image/")) {
-      url = URL.createObjectURL(file);
-      return await generateImageThumbnail(url);
-    } else if (fileType.startsWith("video/")) {
-      url = URL.createObjectURL(file);
-      return await generateVideoThumbnail(url);
-    }
-    return null;
-  } catch {
-    return null;
-  } finally {
-    if (url) {
-      URL.revokeObjectURL(url);
-    }
-  }
-};
-
 const encryptFile = limitFunction(
   async (
     status: Writable<FileUploadStatus>,
@@ -132,7 +108,7 @@ const encryptFile = limitFunction(
       createdAt && (await encryptString(createdAt.getTime().toString(), dataKey));
     const lastModifiedAtEncrypted = await encryptString(file.lastModified.toString(), dataKey);
 
-    const thumbnail = await generateThumbnail(file, fileType);
+    const thumbnail = await generateThumbnail(fileBuffer, fileType);
     const thumbnailBuffer = await thumbnail?.arrayBuffer();
     const thumbnailEncrypted = thumbnailBuffer ? await encryptData(thumbnailBuffer, dataKey) : null;
 

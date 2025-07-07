@@ -3,7 +3,7 @@ import { get, writable, type Writable } from "svelte/store";
 import { encryptData } from "$lib/modules/crypto";
 import { storeFileThumbnailCache } from "$lib/modules/file";
 import type { FileInfo } from "$lib/modules/filesystem";
-import { generateImageThumbnail, generateVideoThumbnail } from "$lib/modules/thumbnail";
+import { generateThumbnail as doGenerateThumbnail } from "$lib/modules/thumbnail";
 import type { FileThumbnailUploadRequest } from "$lib/server/schemas";
 import { requestFileDownload } from "$lib/services/file";
 
@@ -38,42 +38,18 @@ const generateThumbnail = limitFunction(
     fileType: string,
     dataKey: CryptoKey,
   ) => {
-    let url, thumbnail;
     status.set("generating");
-
-    try {
-      if (fileType === "image/heic") {
-        const { default: heic2any } = await import("heic2any");
-        url = URL.createObjectURL(
-          (await heic2any({
-            blob: new Blob([fileBuffer], { type: fileType }),
-            toType: "image/png",
-          })) as Blob,
-        );
-        thumbnail = await generateImageThumbnail(url);
-      } else if (fileType.startsWith("image/")) {
-        url = URL.createObjectURL(new Blob([fileBuffer], { type: fileType }));
-        thumbnail = await generateImageThumbnail(url);
-      } else if (fileType.startsWith("video/")) {
-        url = URL.createObjectURL(new Blob([fileBuffer], { type: fileType }));
-        thumbnail = await generateVideoThumbnail(url);
-      } else {
-        status.set("error");
-        return null;
-      }
-
-      const thumbnailBuffer = await thumbnail.arrayBuffer();
-      const thumbnailEncrypted = await encryptData(thumbnailBuffer, dataKey);
-      status.set("upload-pending");
-      return { plaintext: thumbnailBuffer, ...thumbnailEncrypted };
-    } catch {
+    const thumbnail = await doGenerateThumbnail(fileBuffer, fileType);
+    if (!thumbnail) {
       status.set("error");
       return null;
-    } finally {
-      if (url) {
-        URL.revokeObjectURL(url);
-      }
     }
+
+    const thumbnailBuffer = await thumbnail.arrayBuffer();
+    const thumbnailEncrypted = await encryptData(thumbnailBuffer, dataKey);
+
+    status.set("upload-pending");
+    return { plaintext: thumbnailBuffer, ...thumbnailEncrypted };
   },
   { concurrency: 4 },
 );

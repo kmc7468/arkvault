@@ -36,8 +36,8 @@ export const requestFileThumbnailDownload = async (fileId: number, dataKey: Cryp
   if (!res.ok) return null;
 
   const thumbnailEncrypted = await res.arrayBuffer();
-  const thumbnail = await decryptData(thumbnailEncrypted, thumbnailEncryptedIv, dataKey);
+  const thumbnailBuffer = await decryptData(thumbnailEncrypted, thumbnailEncryptedIv, dataKey);
 
-  storeFileThumbnailCache(fileId, thumbnail); // Intended
-  return getThumbnailUrl(thumbnail);
+  storeFileThumbnailCache(fileId, thumbnailBuffer); // Intended
+  return getThumbnailUrl(thumbnailBuffer);
 };

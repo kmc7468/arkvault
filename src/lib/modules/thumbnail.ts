@@ -12,7 +12,7 @@ const scaleSize = (width: number, height: number, targetSize: number) => {
   };
 };
 
-export const generateImageThumbnail = (imageUrl: string) => {
+const generateImageThumbnail = (imageUrl: string) => {
   return new Promise<Blob>((resolve, reject) => {
     const image = new Image();
     image.onload = () => {
@@ -42,7 +42,7 @@ export const generateImageThumbnail = (imageUrl: string) => {
   });
 };
 
-export const generateVideoThumbnail = (videoUrl: string, time = 0) => {
+const generateVideoThumbnail = (videoUrl: string, time = 0) => {
   return new Promise<Blob>((resolve, reject) => {
     const video = document.createElement("video");
     video.onloadeddata = () => {
@@ -75,6 +75,35 @@ export const generateVideoThumbnail = (videoUrl: string, time = 0) => {
     video.playsInline = true;
     video.src = videoUrl;
   });
+};
+
+export const generateThumbnail = async (fileBuffer: ArrayBuffer, fileType: string) => {
+  let url;
+  try {
+    if (fileType === "image/heic") {
+      const { default: heic2any } = await import("heic2any");
+      url = URL.createObjectURL(
+        (await heic2any({
+          blob: new Blob([fileBuffer], { type: fileType }),
+          toType: "image/png",
+        })) as Blob,
+      );
+      return await generateImageThumbnail(url);
+    } else if (fileType.startsWith("image/")) {
+      url = URL.createObjectURL(new Blob([fileBuffer], { type: fileType }));
+      return await generateImageThumbnail(url);
+    } else if (fileType.startsWith("video/")) {
+      url = URL.createObjectURL(new Blob([fileBuffer], { type: fileType }));
+      return await generateVideoThumbnail(url);
+    }
+    return null;
+  } catch {
+    return null;
+  } finally {
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
+  }
 };
 
 export const getThumbnailUrl = (thumbnailBuffer: ArrayBuffer) => {
