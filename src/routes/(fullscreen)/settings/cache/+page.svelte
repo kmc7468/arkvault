@@ -4,12 +4,11 @@
   import { FullscreenDiv } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
   import type { FileCacheIndex } from "$lib/indexedDB";
-  import { getFileCacheIndex } from "$lib/modules/file";
+  import { getFileCacheIndex, deleteFileCache as doDeleteFileCache } from "$lib/modules/file";
   import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
   import { formatFileSize } from "$lib/modules/util";
   import { masterKeyStore } from "$lib/stores";
   import File from "./File.svelte";
-  import { deleteFileCache as doDeleteFileCache } from "./service";
 
   interface FileCache {
     index: FileCacheIndex;

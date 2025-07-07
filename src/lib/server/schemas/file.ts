@@ -30,6 +30,18 @@ export const fileRenameRequest = z.object({
 });
 export type FileRenameRequest = z.infer<typeof fileRenameRequest>;
 
+export const fileThumbnailInfoResponse = z.object({
+  updatedAt: z.string().datetime(),
+  contentIv: z.string().base64().nonempty(),
+});
+export type FileThumbnailInfoResponse = z.infer<typeof fileThumbnailInfoResponse>;
+
+export const fileThumbnailUploadRequest = z.object({
+  dekVersion: z.string().datetime(),
+  contentIv: z.string().base64().nonempty(),
+});
+export type FileThumbnailUploadRequest = z.infer<typeof fileThumbnailUploadRequest>;
+
 export const duplicateFileScanRequest = z.object({
   hskVersion: z.number().int().positive(),
   contentHmac: z.string().base64().nonempty(),
@@ -40,6 +52,11 @@ export const duplicateFileScanResponse = z.object({
   files: z.number().int().positive().array(),
 });
 export type DuplicateFileScanResponse = z.infer<typeof duplicateFileScanResponse>;
+
+export const missingThumbnailFileScanResponse = z.object({
+  files: z.number().int().positive().array(),
+});
+export type MissingThumbnailFileScanResponse = z.infer<typeof missingThumbnailFileScanResponse>;
 
 export const fileUploadRequest = z.object({
   parent: directoryIdSchema,

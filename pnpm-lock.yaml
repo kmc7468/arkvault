@@ -52,8 +52,8 @@ importers:
         specifier: ^2.0.7
         version: 2.0.7
       '@types/ms':
-        specifier: ^2.1.0
-        version: 2.1.0
+        specifier: ^0.7.34
+        version: 0.7.34
       '@types/node-schedule':
         specifier: ^2.1.7
         version: 2.1.7
@@ -96,6 +96,9 @@ importers:
       kysely-ctl:
         specifier: ^0.13.1
         version: 0.13.1(kysely@0.28.2)
+      lru-cache:
+        specifier: ^11.1.0
+        version: 11.1.0
       mime:
         specifier: ^4.0.7
         version: 4.0.7
@@ -592,8 +595,8 @@ packages:
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
 
-  '@types/ms@2.1.0':
-    resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
+  '@types/ms@0.7.34':
+    resolution: {integrity: sha512-nG96G3Wp6acyAgJqGasjODb+acrI7KltPiRxzHPXnP3NgI28bpQDRv53olbqGXbfcgF5aiiHmO3xpwEpS5Ld9g==}
 
   '@types/node-schedule@2.1.7':
     resolution: {integrity: sha512-G7Z3R9H7r3TowoH6D2pkzUHPhcJrDF4Jz1JOQ80AX0K2DWTHoN9VC94XzFAPNMdbW9TBzMZ3LjpFi7RYdbxtXA==}
@@ -1289,6 +1292,10 @@ packages:
 
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
+
+  lru-cache@11.1.0:
+    resolution: {integrity: sha512-QIXZUBJUx+2zHUdQujWejBkcD9+cs94tLn0+YL8UrCh+D5sCXZ4c7LaEH48pNwRY3MLDgqUFyhlCyjJPf1WP0A==}
+    engines: {node: 20 || >=22}
 
   luxon@3.6.1:
     resolution: {integrity: sha512-tJLxrKJhO2ukZ5z0gyjY1zPh3Rh88Ej9P7jNrZiHMUXHae1yvI2imgOZtL1TO8TW6biMMKfTtAOoEJANgtWBMQ==}
@@ -2364,7 +2371,7 @@ snapshots:
 
   '@types/json-schema@7.0.15': {}
 
-  '@types/ms@2.1.0': {}
+  '@types/ms@0.7.34': {}
 
   '@types/node-schedule@2.1.7':
     dependencies:
@@ -3098,6 +3105,8 @@ snapshots:
   long-timeout@0.1.1: {}
 
   lru-cache@10.4.3: {}
+
+  lru-cache@11.1.0: {}
 
   luxon@3.6.1: {}
 

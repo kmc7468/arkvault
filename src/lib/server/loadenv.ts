@@ -25,4 +25,5 @@ export default {
     sessionUpgradeExp: ms(env.SESSION_UPGRADE_CHALLENGE_EXPIRES || "5m"),
   },
   libraryPath: env.LIBRARY_PATH || "library",
+  thumbnailsPath: env.THUMBNAILS_PATH || "thumbnails",
 };
