@@ -27,7 +27,7 @@ export const persistentStates = $state({
   files: [] as File[],
 });
 
-export const getGenerationStatus = (fileId: number): Writable<GenerationStatus> | undefined => {
+export const getGenerationStatus = (fileId: number) => {
   return workingFiles.get(fileId);
 };
 
@@ -39,6 +39,7 @@ const generateThumbnail = limitFunction(
     dataKey: CryptoKey,
   ) => {
     status.set("generating");
+
     const thumbnail = await doGenerateThumbnail(fileBuffer, fileType);
     if (!thumbnail) {
       status.set("error");
@@ -47,7 +48,6 @@ const generateThumbnail = limitFunction(
 
     const thumbnailBuffer = await thumbnail.arrayBuffer();
     const thumbnailEncrypted = await encryptData(thumbnailBuffer, dataKey);
-
     status.set("upload-pending");
     return { plaintext: thumbnailBuffer, ...thumbnailEncrypted };
   },

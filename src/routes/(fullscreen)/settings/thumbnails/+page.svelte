@@ -43,7 +43,7 @@
 <TopBar title="썸네일" />
 <FullscreenDiv class="bg-gray-100 !px-0">
   <div class="flex flex-grow flex-col space-y-4">
-    <div class="flex-shrink-0 bg-white p-4 !pt-0">
+    <div class="bg-white p-4 !pt-0">
       <IconEntryButton icon={IconDelete} onclick={deleteAllFileThumbnailCaches} class="w-full">
         저장된 썸네일 모두 삭제하기
       </IconEntryButton>
@@ -70,7 +70,7 @@
     {/if}
   </div>
   {#if persistentStates.files.length > 0}
-    <BottomDiv class="flex flex-col items-center gap-y-2 px-4">
+    <BottomDiv class="px-4">
       <Button onclick={generateAllThumbnails} class="w-full">모두 썸네일 생성하기</Button>
     </BottomDiv>
   {/if}

@@ -110,7 +110,7 @@ const encryptFile = limitFunction(
 
     const thumbnail = await generateThumbnail(fileBuffer, fileType);
     const thumbnailBuffer = await thumbnail?.arrayBuffer();
-    const thumbnailEncrypted = thumbnailBuffer ? await encryptData(thumbnailBuffer, dataKey) : null;
+    const thumbnailEncrypted = thumbnailBuffer && (await encryptData(thumbnailBuffer, dataKey));
 
     status.update((value) => {
       value.status = "upload-pending";
@@ -126,8 +126,7 @@ const encryptFile = limitFunction(
       nameEncrypted,
       createdAtEncrypted,
       lastModifiedAtEncrypted,
-      thumbnail: thumbnail &&
-        thumbnailEncrypted && { plaintext: thumbnailBuffer, ...thumbnailEncrypted },
+      thumbnail: thumbnailEncrypted && { plaintext: thumbnailBuffer, ...thumbnailEncrypted },
     };
   },
   { concurrency: 4 },
