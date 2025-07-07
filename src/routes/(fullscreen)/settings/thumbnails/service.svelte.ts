@@ -96,10 +96,19 @@ export const requestThumbnailGeneration = async (fileInfo: FileInfo) => {
     file.id === fileInfo.id ? { ...file, status } : file,
   );
 
-  // TODO: Error Handling
-  const file = await requestFileDownload(fileInfo.id, fileInfo.contentIv!, fileInfo.dataKey!);
-  const thumbnail = await generateThumbnail(status, file, fileInfo.contentType, fileInfo.dataKey!);
-  if (!thumbnail) return;
-
-  await requestThumbnailUpload(status, fileInfo.id, fileInfo.dataKeyVersion!, thumbnail);
+  try {
+    const file = await requestFileDownload(fileInfo.id, fileInfo.contentIv!, fileInfo.dataKey!);
+    const thumbnail = await generateThumbnail(
+      status,
+      file,
+      fileInfo.contentType,
+      fileInfo.dataKey!,
+    );
+    if (!thumbnail) return;
+    if (!(await requestThumbnailUpload(status, fileInfo.id, fileInfo.dataKeyVersion!, thumbnail))) {
+      status.set("error");
+    }
+  } catch {
+    status.set("error");
+  }
 };
