@@ -8,6 +8,7 @@ import type { FileThumbnailUploadRequest } from "$lib/server/schemas";
 import { requestFileDownload } from "$lib/services/file";
 
 export type GenerationStatus =
+  | "queued"
   | "generation-pending"
   | "generating"
   | "upload-pending"
@@ -22,6 +23,10 @@ interface File {
 }
 
 const workingFiles = new Map<number, Writable<GenerationStatus>>();
+
+let queue: (() => void)[] = [];
+let memoryUsage = 0;
+const MEMORY_LIMIT = 100 * 1024 * 1024; // 100 MiB
 
 export const persistentStates = $state({
   files: [] as File[],
@@ -86,18 +91,66 @@ const requestThumbnailUpload = limitFunction(
   { concurrency: 4 },
 );
 
+const enqueue = async (
+  status: Writable<GenerationStatus> | undefined,
+  fileInfo: FileInfo,
+  priority = false,
+) => {
+  if (status) {
+    status.set("queued");
+  } else {
+    status = writable("queued");
+    workingFiles.set(fileInfo.id, status);
+    persistentStates.files = persistentStates.files.map((file) =>
+      file.id === fileInfo.id ? { ...file, status } : file,
+    );
+  }
+
+  let resolver;
+  const promise = new Promise((resolve) => {
+    resolver = resolve;
+  });
+
+  if (priority) {
+    queue = [() => resolver!(), ...queue];
+  } else {
+    queue.push(resolver!);
+  }
+
+  await promise;
+};
+
 export const requestThumbnailGeneration = async (fileInfo: FileInfo) => {
   let status = workingFiles.get(fileInfo.id);
   if (status && get(status) !== "error") return;
 
-  status = writable("generation-pending");
-  workingFiles.set(fileInfo.id, status);
-  persistentStates.files = persistentStates.files.map((file) =>
-    file.id === fileInfo.id ? { ...file, status } : file,
-  );
+  if (workingFiles.values().some((status) => get(status) !== "error")) {
+    await enqueue(status, fileInfo);
+  }
+  while (memoryUsage >= MEMORY_LIMIT) {
+    await enqueue(status, fileInfo, true);
+  }
 
+  if (status) {
+    status.set("generation-pending");
+  } else {
+    status = writable("generation-pending");
+    workingFiles.set(fileInfo.id, status);
+    persistentStates.files = persistentStates.files.map((file) =>
+      file.id === fileInfo.id ? { ...file, status } : file,
+    );
+  }
+
+  let fileSize = 0;
   try {
     const file = await requestFileDownload(fileInfo.id, fileInfo.contentIv!, fileInfo.dataKey!);
+    fileSize = file.byteLength;
+
+    memoryUsage += fileSize;
+    if (memoryUsage < MEMORY_LIMIT) {
+      queue.shift()?.();
+    }
+
     const thumbnail = await generateThumbnail(
       status,
       file,
@@ -110,5 +163,8 @@ export const requestThumbnailGeneration = async (fileInfo: FileInfo) => {
     }
   } catch {
     status.set("error");
+  } finally {
+    memoryUsage -= fileSize;
+    queue.shift()?.();
   }
 };

@@ -1,5 +1,6 @@
 <script module lang="ts">
   const subtexts = {
+    queued: "대기 중",
     "generation-pending": "준비 중",
     generating: "생성하는 중",
     "upload-pending": "업로드를 기다리는 중",
