@@ -31,7 +31,7 @@
     {:else if type === "directory"}
       <IconFolder />
     {:else}
-      <IconDraft />
+      <IconDraft class="text-blue-400" />
     {/if}
   </div>
 {/snippet}
@@ -41,8 +41,7 @@
 {/snippet}
 
 <IconLabel
-  icon={iconSnippet}
-  iconClass={type === "file" ? "text-blue-400" : undefined}
+  {iconSnippet}
   subtext={subtext ? subtextSnippet : undefined}
   class={className}
   textClass={textClassName}
