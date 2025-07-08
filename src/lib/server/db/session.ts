@@ -5,31 +5,22 @@ import db from "./kysely";
 
 export const createSession = async (
   userId: number,
-  clientId: number | null,
   sessionId: string,
   ip: string | null,
   agent: string | null,
 ) => {
-  try {
-    const now = new Date();
-    await db
-      .insertInto("session")
-      .values({
-        id: sessionId,
-        user_id: userId,
-        client_id: clientId,
-        created_at: now,
-        last_used_at: now,
-        last_used_by_ip: ip || null,
-        last_used_by_agent: agent || null,
-      })
-      .execute();
-  } catch (e) {
-    if (e instanceof pg.DatabaseError && e.code === "23505") {
-      throw new IntegrityError("Session already exists");
-    }
-    throw e;
-  }
+  const now = new Date();
+  await db
+    .insertInto("session")
+    .values({
+      id: sessionId,
+      user_id: userId,
+      created_at: now,
+      last_used_at: now,
+      last_used_by_ip: ip || null,
+      last_used_by_agent: agent || null,
+    })
+    .execute();
 };
 
 export const refreshSession = async (
@@ -56,14 +47,21 @@ export const refreshSession = async (
 };
 
 export const upgradeSession = async (sessionId: string, clientId: number) => {
-  const res = await db
-    .updateTable("session")
-    .set({ client_id: clientId })
-    .where("id", "=", sessionId)
-    .where("client_id", "is", null)
-    .executeTakeFirst();
-  if (res.numUpdatedRows === 0n) {
-    throw new IntegrityError("Session not found");
+  try {
+    const res = await db
+      .updateTable("session")
+      .set({ client_id: clientId })
+      .where("id", "=", sessionId)
+      .where("client_id", "is", null)
+      .executeTakeFirst();
+    if (res.numUpdatedRows === 0n) {
+      throw new IntegrityError("Session not found");
+    }
+  } catch (e) {
+    if (e instanceof pg.DatabaseError && e.code === "23505") {
+      throw new IntegrityError("Session already exists");
+    }
+    throw e;
   }
 };
 

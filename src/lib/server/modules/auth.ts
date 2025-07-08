@@ -27,7 +27,7 @@ export class AuthenticationError extends Error {
 
 export const startSession = async (userId: number, ip: string, userAgent: string) => {
   const { sessionId, sessionIdSigned } = await issueSessionId(32, env.session.secret);
-  await createSession(userId, null, sessionId, ip, userAgent);
+  await createSession(userId, sessionId, ip, userAgent);
   return sessionIdSigned;
 };
 

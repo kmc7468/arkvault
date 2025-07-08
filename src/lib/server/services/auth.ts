@@ -51,14 +51,7 @@ export const login = async (email: string, password: string, ip: string, userAge
     error(401, "Invalid email or password");
   }
 
-  try {
-    return { sessionIdSigned: await startSession(user.id, ip, userAgent) };
-  } catch (e) {
-    if (e instanceof IntegrityError && e.message === "Session already exists") {
-      error(403, "Already logged in");
-    }
-    throw e;
-  }
+  return { sessionIdSigned: await startSession(user.id, ip, userAgent) };
 };
 
 export const logout = async (sessionId: string) => {
@@ -115,8 +108,12 @@ export const verifySessionUpgradeChallenge = async (
   try {
     await upgradeSession(sessionId, client.id);
   } catch (e) {
-    if (e instanceof IntegrityError && e.message === "Session not found") {
-      error(500, "Invalid challenge answer");
+    if (e instanceof IntegrityError) {
+      if (e.message === "Session not found") {
+        error(500, "Invalid challenge answer");
+      } else if (e.message === "Session already exists") {
+        error(403, "Already logged in");
+      }
     }
     throw e;
   }
