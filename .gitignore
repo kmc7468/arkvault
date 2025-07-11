@@ -15,8 +15,9 @@ node_modules
 .DS_Store
 Thumbs.db
 
-# VSCode
+# Editors
 /.vscode
+/.idea
 
 # Env
 .env
