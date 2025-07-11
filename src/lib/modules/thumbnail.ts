@@ -12,50 +12,25 @@ const scaleSize = (width: number, height: number, targetSize: number) => {
   };
 };
 
-const generateImageThumbnail = (imageUrl: string) => {
-  return new Promise<Blob>((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => {
-      const canvas = document.createElement("canvas");
-      const { width, height } = scaleSize(image.width, image.height, 250);
-
-      canvas.width = width;
-      canvas.height = height;
-
-      const context = canvas.getContext("2d");
-      if (!context) {
-        return reject(new Error("Failed to generate thumbnail"));
-      }
-
-      context.drawImage(image, 0, 0, width, height);
-      canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(blob);
-        } else {
-          reject(new Error("Failed to generate thumbnail"));
-        }
-      }, "image/webp");
-    };
-    image.onerror = reject;
-
-    image.src = imageUrl;
-  });
-};
-
-export const captureVideoThumbnail = (video: HTMLVideoElement) => {
+const capture = (
+  width: number,
+  height: number,
+  drawer: (context: CanvasRenderingContext2D, width: number, height: number) => void,
+  targetSize = 250,
+) => {
   return new Promise<Blob>((resolve, reject) => {
     const canvas = document.createElement("canvas");
-    const { width, height } = scaleSize(video.videoWidth, video.videoHeight, 250);
+    const { width: scaledWidth, height: scaledHeight } = scaleSize(width, height, targetSize);
 
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = scaledWidth;
+    canvas.height = scaledHeight;
 
     const context = canvas.getContext("2d");
     if (!context) {
       return reject(new Error("Failed to generate thumbnail"));
     }
 
-    context.drawImage(video, 0, 0, width, height);
+    drawer(context, scaledWidth, scaledHeight);
     canvas.toBlob((blob) => {
       if (blob) {
         resolve(blob);
@@ -66,14 +41,36 @@ export const captureVideoThumbnail = (video: HTMLVideoElement) => {
   });
 };
 
+const generateImageThumbnail = (imageUrl: string) => {
+  return new Promise<Blob>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      capture(image.width, image.height, (context, width, height) => {
+        context.drawImage(image, 0, 0, width, height);
+      })
+        .then(resolve)
+        .catch(reject);
+    };
+    image.onerror = reject;
+
+    image.src = imageUrl;
+  });
+};
+
+export const captureVideoThumbnail = (video: HTMLVideoElement) => {
+  return capture(video.videoWidth, video.videoHeight, (context, width, height) => {
+    context.drawImage(video, 0, 0, width, height);
+  });
+};
+
 const generateVideoThumbnail = (videoUrl: string, time = 0) => {
   return new Promise<Blob>((resolve, reject) => {
     const video = document.createElement("video");
-    video.onloadeddata = () => {
-      video.currentTime = time;
-    };
-    video.onseeked = () => {
-      captureVideoThumbnail(video).then(resolve).catch(reject);
+    video.onloadedmetadata = () => {
+      video.currentTime = Math.min(time, video.duration);
+      video.requestVideoFrameCallback(() => {
+        captureVideoThumbnail(video).then(resolve).catch(reject);
+      });
     };
     video.onerror = reject;
 

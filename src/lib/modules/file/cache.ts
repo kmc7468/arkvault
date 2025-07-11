@@ -54,9 +54,7 @@ export const deleteFileCache = async (fileId: number) => {
 
 export const getFileThumbnailCache = async (fileId: number) => {
   const thumbnail = loadedThumbnails.get(fileId);
-  if (thumbnail) {
-    return thumbnail;
-  }
+  if (thumbnail) return thumbnail;
 
   const thumbnailBuffer = await readFile(`/thumbnail/file/${fileId}`);
   if (!thumbnailBuffer) return null;
