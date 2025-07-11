@@ -4,6 +4,7 @@
   import { requestLogout } from "./service";
 
   import IconStorage from "~icons/material-symbols/storage";
+  import IconImage from "~icons/material-symbols/image";
   import IconPassword from "~icons/material-symbols/password";
   import IconLogout from "~icons/material-symbols/logout";
 
@@ -32,6 +33,13 @@
       iconColor="text-green-500"
     >
       캐시
+    </MenuEntryButton>
+    <MenuEntryButton
+      onclick={() => goto("/settings/thumbnail")}
+      icon={IconImage}
+      iconColor="text-blue-500"
+    >
+      썸네일
     </MenuEntryButton>
   </div>
   <div class="space-y-2">

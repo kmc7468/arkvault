@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from "uuid";
 import { IntegrityError } from "$lib/server/db/error";
 import {
   registerFile,
+  getAllFileIds,
   getAllFileIdsByContentHmac,
   getFile,
   setFileEncName,
@@ -16,6 +17,11 @@ import {
   getAllFileCategories,
   type NewFile,
 } from "$lib/server/db/file";
+import {
+  updateFileThumbnail,
+  getFileThumbnail,
+  getMissingFileThumbnails,
+} from "$lib/server/db/media";
 import type { Ciphertext } from "$lib/server/db/schema";
 import env from "$lib/server/loadenv";
 
@@ -40,10 +46,17 @@ export const getFileInformation = async (userId: number, fileId: number) => {
   };
 };
 
+const safeUnlink = async (path: string | null) => {
+  if (path) {
+    await unlink(path).catch(console.error);
+  }
+};
+
 export const deleteFile = async (userId: number, fileId: number) => {
   try {
-    const { path } = await unregisterFile(userId, fileId);
-    unlink(path); // Intended
+    const { path, thumbnailPath } = await unregisterFile(userId, fileId);
+    safeUnlink(path); // Intended
+    safeUnlink(thumbnailPath); // Intended
   } catch (e) {
     if (e instanceof IntegrityError && e.message === "File not found") {
       error(404, "Invalid file id");
@@ -85,17 +98,74 @@ export const renameFile = async (
   }
 };
 
+export const getFileThumbnailInformation = async (userId: number, fileId: number) => {
+  const thumbnail = await getFileThumbnail(userId, fileId);
+  if (!thumbnail) {
+    error(404, "File or its thumbnail not found");
+  }
+
+  return { updatedAt: thumbnail.updatedAt, encContentIv: thumbnail.encContentIv };
+};
+
+export const getFileThumbnailStream = async (userId: number, fileId: number) => {
+  const thumbnail = await getFileThumbnail(userId, fileId);
+  if (!thumbnail) {
+    error(404, "File or its thumbnail not found");
+  }
+
+  const { size } = await stat(thumbnail.path);
+  return {
+    encContentStream: Readable.toWeb(createReadStream(thumbnail.path)),
+    encContentSize: size,
+  };
+};
+
+export const uploadFileThumbnail = async (
+  userId: number,
+  fileId: number,
+  dekVersion: Date,
+  encContentIv: string,
+  encContentStream: Readable,
+) => {
+  const path = `${env.thumbnailsPath}/${userId}/${uuidv4()}`;
+  await mkdir(dirname(path), { recursive: true });
+
+  try {
+    await pipeline(encContentStream, createWriteStream(path, { flags: "wx", mode: 0o600 }));
+
+    const oldPath = await updateFileThumbnail(userId, fileId, dekVersion, path, encContentIv);
+    safeUnlink(oldPath); // Intended
+  } catch (e) {
+    await safeUnlink(path);
+
+    if (e instanceof IntegrityError) {
+      if (e.message === "File not found") {
+        error(404, "File not found");
+      } else if (e.message === "Invalid DEK version") {
+        error(400, "Mismatched DEK version");
+      }
+    }
+    throw e;
+  }
+};
+
+export const getFileList = async (userId: number) => {
+  const fileIds = await getAllFileIds(userId);
+  return { files: fileIds };
+};
+
 export const scanDuplicateFiles = async (
   userId: number,
   hskVersion: number,
   contentHmac: string,
 ) => {
   const fileIds = await getAllFileIdsByContentHmac(userId, hskVersion, contentHmac);
-  return { files: fileIds.map(({ id }) => id) };
+  return { files: fileIds };
 };
 
-const safeUnlink = async (path: string) => {
-  await unlink(path).catch(console.error);
+export const scanMissingFileThumbnails = async (userId: number) => {
+  const fileIds = await getMissingFileThumbnails(userId);
+  return { files: fileIds };
 };
 
 export const uploadFile = async (

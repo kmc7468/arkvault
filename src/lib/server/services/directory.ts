@@ -34,12 +34,19 @@ export const getDirectoryInformation = async (userId: number, directoryId: Direc
   };
 };
 
+const safeUnlink = async (path: string | null) => {
+  if (path) {
+    await unlink(path).catch(console.error);
+  }
+};
+
 export const deleteDirectory = async (userId: number, directoryId: number) => {
   try {
     const files = await unregisterDirectory(userId, directoryId);
     return {
-      files: files.map(({ id, path }) => {
-        unlink(path); // Intended
+      files: files.map(({ id, path, thumbnailPath }) => {
+        safeUnlink(path); // Intended
+        safeUnlink(thumbnailPath); // Intended
         return id;
       }),
     };

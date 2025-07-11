@@ -3,18 +3,28 @@
   import { goto } from "$app/navigation";
   import { BottomDiv, Button, FullscreenDiv, TextButton } from "$lib/components/atoms";
   import { TitledDiv } from "$lib/components/molecules";
+  import { ForceLoginModal } from "$lib/components/organisms";
   import { gotoStateful } from "$lib/hooks";
+  import { storeClientKeys } from "$lib/modules/key";
   import { clientKeyStore } from "$lib/stores";
   import Order from "./Order.svelte";
   import {
     generateClientKeys,
     generateInitialMasterKey,
     generateInitialHmacSecret,
+    importClientKeys,
+    requestClientRegistrationAndSessionUpgrade,
+    requestInitialMasterKeyAndHmacSecretRegistration,
+    requestDeletedFilesCleanup,
   } from "./service";
 
   import IconKey from "~icons/material-symbols/key";
 
   let { data } = $props();
+
+  let fileInput: HTMLInputElement | undefined = $state();
+
+  let isForceLoginModalOpen = $state(false);
 
   // TODO: Update
   const orders = [
@@ -51,6 +61,54 @@
     });
   };
 
+  const upgradeSession = async (force: boolean) => {
+    const [upgradeRes, upgradeError] = await requestClientRegistrationAndSessionUpgrade(
+      $clientKeyStore!,
+      force,
+    );
+    if (!force && upgradeError === "Already logged in") {
+      isForceLoginModalOpen = true;
+      return;
+    } else if (!upgradeRes) {
+      // TODO: Error Handling
+      return;
+    }
+
+    const { masterKey, masterKeyWrapped } = await generateInitialMasterKey(
+      $clientKeyStore!.encryptKey,
+    );
+    const { hmacSecretWrapped } = await generateInitialHmacSecret(masterKey);
+
+    await storeClientKeys($clientKeyStore!);
+
+    if (
+      !(await requestInitialMasterKeyAndHmacSecretRegistration(
+        masterKeyWrapped,
+        hmacSecretWrapped,
+        $clientKeyStore!.signKey,
+      ))
+    ) {
+      // TODO: Error Handling
+      return;
+    }
+
+    await requestDeletedFilesCleanup();
+    await goto("/client/pending?redirect=" + encodeURIComponent(data.redirectPath));
+  };
+
+  const importKeys = async () => {
+    const file = fileInput?.files?.[0];
+    if (!file) return;
+
+    if (await importClientKeys(await file.text())) {
+      await upgradeSession(false);
+    } else {
+      // TODO: Error Handling
+    }
+
+    fileInput!.value = "";
+  };
+
   onMount(async () => {
     if ($clientKeyStore) {
       await goto(data.redirectPath, { replaceState: true });
@@ -61,6 +119,14 @@
 <svelte:head>
   <title>암호 키 생성하기</title>
 </svelte:head>
+
+<input
+  bind:this={fileInput}
+  onchange={importKeys}
+  type="file"
+  accept="application/json"
+  class="hidden"
+/>
 
 <FullscreenDiv>
   <TitledDiv childrenClass="space-y-4">
@@ -83,6 +149,8 @@
   </TitledDiv>
   <BottomDiv class="flex flex-col items-center gap-y-2">
     <Button onclick={generateKeys} class="w-full">새 암호 키 생성하기</Button>
-    <TextButton>키를 갖고 있어요</TextButton>
+    <TextButton onclick={() => fileInput?.click()}>키를 갖고 있어요</TextButton>
   </BottomDiv>
 </FullscreenDiv>
+
+<ForceLoginModal bind:isOpen={isForceLoginModalOpen} onLoginClick={() => upgradeSession(true)} />

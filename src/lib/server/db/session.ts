@@ -5,31 +5,22 @@ import db from "./kysely";
 
 export const createSession = async (
   userId: number,
-  clientId: number | null,
   sessionId: string,
   ip: string | null,
   agent: string | null,
 ) => {
-  try {
-    const now = new Date();
-    await db
-      .insertInto("session")
-      .values({
-        id: sessionId,
-        user_id: userId,
-        client_id: clientId,
-        created_at: now,
-        last_used_at: now,
-        last_used_by_ip: ip || null,
-        last_used_by_agent: agent || null,
-      })
-      .execute();
-  } catch (e) {
-    if (e instanceof pg.DatabaseError && e.code === "23505") {
-      throw new IntegrityError("Session already exists");
-    }
-    throw e;
-  }
+  const now = new Date();
+  await db
+    .insertInto("session")
+    .values({
+      id: sessionId,
+      user_id: userId,
+      created_at: now,
+      last_used_at: now,
+      last_used_by_ip: ip || null,
+      last_used_by_agent: agent || null,
+    })
+    .execute();
 };
 
 export const refreshSession = async (
@@ -55,15 +46,37 @@ export const refreshSession = async (
   return { userId: session.user_id, clientId: session.client_id };
 };
 
-export const upgradeSession = async (sessionId: string, clientId: number) => {
-  const res = await db
-    .updateTable("session")
-    .set({ client_id: clientId })
-    .where("id", "=", sessionId)
-    .where("client_id", "is", null)
-    .executeTakeFirst();
-  if (res.numUpdatedRows === 0n) {
-    throw new IntegrityError("Session not found");
+export const upgradeSession = async (
+  userId: number,
+  sessionId: string,
+  clientId: number,
+  force: boolean,
+) => {
+  try {
+    await db.transaction().execute(async (trx) => {
+      if (force) {
+        await trx
+          .deleteFrom("session")
+          .where("id", "!=", sessionId)
+          .where("user_id", "=", userId)
+          .where("client_id", "=", clientId)
+          .execute();
+      }
+      const res = await trx
+        .updateTable("session")
+        .set({ client_id: clientId })
+        .where("id", "=", sessionId)
+        .where("client_id", "is", null)
+        .executeTakeFirst();
+      if (res.numUpdatedRows === 0n) {
+        throw new IntegrityError("Session not found");
+      }
+    });
+  } catch (e) {
+    if (e instanceof pg.DatabaseError && e.code === "23505") {
+      throw new IntegrityError("Session already exists");
+    }
+    throw e;
   }
 };
 
@@ -94,7 +107,7 @@ export const registerSessionUpgradeChallenge = async (
   expiresAt: Date,
 ) => {
   try {
-    await db
+    const { id } = await db
       .insertInto("session_upgrade_challenge")
       .values({
         session_id: sessionId,
@@ -103,7 +116,9 @@ export const registerSessionUpgradeChallenge = async (
         allowed_ip: allowedIp,
         expires_at: expiresAt,
       })
-      .execute();
+      .returning("id")
+      .executeTakeFirstOrThrow();
+    return { id };
   } catch (e) {
     if (e instanceof pg.DatabaseError && e.code === "23505") {
       throw new IntegrityError("Challenge already registered");
@@ -113,19 +128,19 @@ export const registerSessionUpgradeChallenge = async (
 };
 
 export const consumeSessionUpgradeChallenge = async (
+  challengeId: number,
   sessionId: string,
-  answer: string,
   ip: string,
 ) => {
   const challenge = await db
     .deleteFrom("session_upgrade_challenge")
+    .where("id", "=", challengeId)
     .where("session_id", "=", sessionId)
-    .where("answer", "=", answer)
     .where("allowed_ip", "=", ip)
     .where("expires_at", ">", new Date())
-    .returning("client_id")
+    .returning(["client_id", "answer"])
     .executeTakeFirst();
-  return challenge ? { clientId: challenge.client_id } : null;
+  return challenge ? { clientId: challenge.client_id, answer: challenge.answer } : null;
 };
 
 export const cleanupExpiredSessionUpgradeChallenges = async () => {

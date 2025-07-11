@@ -8,28 +8,29 @@ export const clientListResponse = z.object({
     }),
   ),
 });
-export type ClientListResponse = z.infer<typeof clientListResponse>;
+export type ClientListResponse = z.output<typeof clientListResponse>;
 
 export const clientRegisterRequest = z.object({
   encPubKey: z.string().base64().nonempty(),
   sigPubKey: z.string().base64().nonempty(),
 });
-export type ClientRegisterRequest = z.infer<typeof clientRegisterRequest>;
+export type ClientRegisterRequest = z.input<typeof clientRegisterRequest>;
 
 export const clientRegisterResponse = z.object({
+  id: z.number().int().positive(),
   challenge: z.string().base64().nonempty(),
 });
-export type ClientRegisterResponse = z.infer<typeof clientRegisterResponse>;
+export type ClientRegisterResponse = z.output<typeof clientRegisterResponse>;
 
 export const clientRegisterVerifyRequest = z.object({
-  answer: z.string().base64().nonempty(),
+  id: z.number().int().positive(),
   answerSig: z.string().base64().nonempty(),
 });
-export type ClientRegisterVerifyRequest = z.infer<typeof clientRegisterVerifyRequest>;
+export type ClientRegisterVerifyRequest = z.input<typeof clientRegisterVerifyRequest>;
 
 export const clientStatusResponse = z.object({
   id: z.number().int().positive(),
   state: z.enum(["pending", "active"]),
   isInitialMekNeeded: z.boolean(),
 });
-export type ClientStatusResponse = z.infer<typeof clientStatusResponse>;
+export type ClientStatusResponse = z.output<typeof clientStatusResponse>;

@@ -15,12 +15,12 @@ export const categoryInfoResponse = z.object({
     .optional(),
   subCategories: z.number().int().positive().array(),
 });
-export type CategoryInfoResponse = z.infer<typeof categoryInfoResponse>;
+export type CategoryInfoResponse = z.output<typeof categoryInfoResponse>;
 
 export const categoryFileAddRequest = z.object({
   file: z.number().int().positive(),
 });
-export type CategoryFileAddRequest = z.infer<typeof categoryFileAddRequest>;
+export type CategoryFileAddRequest = z.input<typeof categoryFileAddRequest>;
 
 export const categoryFileListResponse = z.object({
   files: z.array(
@@ -30,19 +30,19 @@ export const categoryFileListResponse = z.object({
     }),
   ),
 });
-export type CategoryFileListResponse = z.infer<typeof categoryFileListResponse>;
+export type CategoryFileListResponse = z.output<typeof categoryFileListResponse>;
 
 export const categoryFileRemoveRequest = z.object({
   file: z.number().int().positive(),
 });
-export type CategoryFileRemoveRequest = z.infer<typeof categoryFileRemoveRequest>;
+export type CategoryFileRemoveRequest = z.input<typeof categoryFileRemoveRequest>;
 
 export const categoryRenameRequest = z.object({
   dekVersion: z.string().datetime(),
   name: z.string().base64().nonempty(),
   nameIv: z.string().base64().nonempty(),
 });
-export type CategoryRenameRequest = z.infer<typeof categoryRenameRequest>;
+export type CategoryRenameRequest = z.input<typeof categoryRenameRequest>;
 
 export const categoryCreateRequest = z.object({
   parent: categoryIdSchema,
@@ -52,4 +52,4 @@ export const categoryCreateRequest = z.object({
   name: z.string().base64().nonempty(),
   nameIv: z.string().base64().nonempty(),
 });
-export type CategoryCreateRequest = z.infer<typeof categoryCreateRequest>;
+export type CategoryCreateRequest = z.input<typeof categoryCreateRequest>;

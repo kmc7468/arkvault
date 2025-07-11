@@ -15,12 +15,12 @@ export const POST: RequestHandler = async ({ locals, request }) => {
   if (!zodRes.success) error(400, "Invalid request body");
   const { encPubKey, sigPubKey } = zodRes.data;
 
-  const { challenge } = await createSessionUpgradeChallenge(
+  const { id, challenge } = await createSessionUpgradeChallenge(
     sessionId,
     userId,
     locals.ip,
     encPubKey,
     sigPubKey,
   );
-  return json(sessionUpgradeResponse.parse({ challenge } satisfies SessionUpgradeResponse));
+  return json(sessionUpgradeResponse.parse({ id, challenge } satisfies SessionUpgradeResponse));
 };

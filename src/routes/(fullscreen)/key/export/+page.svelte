@@ -3,13 +3,12 @@
   import { goto } from "$app/navigation";
   import { BottomDiv, Button, FullscreenDiv, TextButton } from "$lib/components/atoms";
   import { TitledDiv } from "$lib/components/molecules";
+  import { serializeClientKeys, storeClientKeys } from "$lib/modules/key";
   import { clientKeyStore } from "$lib/stores";
   import BeforeContinueBottomSheet from "./BeforeContinueBottomSheet.svelte";
   import BeforeContinueModal from "./BeforeContinueModal.svelte";
   import {
-    serializeClientKeys,
     requestClientRegistration,
-    storeClientKeys,
     requestSessionUpgrade,
     requestInitialMasterKeyAndHmacSecretRegistration,
   } from "./service";
@@ -22,15 +21,8 @@
   let isBeforeContinueBottomSheetOpen = $state(false);
 
   const exportClientKeys = () => {
-    const clientKeysSerialized = serializeClientKeys(
-      data.encryptKeyBase64,
-      data.decryptKeyBase64,
-      data.signKeyBase64,
-      data.verifyKeyBase64,
-    );
-    const clientKeysBlob = new Blob([JSON.stringify(clientKeysSerialized)], {
-      type: "application/json",
-    });
+    const clientKeysSerialized = serializeClientKeys(data);
+    const clientKeysBlob = new Blob([clientKeysSerialized], { type: "application/json" });
     FileSaver.saveAs(clientKeysBlob, "arkvault-clientkey.json");
 
     if (!isBeforeContinueBottomSheetOpen) {
@@ -59,12 +51,14 @@
       await storeClientKeys($clientKeyStore);
 
       if (
-        !(await requestSessionUpgrade(
-          data.encryptKeyBase64,
-          $clientKeyStore.decryptKey,
-          data.verifyKeyBase64,
-          $clientKeyStore.signKey,
-        ))
+        !(
+          await requestSessionUpgrade(
+            data.encryptKeyBase64,
+            $clientKeyStore.decryptKey,
+            data.verifyKeyBase64,
+            $clientKeyStore.signKey,
+          )
+        )[0]
       )
         throw new Error("Failed to upgrade session");
 

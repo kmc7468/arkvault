@@ -21,25 +21,47 @@ export const fileInfoResponse = z.object({
   lastModifiedAtIv: z.string().base64().nonempty(),
   categories: z.number().int().positive().array(),
 });
-export type FileInfoResponse = z.infer<typeof fileInfoResponse>;
+export type FileInfoResponse = z.output<typeof fileInfoResponse>;
 
 export const fileRenameRequest = z.object({
   dekVersion: z.string().datetime(),
   name: z.string().base64().nonempty(),
   nameIv: z.string().base64().nonempty(),
 });
-export type FileRenameRequest = z.infer<typeof fileRenameRequest>;
+export type FileRenameRequest = z.input<typeof fileRenameRequest>;
+
+export const fileThumbnailInfoResponse = z.object({
+  updatedAt: z.string().datetime(),
+  contentIv: z.string().base64().nonempty(),
+});
+export type FileThumbnailInfoResponse = z.output<typeof fileThumbnailInfoResponse>;
+
+export const fileThumbnailUploadRequest = z.object({
+  dekVersion: z.string().datetime(),
+  contentIv: z.string().base64().nonempty(),
+});
+export type FileThumbnailUploadRequest = z.input<typeof fileThumbnailUploadRequest>;
+
+export const fileListResponse = z.object({
+  files: z.number().int().positive().array(),
+});
+export type FileListResponse = z.output<typeof fileListResponse>;
 
 export const duplicateFileScanRequest = z.object({
   hskVersion: z.number().int().positive(),
   contentHmac: z.string().base64().nonempty(),
 });
-export type DuplicateFileScanRequest = z.infer<typeof duplicateFileScanRequest>;
+export type DuplicateFileScanRequest = z.input<typeof duplicateFileScanRequest>;
 
 export const duplicateFileScanResponse = z.object({
   files: z.number().int().positive().array(),
 });
-export type DuplicateFileScanResponse = z.infer<typeof duplicateFileScanResponse>;
+export type DuplicateFileScanResponse = z.output<typeof duplicateFileScanResponse>;
+
+export const missingThumbnailFileScanResponse = z.object({
+  files: z.number().int().positive().array(),
+});
+export type MissingThumbnailFileScanResponse = z.output<typeof missingThumbnailFileScanResponse>;
 
 export const fileUploadRequest = z.object({
   parent: directoryIdSchema,
@@ -61,9 +83,9 @@ export const fileUploadRequest = z.object({
   lastModifiedAt: z.string().base64().nonempty(),
   lastModifiedAtIv: z.string().base64().nonempty(),
 });
-export type FileUploadRequest = z.infer<typeof fileUploadRequest>;
+export type FileUploadRequest = z.input<typeof fileUploadRequest>;
 
 export const fileUploadResponse = z.object({
   file: z.number().int().positive(),
 });
-export type FileUploadResponse = z.infer<typeof fileUploadResponse>;
+export type FileUploadResponse = z.output<typeof fileUploadResponse>;

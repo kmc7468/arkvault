@@ -4,6 +4,15 @@ import { prepareFileCache } from "$lib/modules/file";
 import { prepareOpfs } from "$lib/modules/opfs";
 import { clientKeyStore, masterKeyStore, hmacSecretStore } from "$lib/stores";
 
+const requestPersistentStorage = async () => {
+  const isPersistent = await navigator.storage.persist();
+  if (isPersistent) {
+    console.log("[ArkVault] Persistent storage granted.");
+  } else {
+    console.warn("[ArkVault] Persistent storage not granted.");
+  }
+};
+
 const prepareClientKeyStore = async () => {
   const [encryptKey, decryptKey, signKey, verifyKey] = await Promise.all([
     getClientKey("encrypt"),
@@ -32,6 +41,7 @@ const prepareHmacSecretStore = async () => {
 
 export const init: ClientInit = async () => {
   await Promise.all([
+    requestPersistentStorage(),
     prepareFileCache(),
     prepareClientKeyStore(),
     prepareMasterKeyStore(),

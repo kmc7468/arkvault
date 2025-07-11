@@ -1,20 +1,25 @@
 import { callPostApi } from "$lib/hooks";
-import { getFileCache, storeFileCache, downloadFile } from "$lib/modules/file";
+import { encryptData } from "$lib/modules/crypto";
+import { storeFileThumbnailCache } from "$lib/modules/file";
 import type { CategoryFileAddRequest } from "$lib/server/schemas";
+import { requestFileThumbnailUpload } from "$lib/services/file";
 
 export { requestCategoryCreation, requestFileRemovalFromCategory } from "$lib/services/category";
+export { requestFileDownload } from "$lib/services/file";
 
-export const requestFileDownload = async (
+export const requestThumbnailUpload = async (
   fileId: number,
-  fileEncryptedIv: string,
+  thumbnail: Blob,
   dataKey: CryptoKey,
+  dataKeyVersion: Date,
 ) => {
-  const cache = await getFileCache(fileId);
-  if (cache) return cache;
+  const thumbnailBuffer = await thumbnail.arrayBuffer();
+  const thumbnailEncrypted = await encryptData(thumbnailBuffer, dataKey);
+  const res = await requestFileThumbnailUpload(fileId, dataKeyVersion, thumbnailEncrypted);
+  if (!res.ok) return false;
 
-  const fileBuffer = await downloadFile(fileId, fileEncryptedIv, dataKey);
-  storeFileCache(fileId, fileBuffer); // Intended
-  return fileBuffer;
+  storeFileThumbnailCache(fileId, thumbnailBuffer); // Intended
+  return true;
 };
 
 export const requestFileAdditionToCategory = async (fileId: number, categoryId: number) => {

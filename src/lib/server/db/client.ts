@@ -178,7 +178,7 @@ export const registerUserClientChallenge = async (
   allowedIp: string,
   expiresAt: Date,
 ) => {
-  await db
+  const { id } = await db
     .insertInto("user_client_challenge")
     .values({
       user_id: userId,
@@ -187,19 +187,25 @@ export const registerUserClientChallenge = async (
       allowed_ip: allowedIp,
       expires_at: expiresAt,
     })
-    .execute();
+    .returning("id")
+    .executeTakeFirstOrThrow();
+  return { id };
 };
 
-export const consumeUserClientChallenge = async (userId: number, answer: string, ip: string) => {
+export const consumeUserClientChallenge = async (
+  challengeId: number,
+  userId: number,
+  ip: string,
+) => {
   const challenge = await db
     .deleteFrom("user_client_challenge")
+    .where("id", "=", challengeId)
     .where("user_id", "=", userId)
-    .where("answer", "=", answer)
     .where("allowed_ip", "=", ip)
     .where("expires_at", ">", new Date())
-    .returning("client_id")
+    .returning(["client_id", "answer"])
     .executeTakeFirst();
-  return challenge ? { clientId: challenge.client_id } : null;
+  return challenge ? { clientId: challenge.client_id, answer: challenge.answer } : null;
 };
 
 export const cleanupExpiredUserClientChallenges = async () => {

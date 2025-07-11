@@ -10,10 +10,10 @@ export const hmacSecretListResponse = z.object({
     }),
   ),
 });
-export type HmacSecretListResponse = z.infer<typeof hmacSecretListResponse>;
+export type HmacSecretListResponse = z.output<typeof hmacSecretListResponse>;
 
 export const initialHmacSecretRegisterRequest = z.object({
   mekVersion: z.number().int().positive(),
   hsk: z.string().base64().nonempty(),
 });
-export type InitialHmacSecretRegisterRequest = z.infer<typeof initialHmacSecretRegisterRequest>;
+export type InitialHmacSecretRegisterRequest = z.input<typeof initialHmacSecretRegisterRequest>;

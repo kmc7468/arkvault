@@ -2,16 +2,55 @@
   import { goto } from "$app/navigation";
   import { BottomDiv, Button, FullscreenDiv, TextButton, TextInput } from "$lib/components/atoms";
   import { TitledDiv } from "$lib/components/molecules";
+  import { ForceLoginModal } from "$lib/components/organisms";
   import { clientKeyStore, masterKeyStore } from "$lib/stores";
-  import { requestLogin, requestSessionUpgrade, requestMasterKeyDownload } from "./service";
+  import {
+    requestLogin,
+    requestClientRegistrationAndSessionUpgrade,
+    requestMasterKeyDownload,
+    requestDeletedFilesCleanup,
+    requestLogout,
+  } from "./service";
 
   let { data } = $props();
 
   let email = $state("");
   let password = $state("");
 
+  let isForceLoginModalOpen = $state(false);
+
   const redirect = async (url: string) => {
     return await goto(`${url}?redirect=${encodeURIComponent(data.redirectPath)}`);
+  };
+
+  const upgradeSession = async (force: boolean) => {
+    try {
+      const [upgradeRes, upgradeError] = await requestClientRegistrationAndSessionUpgrade(
+        $clientKeyStore!,
+        force,
+      );
+      if (!force && upgradeError === "Already logged in") {
+        isForceLoginModalOpen = true;
+        return;
+      } else if (!upgradeRes) {
+        throw new Error("Failed to upgrade session");
+      }
+
+      // TODO: Multi-user support
+
+      if (
+        $masterKeyStore ||
+        (await requestMasterKeyDownload($clientKeyStore!.decryptKey, $clientKeyStore!.verifyKey))
+      ) {
+        await requestDeletedFilesCleanup();
+        await goto(data.redirectPath);
+      } else {
+        await redirect("/client/pending");
+      }
+    } catch (e) {
+      // TODO
+      throw e;
+    }
   };
 
   const login = async () => {
@@ -22,19 +61,7 @@
 
       if (!$clientKeyStore) return await redirect("/key/generate");
 
-      if (!(await requestSessionUpgrade($clientKeyStore)))
-        throw new Error("Failed to upgrade session");
-
-      // TODO: Multi-user support
-
-      if (
-        $masterKeyStore ||
-        (await requestMasterKeyDownload($clientKeyStore.decryptKey, $clientKeyStore.verifyKey))
-      ) {
-        await goto(data.redirectPath);
-      } else {
-        await redirect("/client/pending");
-      }
+      await upgradeSession(false);
     } catch (e) {
       // TODO: Alert
       throw e;
@@ -63,3 +90,9 @@
     <TextButton>계정이 없어요</TextButton>
   </BottomDiv>
 </FullscreenDiv>
+
+<ForceLoginModal
+  bind:isOpen={isForceLoginModalOpen}
+  oncancel={requestLogout}
+  onLoginClick={() => upgradeSession(true)}
+/>

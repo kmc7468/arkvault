@@ -1,4 +1,5 @@
 import { error, redirect, type Handle } from "@sveltejs/kit";
+import env from "$lib/server/loadenv";
 import { authenticate, AuthenticationError } from "$lib/server/modules/auth";
 
 export const authenticateMiddleware: Handle = async ({ event, resolve }) => {
@@ -15,6 +16,12 @@ export const authenticateMiddleware: Handle = async ({ event, resolve }) => {
 
     const { ip, userAgent } = event.locals;
     event.locals.session = await authenticate(sessionIdSigned, ip, userAgent);
+    event.cookies.set("sessionId", sessionIdSigned, {
+      path: "/",
+      maxAge: env.session.exp / 1000,
+      secure: true,
+      sameSite: "strict",
+    });
   } catch (e) {
     if (e instanceof AuthenticationError) {
       if (pathname === "/auth/login") {

@@ -10,10 +10,10 @@ export const masterKeyListResponse = z.object({
     }),
   ),
 });
-export type MasterKeyListResponse = z.infer<typeof masterKeyListResponse>;
+export type MasterKeyListResponse = z.output<typeof masterKeyListResponse>;
 
 export const initialMasterKeyRegisterRequest = z.object({
   mek: z.string().base64().nonempty(),
   mekSig: z.string().base64().nonempty(),
 });
-export type InitialMasterKeyRegisterRequest = z.infer<typeof initialMasterKeyRegisterRequest>;
+export type InitialMasterKeyRegisterRequest = z.input<typeof initialMasterKeyRegisterRequest>;
