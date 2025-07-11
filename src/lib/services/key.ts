@@ -2,18 +2,23 @@ import { callGetApi, callPostApi } from "$lib/hooks";
 import { storeMasterKeys } from "$lib/indexedDB";
 import {
   encodeToBase64,
+  exportRSAKeyToBase64,
   decryptChallenge,
   signMessageRSA,
   unwrapMasterKey,
+  signMasterKeyWrapped,
   verifyMasterKeyWrapped,
 } from "$lib/modules/crypto";
 import type {
   ClientRegisterRequest,
   ClientRegisterResponse,
   ClientRegisterVerifyRequest,
+  InitialHmacSecretRegisterRequest,
   MasterKeyListResponse,
+  InitialMasterKeyRegisterRequest,
 } from "$lib/server/schemas";
-import { masterKeyStore } from "$lib/stores";
+import { requestSessionUpgrade } from "$lib/services/auth";
+import { masterKeyStore, type ClientKeys } from "$lib/stores";
 
 export const requestClientRegistration = async (
   encryptKeyBase64: string,
@@ -36,6 +41,35 @@ export const requestClientRegistration = async (
     answerSig: encodeToBase64(answerSig),
   });
   return res.ok;
+};
+
+export const requestClientRegistrationAndSessionUpgrade = async (
+  { encryptKey, decryptKey, signKey, verifyKey }: ClientKeys,
+  force: boolean,
+) => {
+  const encryptKeyBase64 = await exportRSAKeyToBase64(encryptKey);
+  const verifyKeyBase64 = await exportRSAKeyToBase64(verifyKey);
+  const [res, error] = await requestSessionUpgrade(
+    encryptKeyBase64,
+    decryptKey,
+    verifyKeyBase64,
+    signKey,
+    force,
+  );
+  if (error === undefined) return [res] as const;
+
+  if (
+    error === "Unregistered client" &&
+    !(await requestClientRegistration(encryptKeyBase64, decryptKey, verifyKeyBase64, signKey))
+  ) {
+    return [false] as const;
+  } else if (error === "Already logged in") {
+    return [false, force ? undefined : error] as const;
+  }
+
+  return [
+    (await requestSessionUpgrade(encryptKeyBase64, decryptKey, verifyKeyBase64, signKey))[0],
+  ] as const;
 };
 
 export const requestMasterKeyDownload = async (decryptKey: CryptoKey, verifyKey: CryptoKey) => {
@@ -67,4 +101,24 @@ export const requestMasterKeyDownload = async (decryptKey: CryptoKey, verifyKey:
   masterKeyStore.set(new Map(masterKeys.map((masterKey) => [masterKey.version, masterKey])));
 
   return true;
+};
+
+export const requestInitialMasterKeyAndHmacSecretRegistration = async (
+  masterKeyWrapped: string,
+  hmacSecretWrapped: string,
+  signKey: CryptoKey,
+) => {
+  let res = await callPostApi<InitialMasterKeyRegisterRequest>("/api/mek/register/initial", {
+    mek: masterKeyWrapped,
+    mekSig: await signMasterKeyWrapped(masterKeyWrapped, 1, signKey),
+  });
+  if (!res.ok) {
+    return res.status === 403 || res.status === 409;
+  }
+
+  res = await callPostApi<InitialHmacSecretRegisterRequest>("/api/hsk/register/initial", {
+    mekVersion: 1,
+    hsk: hmacSecretWrapped,
+  });
+  return res.ok;
 };

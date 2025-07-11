@@ -46,6 +46,56 @@ export const exportRSAKeyToBase64 = async (key: CryptoKey) => {
   return encodeToBase64((await exportRSAKey(key)).key);
 };
 
+export const importEncryptionKeyPairFromBase64 = async (
+  encryptKeyBase64: string,
+  decryptKeyBase64: string,
+) => {
+  const algorithm: RsaHashedImportParams = {
+    name: "RSA-OAEP",
+    hash: "SHA-256",
+  };
+  const encryptKey = await window.crypto.subtle.importKey(
+    "spki",
+    decodeFromBase64(encryptKeyBase64),
+    algorithm,
+    true,
+    ["encrypt", "wrapKey"],
+  );
+  const decryptKey = await window.crypto.subtle.importKey(
+    "pkcs8",
+    decodeFromBase64(decryptKeyBase64),
+    algorithm,
+    true,
+    ["decrypt", "unwrapKey"],
+  );
+  return { encryptKey, decryptKey };
+};
+
+export const importSigningKeyPairFromBase64 = async (
+  signKeyBase64: string,
+  verifyKeyBase64: string,
+) => {
+  const algorithm: RsaHashedImportParams = {
+    name: "RSA-PSS",
+    hash: "SHA-256",
+  };
+  const signKey = await window.crypto.subtle.importKey(
+    "pkcs8",
+    decodeFromBase64(signKeyBase64),
+    algorithm,
+    true,
+    ["sign"],
+  );
+  const verifyKey = await window.crypto.subtle.importKey(
+    "spki",
+    decodeFromBase64(verifyKeyBase64),
+    algorithm,
+    true,
+    ["verify"],
+  );
+  return { signKey, verifyKey };
+};
+
 export const makeRSAKeyNonextractable = async (key: CryptoKey) => {
   const { key: exportedKey, format } = await exportRSAKey(key);
   return await window.crypto.subtle.importKey(

@@ -7,7 +7,7 @@
   import {
     requestLogout,
     requestLogin,
-    requestSessionUpgrade,
+    requestClientRegistrationAndSessionUpgrade,
     requestMasterKeyDownload,
   } from "./service";
 
@@ -24,7 +24,10 @@
 
   const upgradeSession = async (force: boolean) => {
     try {
-      const [upgradeRes, upgradeError] = await requestSessionUpgrade($clientKeyStore!, force);
+      const [upgradeRes, upgradeError] = await requestClientRegistrationAndSessionUpgrade(
+        $clientKeyStore!,
+        force,
+      );
       if (!force && upgradeError === "Already logged in") {
         isForceLoginModalOpen = true;
         return;
