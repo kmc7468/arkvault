@@ -1,7 +1,8 @@
 import { callPostApi } from "$lib/hooks";
 import { encryptData } from "$lib/modules/crypto";
 import { storeFileThumbnailCache } from "$lib/modules/file";
-import type { CategoryFileAddRequest, FileThumbnailUploadRequest } from "$lib/server/schemas";
+import type { CategoryFileAddRequest } from "$lib/server/schemas";
+import { requestFileThumbnailUpload } from "$lib/services/file";
 
 export { requestCategoryCreation, requestFileRemovalFromCategory } from "$lib/services/category";
 export { requestFileDownload } from "$lib/services/file";
@@ -14,18 +15,7 @@ export const requestThumbnailUpload = async (
 ) => {
   const thumbnailBuffer = await thumbnail.arrayBuffer();
   const thumbnailEncrypted = await encryptData(thumbnailBuffer, dataKey);
-
-  const form = new FormData();
-  form.set(
-    "metadata",
-    JSON.stringify({
-      dekVersion: dataKeyVersion.toISOString(),
-      contentIv: thumbnailEncrypted.iv,
-    } satisfies FileThumbnailUploadRequest),
-  );
-  form.set("content", new Blob([thumbnailEncrypted.ciphertext]));
-
-  const res = await fetch(`/api/file/${fileId}/thumbnail/upload`, { method: "POST", body: form });
+  const res = await requestFileThumbnailUpload(fileId, dataKeyVersion, thumbnailEncrypted);
   if (!res.ok) return false;
 
   storeFileThumbnailCache(fileId, thumbnailBuffer); // Intended

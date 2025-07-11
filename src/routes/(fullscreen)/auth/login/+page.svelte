@@ -2,8 +2,8 @@
   import { goto } from "$app/navigation";
   import { BottomDiv, Button, FullscreenDiv, TextButton, TextInput } from "$lib/components/atoms";
   import { TitledDiv } from "$lib/components/molecules";
+  import { ForceLoginModal } from "$lib/components/organisms";
   import { clientKeyStore, masterKeyStore } from "$lib/stores";
-  import ForceLoginModal from "./ForceLoginModal.svelte";
   import {
     requestLogout,
     requestLogin,

@@ -3,16 +3,18 @@
 
   interface Props {
     isOpen: boolean;
+    oncancel?: () => void;
     onLoginClick: () => void;
   }
 
-  let { isOpen = $bindable(), onLoginClick }: Props = $props();
+  let { isOpen = $bindable(), oncancel, onLoginClick }: Props = $props();
 </script>
 
 <ActionModal
   bind:isOpen
   title="다른 디바이스에 이미 로그인되어 있어요."
   cancelText="아니요"
+  {oncancel}
   confirmText="네"
   onConfirmClick={onLoginClick}
 >

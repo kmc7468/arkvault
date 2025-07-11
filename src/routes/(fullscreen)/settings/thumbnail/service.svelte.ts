@@ -4,8 +4,7 @@ import { encryptData } from "$lib/modules/crypto";
 import { storeFileThumbnailCache } from "$lib/modules/file";
 import type { FileInfo } from "$lib/modules/filesystem";
 import { generateThumbnail as doGenerateThumbnail } from "$lib/modules/thumbnail";
-import type { FileThumbnailUploadRequest } from "$lib/server/schemas";
-import { requestFileDownload } from "$lib/services/file";
+import { requestFileDownload, requestFileThumbnailUpload } from "$lib/services/file";
 
 export type GenerationStatus =
   | "queued"
@@ -68,17 +67,7 @@ const requestThumbnailUpload = limitFunction(
   ) => {
     status.set("uploading");
 
-    const form = new FormData();
-    form.set(
-      "metadata",
-      JSON.stringify({
-        dekVersion: dataKeyVersion.toISOString(),
-        contentIv: thumbnail.iv,
-      } satisfies FileThumbnailUploadRequest),
-    );
-    form.set("content", new Blob([thumbnail.ciphertext]));
-
-    const res = await fetch(`/api/file/${fileId}/thumbnail/upload`, { method: "POST", body: form });
+    const res = await requestFileThumbnailUpload(fileId, dataKeyVersion, thumbnail);
     if (!res.ok) return false;
 
     status.set("uploaded");

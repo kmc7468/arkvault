@@ -11,7 +11,11 @@ import {
   downloadFile,
 } from "$lib/modules/file";
 import { getThumbnailUrl } from "$lib/modules/thumbnail";
-import type { FileThumbnailInfoResponse, FileListResponse } from "$lib/server/schemas";
+import type {
+  FileThumbnailInfoResponse,
+  FileThumbnailUploadRequest,
+  FileListResponse,
+} from "$lib/server/schemas";
 
 export const requestFileDownload = async (
   fileId: number,
@@ -24,6 +28,24 @@ export const requestFileDownload = async (
   const fileBuffer = await downloadFile(fileId, fileEncryptedIv, dataKey);
   storeFileCache(fileId, fileBuffer); // Intended
   return fileBuffer;
+};
+
+export const requestFileThumbnailUpload = async (
+  fileId: number,
+  dataKeyVersion: Date,
+  thumbnailEncrypted: { ciphertext: ArrayBuffer; iv: string },
+) => {
+  const form = new FormData();
+  form.set(
+    "metadata",
+    JSON.stringify({
+      dekVersion: dataKeyVersion.toISOString(),
+      contentIv: thumbnailEncrypted.iv,
+    } satisfies FileThumbnailUploadRequest),
+  );
+  form.set("content", new Blob([thumbnailEncrypted.ciphertext]));
+
+  return await fetch(`/api/file/${fileId}/thumbnail/upload`, { method: "POST", body: form });
 };
 
 export const requestFileThumbnailDownload = async (fileId: number, dataKey: CryptoKey) => {
