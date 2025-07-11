@@ -61,19 +61,6 @@
     });
   };
 
-  const importKeys = async () => {
-    const file = fileInput?.files?.[0];
-    if (!file) return;
-
-    if (await importClientKeys(await file.text())) {
-      await upgradeSession(false);
-    } else {
-      // TODO: Error Handling
-    }
-
-    fileInput!.value = "";
-  };
-
   const upgradeSession = async (force: boolean) => {
     const [upgradeRes, upgradeError] = await requestClientRegistrationAndSessionUpgrade(
       $clientKeyStore!,
@@ -107,6 +94,19 @@
 
     await requestDeletedFilesCleanup();
     await goto("/client/pending?redirect=" + encodeURIComponent(data.redirectPath));
+  };
+
+  const importKeys = async () => {
+    const file = fileInput?.files?.[0];
+    if (!file) return;
+
+    if (await importClientKeys(await file.text())) {
+      await upgradeSession(false);
+    } else {
+      // TODO: Error Handling
+    }
+
+    fileInput!.value = "";
   };
 
   onMount(async () => {

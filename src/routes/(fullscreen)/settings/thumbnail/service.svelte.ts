@@ -25,7 +25,7 @@ const workingFiles = new Map<number, Writable<GenerationStatus>>();
 
 let queue: (() => void)[] = [];
 let memoryUsage = 0;
-const MEMORY_LIMIT = 100 * 1024 * 1024; // 100 MiB
+const memoryLimit = 100 * 1024 * 1024; // 100 MiB
 
 export const persistentStates = $state({
   files: [] as File[],
@@ -45,10 +45,7 @@ const generateThumbnail = limitFunction(
     status.set("generating");
 
     const thumbnail = await doGenerateThumbnail(fileBuffer, fileType);
-    if (!thumbnail) {
-      status.set("error");
-      return null;
-    }
+    if (!thumbnail) return null;
 
     const thumbnailBuffer = await thumbnail.arrayBuffer();
     const thumbnailEncrypted = await encryptData(thumbnailBuffer, dataKey);
@@ -101,7 +98,7 @@ const enqueue = async (
   });
 
   if (priority) {
-    queue = [() => resolver!(), ...queue];
+    queue = [resolver!, ...queue];
   } else {
     queue.push(resolver!);
   }
@@ -116,7 +113,7 @@ export const requestThumbnailGeneration = async (fileInfo: FileInfo) => {
   if (workingFiles.values().some((status) => get(status) !== "error")) {
     await enqueue(status, fileInfo);
   }
-  while (memoryUsage >= MEMORY_LIMIT) {
+  while (memoryUsage >= memoryLimit) {
     await enqueue(status, fileInfo, true);
   }
 
@@ -136,7 +133,7 @@ export const requestThumbnailGeneration = async (fileInfo: FileInfo) => {
     fileSize = file.byteLength;
 
     memoryUsage += fileSize;
-    if (memoryUsage < MEMORY_LIMIT) {
+    if (memoryUsage < memoryLimit) {
       queue.shift()?.();
     }
 
@@ -146,8 +143,10 @@ export const requestThumbnailGeneration = async (fileInfo: FileInfo) => {
       fileInfo.contentType,
       fileInfo.dataKey!,
     );
-    if (!thumbnail) return;
-    if (!(await requestThumbnailUpload(status, fileInfo.id, fileInfo.dataKeyVersion!, thumbnail))) {
+    if (
+      !thumbnail ||
+      !(await requestThumbnailUpload(status, fileInfo.id, fileInfo.dataKeyVersion!, thumbnail))
+    ) {
       status.set("error");
     }
   } catch {

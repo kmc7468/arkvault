@@ -5,19 +5,19 @@
   import { ForceLoginModal } from "$lib/components/organisms";
   import { clientKeyStore, masterKeyStore } from "$lib/stores";
   import {
-    requestLogout,
     requestLogin,
     requestClientRegistrationAndSessionUpgrade,
     requestMasterKeyDownload,
     requestDeletedFilesCleanup,
+    requestLogout,
   } from "./service";
 
   let { data } = $props();
 
-  let isForceLoginModalOpen = $state(false);
-
   let email = $state("");
   let password = $state("");
+
+  let isForceLoginModalOpen = $state(false);
 
   const redirect = async (url: string) => {
     return await goto(`${url}?redirect=${encodeURIComponent(data.redirectPath)}`);
