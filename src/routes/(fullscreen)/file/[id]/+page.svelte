@@ -11,15 +11,18 @@
     type FileInfo,
     type CategoryInfo,
   } from "$lib/modules/filesystem";
+  import { captureVideoThumbnail } from "$lib/modules/thumbnail";
   import { fileDownloadStatusStore, isFileDownloading, masterKeyStore } from "$lib/stores";
   import AddToCategoryBottomSheet from "./AddToCategoryBottomSheet.svelte";
   import DownloadStatus from "./DownloadStatus.svelte";
   import {
     requestFileRemovalFromCategory,
     requestFileDownload,
+    requestThumbnailUpload,
     requestFileAdditionToCategory,
   } from "./service";
 
+  import IconCamera from "~icons/material-symbols/camera";
   import IconClose from "~icons/material-symbols/close";
   import IconAddCircle from "~icons/material-symbols/add-circle";
 
@@ -40,6 +43,7 @@
   let isDownloadRequested = $state(false);
   let viewerType: "image" | "video" | undefined = $state();
   let fileBlobUrl: string | undefined = $state();
+  let videoElement: HTMLVideoElement | undefined = $state();
 
   const updateViewer = async (buffer: ArrayBuffer, contentType: string) => {
     const fileBlob = new Blob([buffer], { type: contentType });
@@ -53,6 +57,11 @@
     }
 
     return fileBlob;
+  };
+
+  const updateThumbnail = async (dataKey: CryptoKey, dataKeyVersion: Date) => {
+    const thumbnail = await captureVideoThumbnail(videoElement!);
+    await requestThumbnailUpload(data.id, thumbnail, dataKey, dataKeyVersion);
   };
 
   const addToCategory = async (categoryId: number) => {
@@ -133,8 +142,17 @@
           {/if}
         {:else if viewerType === "video"}
           {#if fileBlobUrl}
-            <!-- svelte-ignore a11y_media_has_caption -->
-            <video src={fileBlobUrl} controls></video>
+            <div class="flex flex-col space-y-2">
+              <!-- svelte-ignore a11y_media_has_caption -->
+              <video bind:this={videoElement} src={fileBlobUrl} controls muted></video>
+              <IconEntryButton
+                icon={IconCamera}
+                onclick={() => updateThumbnail($info.dataKey!, $info.dataKeyVersion!)}
+                class="w-full"
+              >
+                이 장면을 썸네일로 설정하기
+              </IconEntryButton>
+            </div>
           {:else}
             {@render viewerLoading("비디오를 불러오고 있어요.")}
           {/if}

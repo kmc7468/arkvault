@@ -42,6 +42,30 @@ const generateImageThumbnail = (imageUrl: string) => {
   });
 };
 
+export const captureVideoThumbnail = (video: HTMLVideoElement) => {
+  return new Promise<Blob>((resolve, reject) => {
+    const canvas = document.createElement("canvas");
+    const { width, height } = scaleSize(video.videoWidth, video.videoHeight, 250);
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return reject(new Error("Failed to generate thumbnail"));
+    }
+
+    context.drawImage(video, 0, 0, width, height);
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+      } else {
+        reject(new Error("Failed to generate thumbnail"));
+      }
+    }, "image/webp");
+  });
+};
+
 const generateVideoThumbnail = (videoUrl: string, time = 0) => {
   return new Promise<Blob>((resolve, reject) => {
     const video = document.createElement("video");
@@ -49,25 +73,7 @@ const generateVideoThumbnail = (videoUrl: string, time = 0) => {
       video.currentTime = time;
     };
     video.onseeked = () => {
-      const canvas = document.createElement("canvas");
-      const { width, height } = scaleSize(video.videoWidth, video.videoHeight, 250);
-
-      canvas.width = width;
-      canvas.height = height;
-
-      const context = canvas.getContext("2d");
-      if (!context) {
-        return reject(new Error("Failed to generate thumbnail"));
-      }
-
-      context.drawImage(video, 0, 0, width, height);
-      canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(blob);
-        } else {
-          reject(new Error("Failed to generate thumbnail"));
-        }
-      }, "image/webp");
+      captureVideoThumbnail(video).then(resolve).catch(reject);
     };
     video.onerror = reject;
 
