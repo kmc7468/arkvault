@@ -3,15 +3,49 @@
   import { BottomDiv, Button, FullscreenDiv, TextButton, TextInput } from "$lib/components/atoms";
   import { TitledDiv } from "$lib/components/molecules";
   import { clientKeyStore, masterKeyStore } from "$lib/stores";
-  import { requestLogin, requestSessionUpgrade, requestMasterKeyDownload } from "./service";
+  import ForceLoginModal from "./ForceLoginModal.svelte";
+  import {
+    requestLogout,
+    requestLogin,
+    requestSessionUpgrade,
+    requestMasterKeyDownload,
+  } from "./service";
 
   let { data } = $props();
+
+  let isForceLoginModalOpen = $state(false);
 
   let email = $state("");
   let password = $state("");
 
   const redirect = async (url: string) => {
     return await goto(`${url}?redirect=${encodeURIComponent(data.redirectPath)}`);
+  };
+
+  const upgradeSession = async (force: boolean) => {
+    try {
+      const [upgradeRes, upgradeError] = await requestSessionUpgrade($clientKeyStore!, force);
+      if (!force && upgradeError === "Already logged in") {
+        isForceLoginModalOpen = true;
+        return;
+      } else if (!upgradeRes) {
+        throw new Error("Failed to upgrade session");
+      }
+
+      // TODO: Multi-user support
+
+      if (
+        $masterKeyStore ||
+        (await requestMasterKeyDownload($clientKeyStore!.decryptKey, $clientKeyStore!.verifyKey))
+      ) {
+        await goto(data.redirectPath);
+      } else {
+        await redirect("/client/pending");
+      }
+    } catch (e) {
+      // TODO
+      throw e;
+    }
   };
 
   const login = async () => {
@@ -22,19 +56,7 @@
 
       if (!$clientKeyStore) return await redirect("/key/generate");
 
-      if (!(await requestSessionUpgrade($clientKeyStore)))
-        throw new Error("Failed to upgrade session");
-
-      // TODO: Multi-user support
-
-      if (
-        $masterKeyStore ||
-        (await requestMasterKeyDownload($clientKeyStore.decryptKey, $clientKeyStore.verifyKey))
-      ) {
-        await goto(data.redirectPath);
-      } else {
-        await redirect("/client/pending");
-      }
+      await upgradeSession(false);
     } catch (e) {
       // TODO: Alert
       throw e;
@@ -63,3 +85,9 @@
     <TextButton>계정이 없어요</TextButton>
   </BottomDiv>
 </FullscreenDiv>
+
+<ForceLoginModal
+  bind:isOpen={isForceLoginModalOpen}
+  oncancel={requestLogout}
+  onLoginClick={() => upgradeSession(true)}
+/>

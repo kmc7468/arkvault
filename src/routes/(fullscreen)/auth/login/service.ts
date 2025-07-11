@@ -5,6 +5,7 @@ import { requestSessionUpgrade as requestSessionUpgradeInternal } from "$lib/ser
 import { requestClientRegistration } from "$lib/services/key";
 import type { ClientKeys } from "$lib/stores";
 
+export { requestLogout } from "$lib/services/auth";
 export { requestMasterKeyDownload } from "$lib/services/key";
 
 export const requestLogin = async (email: string, password: string) => {
@@ -12,26 +13,33 @@ export const requestLogin = async (email: string, password: string) => {
   return res.ok;
 };
 
-export const requestSessionUpgrade = async ({
-  encryptKey,
-  decryptKey,
-  signKey,
-  verifyKey,
-}: ClientKeys) => {
+export const requestSessionUpgrade = async (
+  { encryptKey, decryptKey, signKey, verifyKey }: ClientKeys,
+  force: boolean,
+) => {
   const encryptKeyBase64 = await exportRSAKeyToBase64(encryptKey);
   const verifyKeyBase64 = await exportRSAKeyToBase64(verifyKey);
-  if (await requestSessionUpgradeInternal(encryptKeyBase64, decryptKey, verifyKeyBase64, signKey)) {
-    return true;
+  const [res, error] = await requestSessionUpgradeInternal(
+    encryptKeyBase64,
+    decryptKey,
+    verifyKeyBase64,
+    signKey,
+    force,
+  );
+  if (error === undefined) return [res] as const;
+
+  if (
+    error === "Unregistered client" &&
+    !(await requestClientRegistration(encryptKeyBase64, decryptKey, verifyKeyBase64, signKey))
+  ) {
+    return [false] as const;
+  } else if (error === "Already logged in") {
+    return [false, force ? undefined : error] as const;
   }
 
-  if (await requestClientRegistration(encryptKeyBase64, decryptKey, verifyKeyBase64, signKey)) {
-    return await requestSessionUpgradeInternal(
-      encryptKeyBase64,
-      decryptKey,
-      verifyKeyBase64,
-      signKey,
-    );
-  } else {
-    return false;
-  }
+  return [
+    (
+      await requestSessionUpgradeInternal(encryptKeyBase64, decryptKey, verifyKeyBase64, signKey)
+    )[0],
+  ] as const;
 };

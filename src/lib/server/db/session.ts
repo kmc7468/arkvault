@@ -46,17 +46,32 @@ export const refreshSession = async (
   return { userId: session.user_id, clientId: session.client_id };
 };
 
-export const upgradeSession = async (sessionId: string, clientId: number) => {
+export const upgradeSession = async (
+  userId: number,
+  sessionId: string,
+  clientId: number,
+  force: boolean,
+) => {
   try {
-    const res = await db
-      .updateTable("session")
-      .set({ client_id: clientId })
-      .where("id", "=", sessionId)
-      .where("client_id", "is", null)
-      .executeTakeFirst();
-    if (res.numUpdatedRows === 0n) {
-      throw new IntegrityError("Session not found");
-    }
+    await db.transaction().execute(async (trx) => {
+      if (force) {
+        await trx
+          .deleteFrom("session")
+          .where("id", "!=", sessionId)
+          .where("user_id", "=", userId)
+          .where("client_id", "=", clientId)
+          .execute();
+      }
+      const res = await trx
+        .updateTable("session")
+        .set({ client_id: clientId })
+        .where("id", "=", sessionId)
+        .where("client_id", "is", null)
+        .executeTakeFirst();
+      if (res.numUpdatedRows === 0n) {
+        throw new IntegrityError("Session not found");
+      }
+    });
   } catch (e) {
     if (e instanceof pg.DatabaseError && e.code === "23505") {
       throw new IntegrityError("Session already exists");

@@ -87,9 +87,11 @@ export const createSessionUpgradeChallenge = async (
 
 export const verifySessionUpgradeChallenge = async (
   sessionId: string,
+  userId: number,
   ip: string,
   challengeId: number,
   answerSig: string,
+  force: boolean,
 ) => {
   const challenge = await consumeSessionUpgradeChallenge(challengeId, sessionId, ip);
   if (!challenge) {
@@ -106,13 +108,13 @@ export const verifySessionUpgradeChallenge = async (
   }
 
   try {
-    await upgradeSession(sessionId, client.id);
+    await upgradeSession(userId, sessionId, client.id, force);
   } catch (e) {
     if (e instanceof IntegrityError) {
       if (e.message === "Session not found") {
         error(500, "Invalid challenge answer");
-      } else if (e.message === "Session already exists") {
-        error(403, "Already logged in");
+      } else if (!force && e.message === "Session already exists") {
+        error(409, "Already logged in");
       }
     }
     throw e;

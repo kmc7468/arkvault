@@ -59,12 +59,14 @@
       await storeClientKeys($clientKeyStore);
 
       if (
-        !(await requestSessionUpgrade(
-          data.encryptKeyBase64,
-          $clientKeyStore.decryptKey,
-          data.verifyKeyBase64,
-          $clientKeyStore.signKey,
-        ))
+        !(
+          await requestSessionUpgrade(
+            data.encryptKeyBase64,
+            $clientKeyStore.decryptKey,
+            data.verifyKeyBase64,
+            $clientKeyStore.signKey,
+          )
+        )[0]
       )
         throw new Error("Failed to upgrade session");
 
