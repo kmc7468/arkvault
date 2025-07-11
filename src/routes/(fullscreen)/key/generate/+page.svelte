@@ -15,6 +15,7 @@
     importClientKeys,
     requestClientRegistrationAndSessionUpgrade,
     requestInitialMasterKeyAndHmacSecretRegistration,
+    requestDeletedFilesCleanup,
   } from "./service";
 
   import IconKey from "~icons/material-symbols/key";
@@ -104,6 +105,7 @@
       return;
     }
 
+    await requestDeletedFilesCleanup();
     await goto("/client/pending?redirect=" + encodeURIComponent(data.redirectPath));
   };
 

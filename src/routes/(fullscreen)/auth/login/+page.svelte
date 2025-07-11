@@ -9,6 +9,7 @@
     requestLogin,
     requestClientRegistrationAndSessionUpgrade,
     requestMasterKeyDownload,
+    requestDeletedFilesCleanup,
   } from "./service";
 
   let { data } = $props();
@@ -41,6 +42,7 @@
         $masterKeyStore ||
         (await requestMasterKeyDownload($clientKeyStore!.decryptKey, $clientKeyStore!.verifyKey))
       ) {
+        await requestDeletedFilesCleanup();
         await goto(data.redirectPath);
       } else {
         await redirect("/client/pending");

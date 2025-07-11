@@ -55,6 +55,10 @@ export const deleteDirectoryInfo = async (id: number) => {
   await filesystem.directory.delete(id);
 };
 
+export const getAllFileInfos = async () => {
+  return await filesystem.file.toArray();
+};
+
 export const getFileInfos = async (parentId: DirectoryId) => {
   return await filesystem.file.where({ parentId }).toArray();
 };

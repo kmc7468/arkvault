@@ -341,6 +341,11 @@ export const getAllFilesByCategory = async (
   return files.map(({ file_id, depth }) => ({ id: file_id, isRecursive: depth > 0 }));
 };
 
+export const getAllFileIds = async (userId: number) => {
+  const files = await db.selectFrom("file").select("id").where("user_id", "=", userId).execute();
+  return files.map(({ id }) => id);
+};
+
 export const getAllFileIdsByContentHmac = async (
   userId: number,
   hskVersion: number,

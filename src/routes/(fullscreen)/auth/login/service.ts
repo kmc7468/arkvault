@@ -2,6 +2,7 @@ import { callPostApi } from "$lib/hooks";
 import type { LoginRequest } from "$lib/server/schemas";
 
 export { requestLogout } from "$lib/services/auth";
+export { requestDeletedFilesCleanup } from "$lib/services/file";
 export {
   requestClientRegistrationAndSessionUpgrade,
   requestMasterKeyDownload,

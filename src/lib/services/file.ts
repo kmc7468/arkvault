@@ -1,14 +1,17 @@
 import { callGetApi } from "$lib/hooks";
+import { getAllFileInfos } from "$lib/indexedDB/filesystem";
 import { decryptData } from "$lib/modules/crypto";
 import {
   getFileCache,
   storeFileCache,
+  deleteFileCache,
   getFileThumbnailCache,
   storeFileThumbnailCache,
+  deleteFileThumbnailCache,
   downloadFile,
 } from "$lib/modules/file";
 import { getThumbnailUrl } from "$lib/modules/thumbnail";
-import type { FileThumbnailInfoResponse } from "$lib/server/schemas";
+import type { FileThumbnailInfoResponse, FileListResponse } from "$lib/server/schemas";
 
 export const requestFileDownload = async (
   fileId: number,
@@ -40,4 +43,19 @@ export const requestFileThumbnailDownload = async (fileId: number, dataKey: Cryp
 
   storeFileThumbnailCache(fileId, thumbnailBuffer); // Intended
   return getThumbnailUrl(thumbnailBuffer);
+};
+
+export const requestDeletedFilesCleanup = async () => {
+  const res = await callGetApi("/api/file/list");
+  if (!res.ok) return;
+
+  const { files: liveFiles }: FileListResponse = await res.json();
+  const liveFilesSet = new Set(liveFiles);
+  const maybeCachedFiles = await getAllFileInfos();
+
+  await Promise.all(
+    maybeCachedFiles
+      .filter(({ id }) => !liveFilesSet.has(id))
+      .flatMap(({ id }) => [deleteFileCache(id), deleteFileThumbnailCache(id)]),
+  );
 };

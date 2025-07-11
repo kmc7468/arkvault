@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from "uuid";
 import { IntegrityError } from "$lib/server/db/error";
 import {
   registerFile,
+  getAllFileIds,
   getAllFileIdsByContentHmac,
   getFile,
   setFileEncName,
@@ -146,6 +147,11 @@ export const uploadFileThumbnail = async (
     }
     throw e;
   }
+};
+
+export const getFileList = async (userId: number) => {
+  const fileIds = await getAllFileIds(userId);
+  return { files: fileIds };
 };
 
 export const scanDuplicateFiles = async (

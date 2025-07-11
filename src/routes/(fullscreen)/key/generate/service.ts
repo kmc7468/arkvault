@@ -15,6 +15,7 @@ import { deserializeClientKeys } from "$lib/modules/key";
 import { clientKeyStore } from "$lib/stores";
 
 export { requestLogout } from "$lib/services/auth";
+export { requestDeletedFilesCleanup } from "$lib/services/file";
 export {
   requestClientRegistrationAndSessionUpgrade,
   requestInitialMasterKeyAndHmacSecretRegistration,

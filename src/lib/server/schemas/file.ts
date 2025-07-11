@@ -42,6 +42,11 @@ export const fileThumbnailUploadRequest = z.object({
 });
 export type FileThumbnailUploadRequest = z.input<typeof fileThumbnailUploadRequest>;
 
+export const fileListResponse = z.object({
+  files: z.number().int().positive().array(),
+});
+export type FileListResponse = z.output<typeof fileListResponse>;
+
 export const duplicateFileScanRequest = z.object({
   hskVersion: z.number().int().positive(),
   contentHmac: z.string().base64().nonempty(),
