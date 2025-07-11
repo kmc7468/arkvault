@@ -1,7 +1,7 @@
 services:
   database:
-    image: postgres:17.2
-    restart: on-failure
+    image: postgres:17
+    restart: always
     volumes:
       - database:/var/lib/postgresql/data
     environment:

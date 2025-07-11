@@ -1,7 +1,7 @@
 services:
   server:
     build: .
-    restart: on-failure
+    restart: unless-stopped
     depends_on:
       - database
     user: ${CONTAINER_UID:-0}:${CONTAINER_GID:-0}
@@ -27,8 +27,8 @@ services:
       - ${PORT:-80}:3000
 
   database:
-    image: postgres:17.2-alpine
-    restart: on-failure
+    image: postgres:17-alpine
+    restart: unless-stopped
     user: ${CONTAINER_UID:-0}:${CONTAINER_GID:-0}
     volumes:
       - ./data/database:/var/lib/postgresql/data
