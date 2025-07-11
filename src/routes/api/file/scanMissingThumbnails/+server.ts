@@ -9,7 +9,6 @@ import type { RequestHandler } from "./$types";
 
 export const POST: RequestHandler = async ({ locals }) => {
   const { userId } = await authorize(locals, "activeClient");
-
   const { files } = await scanMissingFileThumbnails(userId);
   return json(
     missingThumbnailFileScanResponse.parse({ files } satisfies MissingThumbnailFileScanResponse),

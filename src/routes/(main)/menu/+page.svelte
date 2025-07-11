@@ -35,7 +35,7 @@
       캐시
     </MenuEntryButton>
     <MenuEntryButton
-      onclick={() => goto("/settings/thumbnails")}
+      onclick={() => goto("/settings/thumbnail")}
       icon={IconImage}
       iconColor="text-blue-500"
     >
