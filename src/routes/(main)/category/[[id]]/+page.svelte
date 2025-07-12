@@ -3,7 +3,7 @@
   import { goto } from "$app/navigation";
   import { TopBar } from "$lib/components/molecules";
   import { Category, CategoryCreateModal } from "$lib/components/organisms";
-  import { getCategoryInfo, type CategoryInfo } from "$lib/modules/filesystem";
+  import { getCategoryInfo, updateCategoryInfo, type CategoryInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import CategoryDeleteModal from "./CategoryDeleteModal.svelte";
   import CategoryMenuBottomSheet from "./CategoryMenuBottomSheet.svelte";
@@ -21,7 +21,7 @@
 
   let info: Writable<CategoryInfo | null> | undefined = $state();
 
-  let isFileRecursive = $state(false);
+  let isFileRecursive: boolean | undefined = $state();
 
   let isCategoryCreateModalOpen = $state(false);
   let isCategoryMenuBottomSheetOpen = $state(false);
@@ -30,6 +30,19 @@
 
   $effect(() => {
     info = getCategoryInfo(data.id, $masterKeyStore?.get(1)?.key!);
+    isFileRecursive = undefined;
+  });
+
+  $effect(() => {
+    if ($info && isFileRecursive === undefined) {
+      isFileRecursive = $info.isFileRecursive ?? false;
+    }
+  });
+
+  $effect(() => {
+    if (data.id !== "root" && $info?.isFileRecursive !== isFileRecursive) {
+      updateCategoryInfo(data.id as number, { isFileRecursive });
+    }
   });
 </script>
 
@@ -41,7 +54,7 @@
   <TopBar title={$info?.name} />
 {/if}
 <div class="min-h-full bg-gray-100 pb-[5.5em]">
-  {#if $info}
+  {#if $info && isFileRecursive !== undefined}
     <Category
       bind:isFileRecursive
       info={$info}

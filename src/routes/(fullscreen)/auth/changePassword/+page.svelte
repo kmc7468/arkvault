@@ -6,8 +6,14 @@
 
   let oldPassword = $state("");
   let newPassword = $state("");
+  let confirmPassword = $state("");
 
   const changePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      // TODO: Alert
+      return;
+    }
+
     if (await requestPasswordChange(oldPassword, newPassword)) {
       await goto("/menu");
     }
@@ -30,6 +36,7 @@
 
     <TextInput bind:value={oldPassword} placeholder="기존 비밀번호" type="password" />
     <TextInput bind:value={newPassword} placeholder="새 비밀번호" type="password" />
+    <TextInput bind:value={confirmPassword} placeholder="새 비밀번호 확인" type="password" />
   </TitledDiv>
   <BottomDiv>
     <Button onclick={changePassword} class="w-full">비밀번호 바꾸기</Button>

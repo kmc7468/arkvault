@@ -32,7 +32,7 @@ const capture = (
 
     drawer(context, scaledWidth, scaledHeight);
     canvas.toBlob((blob) => {
-      if (blob) {
+      if (blob && blob.type === "image/webp") {
         resolve(blob);
       } else {
         reject(new Error("Failed to generate thumbnail"));
@@ -83,18 +83,26 @@ const generateVideoThumbnail = (videoUrl: string, time = 0) => {
 export const generateThumbnail = async (fileBuffer: ArrayBuffer, fileType: string) => {
   let url;
   try {
-    if (fileType === "image/heic") {
-      const { default: heic2any } = await import("heic2any");
-      url = URL.createObjectURL(
-        (await heic2any({
-          blob: new Blob([fileBuffer], { type: fileType }),
-          toType: "image/png",
-        })) as Blob,
-      );
-      return await generateImageThumbnail(url);
-    } else if (fileType.startsWith("image/")) {
-      url = URL.createObjectURL(new Blob([fileBuffer], { type: fileType }));
-      return await generateImageThumbnail(url);
+    if (fileType.startsWith("image/")) {
+      const fileBlob = new Blob([fileBuffer], { type: fileType });
+      url = URL.createObjectURL(fileBlob);
+
+      try {
+        return await generateImageThumbnail(url);
+      } catch {
+        URL.revokeObjectURL(url);
+        url = undefined;
+
+        if (fileType === "image/heic") {
+          const { default: heic2any } = await import("heic2any");
+          url = URL.createObjectURL(
+            (await heic2any({ blob: fileBlob, toType: "image/png" })) as Blob,
+          );
+          return await generateImageThumbnail(url);
+        } else {
+          return null;
+        }
+      }
     } else if (fileType.startsWith("video/")) {
       url = URL.createObjectURL(new Blob([fileBuffer], { type: fileType }));
       return await generateVideoThumbnail(url);

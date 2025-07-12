@@ -12,6 +12,7 @@ import {
   getCategoryInfos as getCategoryInfosFromIndexedDB,
   getCategoryInfo as getCategoryInfoFromIndexedDB,
   storeCategoryInfo,
+  updateCategoryInfo as updateCategoryInfoInIndexedDB,
   deleteCategoryInfo,
   type DirectoryId,
   type CategoryId,
@@ -62,6 +63,7 @@ export type CategoryInfo =
       name?: undefined;
       subCategoryIds: number[];
       files?: undefined;
+      isFileRecursive?: undefined;
     }
   | {
       id: number;
@@ -70,6 +72,7 @@ export type CategoryInfo =
       name: string;
       subCategoryIds: number[];
       files: { id: number; isRecursive: boolean }[];
+      isFileRecursive: boolean;
     };
 
 const directoryInfoStore = new Map<DirectoryId, Writable<DirectoryInfo | null>>();
@@ -255,7 +258,13 @@ const fetchCategoryInfoFromIndexedDB = async (
     info.set({ id, subCategoryIds });
   } else {
     if (!category) return;
-    info.set({ id, name: category.name, subCategoryIds, files: category.files });
+    info.set({
+      id,
+      name: category.name,
+      subCategoryIds,
+      files: category.files,
+      isFileRecursive: category.isFileRecursive,
+    });
   }
 };
 
@@ -288,20 +297,28 @@ const fetchCategoryInfoFromServer = async (
 
     const { files }: CategoryFileListResponse = await res.json();
     const filesMapped = files.map(({ file, isRecursive }) => ({ id: file, isRecursive }));
+    let isFileRecursive: boolean | undefined = undefined;
 
-    info.set({
-      id,
-      dataKey,
-      dataKeyVersion: new Date(metadata!.dekVersion),
-      name,
-      subCategoryIds: subCategories,
-      files: filesMapped,
+    info.update((value) => {
+      const newValue = {
+        isFileRecursive: false,
+        ...value,
+        id,
+        dataKey,
+        dataKeyVersion: new Date(metadata!.dekVersion),
+        name,
+        subCategoryIds: subCategories,
+        files: filesMapped,
+      };
+      isFileRecursive = newValue.isFileRecursive;
+      return newValue;
     });
     await storeCategoryInfo({
       id,
       parentId: metadata!.parent,
       name,
       files: filesMapped,
+      isFileRecursive: isFileRecursive!,
     });
   }
 };
@@ -326,4 +343,18 @@ export const getCategoryInfo = (categoryId: CategoryId, masterKey: CryptoKey) =>
 
   fetchCategoryInfo(categoryId, info, masterKey); // Intended
   return info;
+};
+
+export const updateCategoryInfo = async (
+  categoryId: number,
+  changes: { isFileRecursive?: boolean },
+) => {
+  await updateCategoryInfoInIndexedDB(categoryId, changes);
+  categoryInfoStore.get(categoryId)?.update((value) => {
+    if (!value) return value;
+    if (changes.isFileRecursive !== undefined) {
+      value.isFileRecursive = changes.isFileRecursive;
+    }
+    return value;
+  });
 };

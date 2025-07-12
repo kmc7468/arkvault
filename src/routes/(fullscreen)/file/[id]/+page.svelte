@@ -43,20 +43,29 @@
   let isDownloadRequested = $state(false);
   let viewerType: "image" | "video" | undefined = $state();
   let fileBlobUrl: string | undefined = $state();
+  let heicBlob: Blob | undefined = $state();
   let videoElement: HTMLVideoElement | undefined = $state();
 
   const updateViewer = async (buffer: ArrayBuffer, contentType: string) => {
     const fileBlob = new Blob([buffer], { type: contentType });
-    if (contentType === "image/heic") {
-      const { default: heic2any } = await import("heic2any");
-      fileBlobUrl = URL.createObjectURL(
-        (await heic2any({ blob: fileBlob, toType: "image/jpeg" })) as Blob,
-      );
-    } else if (viewerType) {
+    if (viewerType) {
       fileBlobUrl = URL.createObjectURL(fileBlob);
+      heicBlob = contentType === "image/heic" ? fileBlob : undefined;
     }
-
     return fileBlob;
+  };
+
+  const convertHeicToJpeg = async () => {
+    if (!heicBlob) return;
+
+    URL.revokeObjectURL(fileBlobUrl!);
+    fileBlobUrl = undefined;
+
+    const { default: heic2any } = await import("heic2any");
+    fileBlobUrl = URL.createObjectURL(
+      (await heic2any({ blob: heicBlob, toType: "image/jpeg" })) as Blob,
+    );
+    heicBlob = undefined;
   };
 
   const updateThumbnail = async (dataKey: CryptoKey, dataKeyVersion: Date) => {
@@ -136,7 +145,7 @@
 
         {#if viewerType === "image"}
           {#if fileBlobUrl}
-            <img src={fileBlobUrl} alt={$info.name} />
+            <img src={fileBlobUrl} alt={$info.name} onerror={convertHeicToJpeg} />
           {:else}
             {@render viewerLoading("이미지를 불러오고 있어요.")}
           {/if}
