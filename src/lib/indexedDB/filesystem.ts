@@ -25,6 +25,7 @@ interface CategoryInfo {
   parentId: CategoryId;
   name: string;
   files: { id: number; isRecursive: boolean }[];
+  isFileRecursive: boolean;
 }
 
 const filesystem = new Dexie("filesystem") as Dexie & {
@@ -33,11 +34,21 @@ const filesystem = new Dexie("filesystem") as Dexie & {
   category: EntityTable<CategoryInfo, "id">;
 };
 
-filesystem.version(2).stores({
-  directory: "id, parentId",
-  file: "id, parentId",
-  category: "id, parentId",
-});
+filesystem
+  .version(3)
+  .stores({
+    directory: "id, parentId",
+    file: "id, parentId",
+    category: "id, parentId",
+  })
+  .upgrade(async (trx) => {
+    await trx
+      .table("category")
+      .toCollection()
+      .modify((category) => {
+        category.isFileRecursive = false;
+      });
+  });
 
 export const getDirectoryInfos = async (parentId: DirectoryId) => {
   return await filesystem.directory.where({ parentId }).toArray();
@@ -85,6 +96,10 @@ export const getCategoryInfo = async (id: number) => {
 
 export const storeCategoryInfo = async (categoryInfo: CategoryInfo) => {
   await filesystem.category.put(categoryInfo);
+};
+
+export const updateCategoryInfo = async (id: number, changes: { isFileRecursive?: boolean }) => {
+  await filesystem.category.update(id, changes);
 };
 
 export const deleteCategoryInfo = async (id: number) => {
