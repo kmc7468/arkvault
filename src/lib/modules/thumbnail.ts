@@ -67,10 +67,15 @@ const generateVideoThumbnail = (videoUrl: string, time = 0) => {
   return new Promise<Blob>((resolve, reject) => {
     const video = document.createElement("video");
     video.onloadedmetadata = () => {
-      video.currentTime = Math.min(time, video.duration);
-      video.requestVideoFrameCallback(() => {
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        return reject();
+      }
+
+      const callbackId = video.requestVideoFrameCallback(() => {
         captureVideoThumbnail(video).then(resolve).catch(reject);
+        video.cancelVideoFrameCallback(callbackId);
       });
+      video.currentTime = Math.min(time, video.duration);
     };
     video.onerror = reject;
 
