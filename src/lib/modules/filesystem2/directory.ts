@@ -104,6 +104,7 @@ export const getDirectoryInfo = (id: DirectoryId, masterKey: CryptoKey) => {
         };
       }
     },
+    staleTime: Infinity,
   });
 };
 

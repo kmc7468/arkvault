@@ -86,6 +86,7 @@ export const getFileInfo = (id: number, masterKey: CryptoKey) => {
         categoryIds: metadata.categories,
       };
     },
+    staleTime: Infinity,
   });
 };
 
