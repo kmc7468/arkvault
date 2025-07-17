@@ -181,7 +181,10 @@ export const unregisterDirectory = async (userId: number, directoryId: number) =
       };
       const unregisterDirectoryRecursively = async (
         directoryId: number,
-      ): Promise<{ id: number; path: string; thumbnailPath: string | null }[]> => {
+      ): Promise<{
+        subDirectories: { id: number }[];
+        files: { id: number; path: string; thumbnailPath: string | null }[];
+      }> => {
         const files = await unregisterFiles(directoryId);
         const subDirectories = await trx
           .selectFrom("directory")
@@ -189,7 +192,7 @@ export const unregisterDirectory = async (userId: number, directoryId: number) =
           .where("parent_id", "=", directoryId)
           .where("user_id", "=", userId)
           .execute();
-        const subDirectoryFilePaths = await Promise.all(
+        const subDirectoryEntries = await Promise.all(
           subDirectories.map(async ({ id }) => await unregisterDirectoryRecursively(id)),
         );
 
@@ -201,7 +204,12 @@ export const unregisterDirectory = async (userId: number, directoryId: number) =
         if (deleteRes.numDeletedRows === 0n) {
           throw new IntegrityError("Directory not found");
         }
-        return files.concat(...subDirectoryFilePaths);
+        return {
+          subDirectories: subDirectoryEntries
+            .flatMap(({ subDirectories }) => subDirectories)
+            .concat(subDirectories),
+          files: subDirectoryEntries.flatMap(({ files }) => files).concat(files),
+        };
       };
       return await unregisterDirectoryRecursively(directoryId);
     });

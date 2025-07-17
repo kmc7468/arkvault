@@ -1,15 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import type { Writable } from "svelte/store";
   import { goto } from "$app/navigation";
   import { FloatingButton } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
-  import { type DirectoryInfo } from "$lib/modules/filesystem";
+  import { deleteFileCache, deleteFileThumbnailCache } from "$lib/modules/file";
   import {
     getDirectoryInfo,
-    useDirectoryCreate,
+    useDirectoryCreation,
     useDirectoryRename,
-    useDirectoryDelete,
+    useDirectoryDeletion,
   } from "$lib/modules/filesystem2";
   import { masterKeyStore, hmacSecretStore } from "$lib/stores";
   import DirectoryCreateModal from "./DirectoryCreateModal.svelte";
@@ -35,9 +34,9 @@
   let context = createContext();
 
   let info = $derived(getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!));
-  let requestDirectoryCreation = $derived(useDirectoryCreate(data.id));
+  let requestDirectoryCreation = $derived(useDirectoryCreation(data.id, $masterKeyStore?.get(1)!));
   let requestDirectoryRename = useDirectoryRename();
-  let requestDirectoryDeletion = $derived(useDirectoryDelete(data.id));
+  let requestDirectoryDeletion = $derived(useDirectoryDeletion(data.id));
 
   let fileInput: HTMLInputElement | undefined = $state();
   let duplicatedFile: File | undefined = $state();
@@ -135,10 +134,7 @@
 <DirectoryCreateModal
   bind:isOpen={isDirectoryCreateModalOpen}
   onCreateClick={async (name) => {
-    $requestDirectoryCreation.mutate({
-      name,
-      masterKey: $masterKeyStore?.get(1)!,
-    });
+    $requestDirectoryCreation.mutate({ name });
     return true; // TODO
   }}
 />
@@ -190,9 +186,16 @@
   bind:isOpen={isEntryDeleteModalOpen}
   onDeleteClick={async () => {
     if (context.selectedEntry!.type === "directory") {
-      $requestDirectoryDeletion.mutate({
+      const res = await $requestDirectoryDeletion.mutateAsync({
         id: context.selectedEntry!.id,
       });
+      if (!res) return false;
+      await Promise.all(
+        res.deletedFiles.flatMap((fileId) => [
+          deleteFileCache(fileId),
+          deleteFileThumbnailCache(fileId),
+        ]),
+      );
       return true; // TODO
     } else {
       if (await requestEntryDeletion(context.selectedEntry!)) {

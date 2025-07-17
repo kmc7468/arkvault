@@ -19,6 +19,7 @@ export const directoryInfoResponse = z.object({
 export type DirectoryInfoResponse = z.output<typeof directoryInfoResponse>;
 
 export const directoryDeleteResponse = z.object({
+  deletedDirectories: z.number().int().positive().array(),
   deletedFiles: z.number().int().positive().array(),
 });
 export type DirectoryDeleteResponse = z.output<typeof directoryDeleteResponse>;

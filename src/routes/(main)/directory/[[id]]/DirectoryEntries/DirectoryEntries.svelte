@@ -1,8 +1,12 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { get, type Readable, type Writable } from "svelte/store";
-  import { getFileInfo, type DirectoryInfo, type FileInfo } from "$lib/modules/filesystem";
-  import { getDirectoryInfo, type DirectoryInfoStore } from "$lib/modules/filesystem2";
+  import { get, type Writable } from "svelte/store";
+  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
+  import {
+    getDirectoryInfo,
+    type DirectoryInfo,
+    type DirectoryInfoStore,
+  } from "$lib/modules/filesystem2";
   import { SortBy, sortEntries } from "$lib/modules/util";
   import {
     fileUploadStatusStore,

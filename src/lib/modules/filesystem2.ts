@@ -26,14 +26,32 @@ import {
   encryptString,
   decryptString,
 } from "$lib/modules/crypto";
-import type { DirectoryInfo } from "$lib/modules/filesystem";
 import type {
+  DirectoryInfoResponse,
+  DirectoryDeleteResponse,
+  DirectoryRenameRequest,
   DirectoryCreateRequest,
   DirectoryCreateResponse,
-  DirectoryInfoResponse,
-  DirectoryRenameRequest,
 } from "$lib/server/schemas";
 import type { MasterKey } from "$lib/stores";
+
+export type DirectoryInfo =
+  | {
+      id: "root";
+      dataKey?: undefined;
+      dataKeyVersion?: undefined;
+      name?: undefined;
+      subDirectoryIds: number[];
+      fileIds: number[];
+    }
+  | {
+      id: number;
+      dataKey?: CryptoKey;
+      dataKeyVersion?: Date;
+      name: string;
+      subDirectoryIds: number[];
+      fileIds: number[];
+    };
 
 const initializedDirectoryIds = new Set<DirectoryId>();
 let temporaryIdCounter = -1;
@@ -99,15 +117,10 @@ export const getDirectoryInfo = (id: DirectoryId, masterKey: CryptoKey) => {
 
 export type DirectoryInfoStore = ReturnType<typeof getDirectoryInfo>;
 
-export const useDirectoryCreate = (parentId: DirectoryId) => {
+export const useDirectoryCreation = (parentId: DirectoryId, masterKey: MasterKey) => {
   const queryClient = useQueryClient();
-  return createMutation<
-    { id: number; dataKey: CryptoKey; dataKeyVersion: Date },
-    Error,
-    { name: string; masterKey: MasterKey },
-    { prevParentInfo: DirectoryInfo | undefined; tempId: number }
-  >({
-    mutationFn: async ({ name, masterKey }) => {
+  return createMutation<void, Error, { name: string }, { tempId: number }>({
+    mutationFn: async ({ name }) => {
       const { dataKey, dataKeyVersion } = await generateDataKey();
       const nameEncrypted = await encryptString(name, dataKey);
 
@@ -119,30 +132,9 @@ export const useDirectoryCreate = (parentId: DirectoryId) => {
         name: nameEncrypted.ciphertext,
         nameIv: nameEncrypted.iv,
       });
+      if (!res.ok) throw new Error("Failed to create directory");
+
       const { directory: id }: DirectoryCreateResponse = await res.json();
-      return { id, dataKey, dataKeyVersion };
-    },
-    onMutate: async ({ name }) => {
-      await queryClient.cancelQueries({ queryKey: ["directory", parentId] });
-
-      const prevParentInfo = queryClient.getQueryData<DirectoryInfo>(["directory", parentId]);
-      const tempId = temporaryIdCounter--;
-      if (prevParentInfo) {
-        queryClient.setQueryData<DirectoryInfo>(["directory", parentId], {
-          ...prevParentInfo,
-          subDirectoryIds: [...prevParentInfo.subDirectoryIds, tempId],
-        });
-        queryClient.setQueryData<DirectoryInfo>(["directory", tempId], {
-          id: tempId,
-          name,
-          subDirectoryIds: [],
-          fileIds: [],
-        });
-      }
-
-      return { prevParentInfo, tempId };
-    },
-    onSuccess: async ({ id, dataKey, dataKeyVersion }, { name }) => {
       queryClient.setQueryData<DirectoryInfo>(["directory", id], {
         id,
         name,
@@ -153,13 +145,38 @@ export const useDirectoryCreate = (parentId: DirectoryId) => {
       });
       await storeDirectoryInfo({ id, parentId, name });
     },
-    onError: (error, { name }, context) => {
-      if (context?.prevParentInfo) {
-        queryClient.setQueryData<DirectoryInfo>(["directory", parentId], context.prevParentInfo);
-      }
-      console.error(`Failed to create directory "${name}" in parent ${parentId}:`, error);
+    onMutate: async ({ name }) => {
+      const tempId = temporaryIdCounter--;
+      queryClient.setQueryData<DirectoryInfo>(["directory", tempId], {
+        id: tempId,
+        name,
+        subDirectoryIds: [],
+        fileIds: [],
+      });
+
+      await queryClient.cancelQueries({ queryKey: ["directory", parentId] });
+      queryClient.setQueryData<DirectoryInfo>(["directory", parentId], (prevParentInfo) => {
+        if (!prevParentInfo) return undefined;
+        return {
+          ...prevParentInfo,
+          subDirectoryIds: [...prevParentInfo.subDirectoryIds, tempId],
+        };
+      });
+
+      return { tempId };
     },
-    onSettled: (id) => {
+    onError: (_error, _variables, context) => {
+      if (context) {
+        queryClient.setQueryData<DirectoryInfo>(["directory", parentId], (prevParentInfo) => {
+          if (!prevParentInfo) return undefined;
+          return {
+            ...prevParentInfo,
+            subDirectoryIds: prevParentInfo.subDirectoryIds.filter((id) => id !== context.tempId),
+          };
+        });
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["directory", parentId] });
     },
   });
@@ -176,15 +193,18 @@ export const useDirectoryRename = () => {
       dataKeyVersion: Date;
       newName: string;
     },
-    { prevInfo: (DirectoryInfo & { id: number }) | undefined }
+    { oldName: string | undefined }
   >({
     mutationFn: async ({ id, dataKey, dataKeyVersion, newName }) => {
       const newNameEncrypted = await encryptString(newName, dataKey);
-      await callPostApi<DirectoryRenameRequest>(`/api/directory/${id}/rename`, {
+      const res = await callPostApi<DirectoryRenameRequest>(`/api/directory/${id}/rename`, {
         dekVersion: dataKeyVersion.toISOString(),
         name: newNameEncrypted.ciphertext,
         nameIv: newNameEncrypted.iv,
       });
+      if (!res.ok) throw new Error("Failed to rename directory");
+
+      await updateDirectoryInfo(id, { name: newName });
     },
     onMutate: async ({ id, newName }) => {
       await queryClient.cancelQueries({ queryKey: ["directory", id] });
@@ -195,61 +215,62 @@ export const useDirectoryRename = () => {
           ...prevInfo,
           name: newName,
         });
-        await updateDirectoryInfo(id, { name: newName });
       }
 
-      return { prevInfo };
+      return { oldName: prevInfo?.name };
     },
-    onSuccess: async (data, { id, newName }) => {
-      await updateDirectoryInfo(id, { name: newName });
-    },
-    onError: (error, { id }, context) => {
-      if (context?.prevInfo) {
-        queryClient.setQueryData<DirectoryInfo>(["directory", id], context.prevInfo);
+    onError: (_error, { id }, context) => {
+      if (context?.oldName) {
+        queryClient.setQueryData<DirectoryInfo & { id: number }>(["directory", id], (prevInfo) => {
+          if (!prevInfo) return undefined;
+          return { ...prevInfo, name: context.oldName! };
+        });
       }
-      console.error("Failed to rename directory:", error);
     },
-    onSettled: (data, error, { id }) => {
+    onSettled: (_data, _error, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["directory", id] });
     },
   });
 };
 
-export const useDirectoryDelete = (parentId: DirectoryId) => {
+export const useDirectoryDeletion = (parentId: DirectoryId) => {
   const queryClient = useQueryClient();
-  return createMutation<
-    void,
-    Error,
-    { id: number },
-    { prevInfo: (DirectoryInfo & { id: number }) | undefined }
-  >({
+  return createMutation<{ deletedFiles: number[] }, Error, { id: number }, {}>({
     mutationFn: async ({ id }) => {
-      await callPostApi(`/api/directory/${id}/delete`);
+      const res = await callPostApi(`/api/directory/${id}/delete`);
+      if (!res.ok) throw new Error("Failed to delete directory");
+
+      const { deletedDirectories, deletedFiles }: DirectoryDeleteResponse = await res.json();
+      await Promise.all([
+        ...deletedDirectories.map(deleteDirectoryInfo),
+        ...deletedFiles.map(deleteFileInfo),
+      ]);
+
+      return { deletedFiles };
     },
     onMutate: async ({ id }) => {
       await queryClient.cancelQueries({ queryKey: ["directory", parentId] });
-
-      const prevParentInfo = queryClient.getQueryData<DirectoryInfo>(["directory", parentId]);
-      if (prevParentInfo) {
-        queryClient.setQueryData<DirectoryInfo>(["directory", parentId], {
+      queryClient.setQueryData<DirectoryInfo>(["directory", parentId], (prevParentInfo) => {
+        if (!prevParentInfo) return undefined;
+        return {
           ...prevParentInfo,
           subDirectoryIds: prevParentInfo.subDirectoryIds.filter((subId) => subId !== id),
+        };
+      });
+      return {};
+    },
+    onError: (_error, { id }, context) => {
+      if (context) {
+        queryClient.setQueryData<DirectoryInfo>(["directory", parentId], (prevParentInfo) => {
+          if (!prevParentInfo) return undefined;
+          return {
+            ...prevParentInfo,
+            subDirectoryIds: [...prevParentInfo.subDirectoryIds, id],
+          };
         });
       }
-
-      const prevInfo = queryClient.getQueryData<DirectoryInfo & { id: number }>(["directory", id]);
-      return { prevInfo };
     },
-    onSuccess: async (data, { id }) => {
-      await deleteDirectoryInfo(id);
-    },
-    onError: (error, { id }, context) => {
-      if (context?.prevInfo) {
-        queryClient.setQueryData<DirectoryInfo>(["directory", parentId], context?.prevInfo);
-      }
-      console.error("Failed to delete directory:", error);
-    },
-    onSettled: (data, error, { id }) => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["directory", parentId] });
     },
   });

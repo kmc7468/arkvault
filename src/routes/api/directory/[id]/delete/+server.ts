@@ -16,8 +16,11 @@ export const POST: RequestHandler = async ({ locals, params }) => {
   if (!zodRes.success) error(400, "Invalid path parameters");
   const { id } = zodRes.data;
 
-  const { files } = await deleteDirectory(userId, id);
+  const { directories, files } = await deleteDirectory(userId, id);
   return json(
-    directoryDeleteResponse.parse({ deletedFiles: files } satisfies DirectoryDeleteResponse),
+    directoryDeleteResponse.parse({
+      deletedDirectories: directories,
+      deletedFiles: files,
+    } satisfies DirectoryDeleteResponse),
   );
 };

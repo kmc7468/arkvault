@@ -42,8 +42,9 @@ const safeUnlink = async (path: string | null) => {
 
 export const deleteDirectory = async (userId: number, directoryId: number) => {
   try {
-    const files = await unregisterDirectory(userId, directoryId);
+    const { subDirectories, files } = await unregisterDirectory(userId, directoryId);
     return {
+      directories: [...subDirectories.map(({ id }) => id), directoryId],
       files: files.map(({ id, path, thumbnailPath }) => {
         safeUnlink(path); // Intended
         safeUnlink(thumbnailPath); // Intended
