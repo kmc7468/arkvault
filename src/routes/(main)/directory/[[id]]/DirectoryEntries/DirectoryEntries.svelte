@@ -1,11 +1,12 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import { get, type Writable } from "svelte/store";
-  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
   import {
     getDirectoryInfo,
+    getFileInfo,
     type DirectoryInfo,
     type DirectoryInfoStore,
+    type FileInfoStore,
   } from "$lib/modules/filesystem2";
   import { SortBy, sortEntries } from "$lib/modules/util";
   import {
@@ -37,7 +38,7 @@
     | {
         type: "file";
         name?: string;
-        info: Writable<FileInfo | null>;
+        info: FileInfoStore;
       }
     | {
         type: "uploading-file";
@@ -60,7 +61,7 @@
         const info = getFileInfo(id, $masterKeyStore?.get(1)?.key!);
         return {
           type: "file",
-          name: get(info)?.name,
+          name: get(info).data?.name,
           info,
         };
       })
@@ -93,13 +94,21 @@
           }),
         )
         .concat(
-          files.map((file) =>
-            file.info.subscribe((value) => {
-              if (file.name === value?.name) return;
-              file.name = value?.name;
-              sort();
-            }),
-          ),
+          files.map((file) => {
+            if (file.type === "file") {
+              return file.info.subscribe((value) => {
+                if (file.name === value.data?.name) return;
+                file.name = value.data?.name;
+                sort();
+              });
+            } else {
+              return file.info.subscribe((value) => {
+                if (file.name === value.name) return;
+                file.name = value.name;
+                sort();
+              });
+            }
+          }),
         );
       return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
     });

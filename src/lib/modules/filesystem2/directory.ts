@@ -8,16 +8,8 @@ import {
   updateDirectoryInfo,
   deleteDirectoryInfo,
   getFileInfos as getFileInfosFromIndexedDB,
-  getFileInfo as getFileInfoFromIndexedDB,
-  storeFileInfo,
   deleteFileInfo,
-  getCategoryInfos as getCategoryInfosFromIndexedDB,
-  getCategoryInfo as getCategoryInfoFromIndexedDB,
-  storeCategoryInfo,
-  updateCategoryInfo as updateCategoryInfoInIndexedDB,
-  deleteCategoryInfo,
   type DirectoryId,
-  type CategoryId,
 } from "$lib/indexedDB";
 import {
   generateDataKey,
@@ -53,14 +45,14 @@ export type DirectoryInfo =
       fileIds: number[];
     };
 
-const initializedDirectoryIds = new Set<DirectoryId>();
+const initializedIds = new Set<DirectoryId>();
 let temporaryIdCounter = -1;
 
 const getInitialDirectoryInfo = async (id: DirectoryId) => {
-  if (!browser || initializedDirectoryIds.has(id)) {
+  if (!browser || initializedIds.has(id)) {
     return undefined;
   } else {
-    initializedDirectoryIds.add(id);
+    initializedIds.add(id);
   }
 
   const [directory, subDirectories, files] = await Promise.all([
@@ -254,7 +246,9 @@ export const useDirectoryDeletion = (parentId: DirectoryId) => {
         if (!prevParentInfo) return undefined;
         return {
           ...prevParentInfo,
-          subDirectoryIds: prevParentInfo.subDirectoryIds.filter((subId) => subId !== id),
+          subDirectoryIds: prevParentInfo.subDirectoryIds.filter(
+            (subDirectoryId) => subDirectoryId !== id,
+          ),
         };
       });
       return {};

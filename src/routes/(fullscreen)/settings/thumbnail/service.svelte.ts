@@ -2,7 +2,7 @@ import { limitFunction } from "p-limit";
 import { get, writable, type Writable } from "svelte/store";
 import { encryptData } from "$lib/modules/crypto";
 import { storeFileThumbnailCache } from "$lib/modules/file";
-import type { FileInfo } from "$lib/modules/filesystem";
+import type { FileInfo, FileInfoStore } from "$lib/modules/filesystem2";
 import { generateThumbnail as doGenerateThumbnail } from "$lib/modules/thumbnail";
 import { requestFileDownload, requestFileThumbnailUpload } from "$lib/services/file";
 
@@ -17,7 +17,7 @@ export type GenerationStatus =
 
 interface File {
   id: number;
-  info: Writable<FileInfo | null>;
+  info: FileInfoStore;
   status?: Writable<GenerationStatus>;
 }
 

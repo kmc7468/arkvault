@@ -1,6 +1,6 @@
 <script lang="ts">
   import { get, type Writable } from "svelte/store";
-  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
+  import { getFileInfo } from "$lib/modules/filesystem2";
   import { formatNetworkSpeed } from "$lib/modules/util";
   import { masterKeyStore, type FileDownloadStatus } from "$lib/stores";
 
@@ -17,14 +17,10 @@
 
   let { status }: Props = $props();
 
-  let fileInfo: Writable<FileInfo | null> | undefined = $state();
-
-  $effect(() => {
-    fileInfo = getFileInfo(get(status).id, $masterKeyStore?.get(1)?.key!);
-  });
+  let fileInfo = $derived(getFileInfo(get(status).id, $masterKeyStore?.get(1)?.key!));
 </script>
 
-{#if $fileInfo}
+{#if $fileInfo.status === "success"}
   <div class="flex h-14 items-center gap-x-4 p-2">
     <div class="flex-shrink-0 text-lg text-gray-600">
       {#if $status.status === "download-pending"}
@@ -42,8 +38,8 @@
       {/if}
     </div>
     <div class="flex-grow overflow-hidden">
-      <p title={$fileInfo.name} class="truncate font-medium">
-        {$fileInfo.name}
+      <p title={$fileInfo.data.name} class="truncate font-medium">
+        {$fileInfo.data.name}
       </p>
       <p class="text-xs text-gray-800">
         {#if $status.status === "download-pending"}

@@ -3,12 +3,20 @@
   import { goto } from "$app/navigation";
   import { FloatingButton } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
-  import { deleteFileCache, deleteFileThumbnailCache } from "$lib/modules/file";
+  import {
+    storeFileCache,
+    deleteFileCache,
+    storeFileThumbnailCache,
+    deleteFileThumbnailCache,
+  } from "$lib/modules/file";
   import {
     getDirectoryInfo,
     useDirectoryCreation,
     useDirectoryRename,
     useDirectoryDeletion,
+    useFileUpload,
+    useFileRename,
+    useFileDeletion,
   } from "$lib/modules/filesystem2";
   import { masterKeyStore, hmacSecretStore } from "$lib/stores";
   import DirectoryCreateModal from "./DirectoryCreateModal.svelte";
@@ -20,13 +28,7 @@
   import EntryMenuBottomSheet from "./EntryMenuBottomSheet.svelte";
   import EntryRenameModal from "./EntryRenameModal.svelte";
   import UploadStatusCard from "./UploadStatusCard.svelte";
-  import {
-    createContext,
-    requestHmacSecretDownload,
-    requestFileUpload,
-    requestEntryRename,
-    requestEntryDeletion,
-  } from "./service.svelte";
+  import { createContext, requestHmacSecretDownload } from "./service.svelte";
 
   import IconAdd from "~icons/material-symbols/add";
 
@@ -37,6 +39,11 @@
   let requestDirectoryCreation = $derived(useDirectoryCreation(data.id, $masterKeyStore?.get(1)!));
   let requestDirectoryRename = useDirectoryRename();
   let requestDirectoryDeletion = $derived(useDirectoryDeletion(data.id));
+  let requestFileUpload = $derived(
+    useFileUpload(data.id, $masterKeyStore?.get(1)!, $hmacSecretStore?.get(1)!),
+  );
+  let requestFileRename = $derived(useFileRename());
+  let requestFileDeletion = $derived(useFileDeletion(data.id));
 
   let fileInput: HTMLInputElement | undefined = $state();
   let duplicatedFile: File | undefined = $state();
@@ -55,21 +62,24 @@
     if (!files || files.length === 0) return;
 
     for (const file of files) {
-      requestFileUpload(file, data.id, $hmacSecretStore?.get(1)!, $masterKeyStore?.get(1)!, () => {
-        return new Promise((resolve) => {
-          duplicatedFile = file;
-          resolveForDuplicateFileModal = resolve;
-          isDuplicateFileModalOpen = true;
-        });
-      })
-        .then((res) => {
-          if (!res) return;
-          // TODO: FIXME
-          // info = getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!);
+      $requestFileUpload
+        .mutateAsync({
+          file,
+          onDuplicate: () => {
+            return new Promise((resolve) => {
+              duplicatedFile = file;
+              resolveForDuplicateFileModal = resolve;
+              isDuplicateFileModalOpen = true;
+            });
+          },
         })
-        .catch((e: Error) => {
-          // TODO: FIXME
-          console.error(e);
+        .then((res) => {
+          if (res) {
+            storeFileCache(res.fileId, res.fileBuffer); // Intended
+            if (res.thumbnailBuffer) {
+              storeFileThumbnailCache(res.fileId, res.thumbnailBuffer); // Intended
+            }
+          }
         });
     }
 
@@ -174,11 +184,13 @@
       });
       return true; // TODO
     } else {
-      if (await requestEntryRename(context.selectedEntry!, newName)) {
-        // info = getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
-        return true;
-      }
-      return false;
+      $requestFileRename.mutate({
+        id: context.selectedEntry!.id,
+        dataKey: context.selectedEntry!.dataKey,
+        dataKeyVersion: context.selectedEntry!.dataKeyVersion,
+        newName,
+      });
+      return true; // TODO
     }
   }}
 />
@@ -186,9 +198,7 @@
   bind:isOpen={isEntryDeleteModalOpen}
   onDeleteClick={async () => {
     if (context.selectedEntry!.type === "directory") {
-      const res = await $requestDirectoryDeletion.mutateAsync({
-        id: context.selectedEntry!.id,
-      });
+      const res = await $requestDirectoryDeletion.mutateAsync({ id: context.selectedEntry!.id });
       if (!res) return false;
       await Promise.all(
         res.deletedFiles.flatMap((fileId) => [
@@ -198,11 +208,12 @@
       );
       return true; // TODO
     } else {
-      if (await requestEntryDeletion(context.selectedEntry!)) {
-        // info = getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
-        return true;
-      }
-      return false;
+      await $requestFileDeletion.mutateAsync({ id: context.selectedEntry!.id });
+      await Promise.all([
+        deleteFileCache(context.selectedEntry!.id),
+        deleteFileThumbnailCache(context.selectedEntry!.id),
+      ]);
+      return true; // TODO
     }
   }}
 />

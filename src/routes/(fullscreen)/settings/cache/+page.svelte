@@ -1,18 +1,17 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import type { Writable } from "svelte/store";
   import { FullscreenDiv } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
   import type { FileCacheIndex } from "$lib/indexedDB";
   import { getFileCacheIndex, deleteFileCache as doDeleteFileCache } from "$lib/modules/file";
-  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
+  import { getFileInfo, type FileInfoStore } from "$lib/modules/filesystem2";
   import { formatFileSize } from "$lib/modules/util";
   import { masterKeyStore } from "$lib/stores";
   import File from "./File.svelte";
 
   interface FileCache {
     index: FileCacheIndex;
-    fileInfo: Writable<FileInfo | null>;
+    fileInfo: FileInfoStore;
   }
 
   let fileCache: FileCache[] | undefined = $state();

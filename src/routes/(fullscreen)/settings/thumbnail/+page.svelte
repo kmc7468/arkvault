@@ -5,7 +5,7 @@
   import { BottomDiv, Button, FullscreenDiv } from "$lib/components/atoms";
   import { IconEntryButton, TopBar } from "$lib/components/molecules";
   import { deleteAllFileThumbnailCaches } from "$lib/modules/file";
-  import { getFileInfo } from "$lib/modules/filesystem";
+  import { getFileInfo } from "$lib/modules/filesystem2";
   import { masterKeyStore } from "$lib/stores";
   import File from "./File.svelte";
   import {
@@ -21,8 +21,8 @@
   const generateAllThumbnails = () => {
     persistentStates.files.forEach(({ info }) => {
       const fileInfo = get(info);
-      if (fileInfo) {
-        requestThumbnailGeneration(fileInfo);
+      if (fileInfo.data) {
+        requestThumbnailGeneration(fileInfo.data);
       }
     });
   };

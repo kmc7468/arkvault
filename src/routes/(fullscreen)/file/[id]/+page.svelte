@@ -5,12 +5,8 @@
   import { goto } from "$app/navigation";
   import { FullscreenDiv } from "$lib/components/atoms";
   import { Categories, IconEntryButton, TopBar } from "$lib/components/molecules";
-  import {
-    getFileInfo,
-    getCategoryInfo,
-    type FileInfo,
-    type CategoryInfo,
-  } from "$lib/modules/filesystem";
+  import { getCategoryInfo, type CategoryInfo } from "$lib/modules/filesystem";
+  import { getFileInfo } from "$lib/modules/filesystem2";
   import { captureVideoThumbnail } from "$lib/modules/thumbnail";
   import { fileDownloadStatusStore, isFileDownloading, masterKeyStore } from "$lib/stores";
   import AddToCategoryBottomSheet from "./AddToCategoryBottomSheet.svelte";
@@ -28,7 +24,7 @@
 
   let { data } = $props();
 
-  let info: Writable<FileInfo | null> | undefined = $state();
+  let info = $derived(getFileInfo(data.id, $masterKeyStore?.get(1)?.key!));
   let categories: Writable<CategoryInfo | null>[] = $state([]);
 
   let isAddToCategoryBottomSheetOpen = $state(false);
@@ -85,19 +81,19 @@
   };
 
   $effect(() => {
-    info = getFileInfo(data.id, $masterKeyStore?.get(1)?.key!);
+    data.id;
     isDownloadRequested = false;
     viewerType = undefined;
   });
 
   $effect(() => {
     categories =
-      $info?.categoryIds.map((id) => getCategoryInfo(id, $masterKeyStore?.get(1)?.key!)) ?? [];
+      $info.data?.categoryIds.map((id) => getCategoryInfo(id, $masterKeyStore?.get(1)?.key!)) ?? [];
   });
 
   $effect(() => {
-    if ($info && $info.dataKey && $info.contentIv) {
-      const contentType = $info.contentType;
+    if ($info.data?.dataKey && $info.data?.contentIv) {
+      const contentType = $info.data.contentType;
       if (contentType.startsWith("image")) {
         viewerType = "image";
       } else if (contentType.startsWith("video")) {
@@ -107,21 +103,23 @@
       untrack(() => {
         if (!downloadStatus && !isDownloadRequested) {
           isDownloadRequested = true;
-          requestFileDownload(data.id, $info.contentIv!, $info.dataKey!).then(async (buffer) => {
-            const blob = await updateViewer(buffer, contentType);
-            if (!viewerType) {
-              FileSaver.saveAs(blob, $info.name);
-            }
-          });
+          requestFileDownload(data.id, $info.data.contentIv!, $info.data.dataKey!).then(
+            async (buffer) => {
+              const blob = await updateViewer(buffer, contentType);
+              if (!viewerType) {
+                FileSaver.saveAs(blob, $info.data.name);
+              }
+            },
+          );
         }
       });
     }
   });
 
   $effect(() => {
-    if ($info && $downloadStatus?.status === "decrypted") {
+    if ($info.status === "success" && $downloadStatus?.status === "decrypted") {
       untrack(
-        () => !isDownloadRequested && updateViewer($downloadStatus.result!, $info.contentType),
+        () => !isDownloadRequested && updateViewer($downloadStatus.result!, $info.data.contentType),
       );
     }
   });
@@ -133,11 +131,11 @@
   <title>파일</title>
 </svelte:head>
 
-<TopBar title={$info?.name} />
+<TopBar title={$info.data?.name} />
 <FullscreenDiv>
   <div class="space-y-4 pb-4">
     <DownloadStatus status={downloadStatus} />
-    {#if $info && viewerType}
+    {#if $info.status === "success" && viewerType}
       <div class="flex w-full justify-center">
         {#snippet viewerLoading(message: string)}
           <p class="text-gray-500">{message}</p>
@@ -145,7 +143,7 @@
 
         {#if viewerType === "image"}
           {#if fileBlobUrl}
-            <img src={fileBlobUrl} alt={$info.name} onerror={convertHeicToJpeg} />
+            <img src={fileBlobUrl} alt={$info.data.name} onerror={convertHeicToJpeg} />
           {:else}
             {@render viewerLoading("이미지를 불러오고 있어요.")}
           {/if}
@@ -156,7 +154,7 @@
               <video bind:this={videoElement} src={fileBlobUrl} controls muted></video>
               <IconEntryButton
                 icon={IconCamera}
-                onclick={() => updateThumbnail($info.dataKey!, $info.dataKeyVersion!)}
+                onclick={() => updateThumbnail($info.data.dataKey!, $info.data.dataKeyVersion!)}
                 class="w-full"
               >
                 이 장면을 썸네일로 설정하기

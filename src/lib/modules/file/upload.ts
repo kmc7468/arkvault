@@ -5,6 +5,7 @@ import { writable, type Writable } from "svelte/store";
 import {
   encodeToBase64,
   generateDataKey,
+  makeAESKeyNonextractable,
   wrapDataKey,
   encryptData,
   encryptString,
@@ -118,12 +119,14 @@ const encryptFile = limitFunction(
     });
 
     return {
+      dataKey: await makeAESKeyNonextractable(dataKey),
       dataKeyWrapped,
       dataKeyVersion,
       fileType,
       fileEncrypted,
       fileEncryptedHash,
       nameEncrypted,
+      createdAt,
       createdAtEncrypted,
       lastModifiedAtEncrypted,
       thumbnail: thumbnailEncrypted && { plaintext: thumbnailBuffer, ...thumbnailEncrypted },
@@ -176,9 +179,7 @@ export const uploadFile = async (
   hmacSecret: HmacSecret,
   masterKey: MasterKey,
   onDuplicate: () => Promise<boolean>,
-): Promise<
-  { fileId: number; fileBuffer: ArrayBuffer; thumbnailBuffer?: ArrayBuffer } | undefined
-> => {
+) => {
   const status = writable<FileUploadStatus>({
     name: file.name,
     parentId,
@@ -208,12 +209,14 @@ export const uploadFile = async (
     }
 
     const {
+      dataKey,
       dataKeyWrapped,
       dataKeyVersion,
       fileType,
       fileEncrypted,
       fileEncryptedHash,
       nameEncrypted,
+      createdAt,
       createdAtEncrypted,
       lastModifiedAtEncrypted,
       thumbnail,
@@ -256,7 +259,16 @@ export const uploadFile = async (
     }
 
     const { fileId } = await requestFileUpload(status, form, thumbnailForm);
-    return { fileId, fileBuffer, thumbnailBuffer: thumbnail?.plaintext };
+    return {
+      fileId,
+      fileDataKey: dataKey,
+      fileDataKeyVersion: dataKeyVersion,
+      fileType,
+      fileEncryptedIv: fileEncrypted.iv,
+      fileCreatedAt: createdAt,
+      fileBuffer,
+      thumbnailBuffer: thumbnail?.plaintext,
+    };
   } catch (e) {
     status.update((value) => {
       value.status = "error";

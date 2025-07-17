@@ -13,14 +13,14 @@
   import type { Writable } from "svelte/store";
   import { ActionEntryButton } from "$lib/components/atoms";
   import { DirectoryEntryLabel } from "$lib/components/molecules";
-  import type { FileInfo } from "$lib/modules/filesystem";
+  import type { FileInfo, FileInfoStore } from "$lib/modules/filesystem2";
   import { formatDateTime } from "$lib/modules/util";
   import type { GenerationStatus } from "./service.svelte";
 
   import IconCamera from "~icons/material-symbols/camera";
 
   interface Props {
-    info: Writable<FileInfo | null>;
+    info: FileInfoStore;
     onclick: (selectedFile: FileInfo) => void;
     onGenerateThumbnailClick: (selectedFile: FileInfo) => void;
     generationStatus?: Writable<GenerationStatus>;
@@ -29,18 +29,18 @@
   let { info, onclick, onGenerateThumbnailClick, generationStatus }: Props = $props();
 </script>
 
-{#if $info}
+{#if $info.status === "success"}
   <ActionEntryButton
     class="h-14"
-    onclick={() => onclick($info)}
+    onclick={() => onclick($info.data)}
     actionButtonIcon={!$generationStatus || $generationStatus === "error" ? IconCamera : undefined}
-    onActionButtonClick={() => onGenerateThumbnailClick($info)}
+    onActionButtonClick={() => onGenerateThumbnailClick($info.data)}
     actionButtonClass="text-gray-800"
   >
     {@const subtext =
       $generationStatus && $generationStatus !== "uploaded"
         ? subtexts[$generationStatus]
-        : formatDateTime($info.createdAt ?? $info.lastModifiedAt)}
-    <DirectoryEntryLabel type="file" name={$info.name} {subtext} />
+        : formatDateTime($info.data.createdAt ?? $info.data.lastModifiedAt)}
+    <DirectoryEntryLabel type="file" name={$info.data.name} {subtext} />
   </ActionEntryButton>
 {/if}

@@ -86,6 +86,10 @@ export const storeFileInfo = async (fileInfo: FileInfo) => {
   await filesystem.file.put(fileInfo);
 };
 
+export const updateFileInfo = async (id: number, changes: { name?: string }) => {
+  await filesystem.file.update(id, changes);
+};
+
 export const deleteFileInfo = async (id: number) => {
   await filesystem.file.delete(id);
 };
