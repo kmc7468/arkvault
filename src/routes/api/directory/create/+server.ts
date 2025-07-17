@@ -1,6 +1,10 @@
-import { error, text } from "@sveltejs/kit";
+import { error, json } from "@sveltejs/kit";
 import { authorize } from "$lib/server/modules/auth";
-import { directoryCreateRequest } from "$lib/server/schemas";
+import {
+  directoryCreateRequest,
+  directoryCreateResponse,
+  type DirectoryCreateResponse,
+} from "$lib/server/schemas";
 import { createDirectory } from "$lib/server/services/directory";
 import type { RequestHandler } from "./$types";
 
@@ -11,7 +15,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
   if (!zodRes.success) error(400, "Invalid request body");
   const { parent, mekVersion, dek, dekVersion, name, nameIv } = zodRes.data;
 
-  await createDirectory({
+  const { id } = await createDirectory({
     userId,
     parentId: parent,
     mekVersion,
@@ -19,5 +23,5 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     dekVersion: new Date(dekVersion),
     encName: { ciphertext: name, iv: nameIv },
   });
-  return text("Directory created", { headers: { "Content-Type": "text/plain" } });
+  return json(directoryCreateResponse.parse({ directory: id } satisfies DirectoryCreateResponse));
 };

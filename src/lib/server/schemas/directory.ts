@@ -39,3 +39,8 @@ export const directoryCreateRequest = z.object({
   nameIv: z.string().base64().nonempty(),
 });
 export type DirectoryCreateRequest = z.input<typeof directoryCreateRequest>;
+
+export const directoryCreateResponse = z.object({
+  directory: z.number().int().positive(),
+});
+export type DirectoryCreateResponse = z.output<typeof directoryCreateResponse>;

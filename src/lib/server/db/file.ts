@@ -39,7 +39,7 @@ interface File {
 export type NewFile = Omit<File, "id">;
 
 export const registerDirectory = async (params: NewDirectory) => {
-  await db.transaction().execute(async (trx) => {
+  return await db.transaction().execute(async (trx) => {
     const mek = await trx
       .selectFrom("master_encryption_key")
       .select("version")
@@ -73,6 +73,7 @@ export const registerDirectory = async (params: NewDirectory) => {
         new_name: params.encName,
       })
       .execute();
+    return { id: directoryId };
   });
 };
 

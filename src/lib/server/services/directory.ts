@@ -86,7 +86,8 @@ export const createDirectory = async (params: NewDirectory) => {
   }
 
   try {
-    await registerDirectory(params);
+    const { id } = await registerDirectory(params);
+    return { id };
   } catch (e) {
     if (e instanceof IntegrityError && e.message === "Inactive MEK version") {
       error(400, "Invalid MEK version");

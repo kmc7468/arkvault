@@ -62,6 +62,10 @@ export const storeDirectoryInfo = async (directoryInfo: DirectoryInfo) => {
   await filesystem.directory.put(directoryInfo);
 };
 
+export const updateDirectoryInfo = async (id: number, changes: { name?: string }) => {
+  await filesystem.directory.update(id, changes);
+};
+
 export const deleteDirectoryInfo = async (id: number) => {
   await filesystem.directory.delete(id);
 };

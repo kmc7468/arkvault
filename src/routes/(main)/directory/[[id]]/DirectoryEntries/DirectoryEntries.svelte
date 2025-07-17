@@ -1,12 +1,8 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { get, type Writable } from "svelte/store";
-  import {
-    getDirectoryInfo,
-    getFileInfo,
-    type DirectoryInfo,
-    type FileInfo,
-  } from "$lib/modules/filesystem";
+  import { get, type Readable, type Writable } from "svelte/store";
+  import { getFileInfo, type DirectoryInfo, type FileInfo } from "$lib/modules/filesystem";
+  import { getDirectoryInfo, type DirectoryInfoStore } from "$lib/modules/filesystem2";
   import { SortBy, sortEntries } from "$lib/modules/util";
   import {
     fileUploadStatusStore,
@@ -30,7 +26,7 @@
 
   interface DirectoryEntry {
     name?: string;
-    info: Writable<DirectoryInfo | null>;
+    info: DirectoryInfoStore;
   }
 
   type FileEntry =
@@ -53,7 +49,7 @@
 
     subDirectories = info.subDirectoryIds.map((id) => {
       const info = getDirectoryInfo(id, $masterKeyStore?.get(1)?.key!);
-      return { name: get(info)?.name, info };
+      return { name: get(info).data?.name, info };
     });
     files = info.fileIds
       .map((id): FileEntry => {
@@ -87,8 +83,8 @@
       const unsubscribes = subDirectories
         .map((subDirectory) =>
           subDirectory.info.subscribe((value) => {
-            if (subDirectory.name === value?.name) return;
-            subDirectory.name = value?.name;
+            if (subDirectory.name === value.data?.name) return;
+            subDirectory.name = value.data?.name;
             sort();
           }),
         )
