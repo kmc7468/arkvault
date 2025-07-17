@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { QueryClient, QueryClientProvider } from "@tanstack/svelte-query";
   import { onMount } from "svelte";
   import { get } from "svelte/store";
+  import { browser } from "$app/environment";
   import { goto as svelteGoto } from "$app/navigation";
   import {
     fileUploadStatusStore,
@@ -10,9 +12,18 @@
     clientKeyStore,
     masterKeyStore,
   } from "$lib/stores";
+
   import "../app.css";
 
   let { children } = $props();
+
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        enabled: browser,
+      },
+    },
+  });
 
   const protectFileUploadAndDownload = (e: BeforeUnloadEvent) => {
     if (
@@ -43,4 +54,6 @@
 
 <svelte:window onbeforeunload={protectFileUploadAndDownload} />
 
-{@render children()}
+<QueryClientProvider client={queryClient}>
+  {@render children()}
+</QueryClientProvider>

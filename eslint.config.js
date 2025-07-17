@@ -1,11 +1,13 @@
-import prettier from "eslint-config-prettier";
-import js from "@eslint/js";
 import { includeIgnoreFile } from "@eslint/compat";
+import js from "@eslint/js";
+import svelteQuery from "@tanstack/eslint-plugin-query";
+import prettier from "eslint-config-prettier";
 import svelte from "eslint-plugin-svelte";
 import tailwind from "eslint-plugin-tailwindcss";
 import globals from "globals";
-import { fileURLToPath } from "node:url";
 import ts from "typescript-eslint";
+import { fileURLToPath } from "url";
+
 const gitignorePath = fileURLToPath(new URL("./.gitignore", import.meta.url));
 
 export default ts.config(
@@ -26,11 +28,11 @@ export default ts.config(
   },
   {
     files: ["**/*.svelte"],
-
     languageOptions: {
       parserOptions: {
         parser: ts.parser,
       },
     },
   },
+  ...svelteQuery.configs["flat/recommended"],
 );
