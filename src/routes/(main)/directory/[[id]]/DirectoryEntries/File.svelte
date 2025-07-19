@@ -34,7 +34,7 @@
   };
 
   $effect(() => {
-    if ($info?.dataKey) {
+    if ($info) {
       requestFileThumbnailDownload($info.id, $info.dataKey)
         .then((thumbnailUrl) => {
           thumbnail = thumbnailUrl ?? undefined;

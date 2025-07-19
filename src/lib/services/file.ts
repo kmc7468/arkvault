@@ -48,9 +48,9 @@ export const requestFileThumbnailUpload = async (
   return await fetch(`/api/file/${fileId}/thumbnail/upload`, { method: "POST", body: form });
 };
 
-export const requestFileThumbnailDownload = async (fileId: number, dataKey: CryptoKey) => {
+export const requestFileThumbnailDownload = async (fileId: number, dataKey?: CryptoKey) => {
   const cache = await getFileThumbnailCache(fileId);
-  if (cache) return cache;
+  if (cache || !dataKey) return cache;
 
   let res = await callGetApi(`/api/file/${fileId}/thumbnail`);
   if (!res.ok) return null;
