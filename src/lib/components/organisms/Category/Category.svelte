@@ -1,10 +1,9 @@
 <script lang="ts">
-  import { untrack } from "svelte";
-  import { get, type Writable } from "svelte/store";
+  import { derived } from "svelte/store";
   import { CheckBox } from "$lib/components/atoms";
   import { SubCategories, type SelectedCategory } from "$lib/components/molecules";
   import type { CategoryInfo } from "$lib/modules/filesystem";
-  import { getFileInfo, type FileInfoStore } from "$lib/modules/filesystem2";
+  import { getFileInfo } from "$lib/modules/filesystem2";
   import { SortBy, sortEntries } from "$lib/modules/util";
   import { masterKeyStore } from "$lib/stores";
   import File from "./File.svelte";
@@ -34,37 +33,35 @@
     isFileRecursive = $bindable(),
   }: Props = $props();
 
-  let files: { name?: string; info: FileInfoStore; isRecursive: boolean }[] = $state([]);
-
-  $effect(() => {
-    files =
-      info.files
-        ?.filter(({ isRecursive }) => isFileRecursive || !isRecursive)
-        .map(({ id, isRecursive }) => {
-          const info = getFileInfo(id, $masterKeyStore?.get(1)?.key!);
-          return {
-            name: get(info).data?.name,
-            info,
-            isRecursive,
-          };
-        }) ?? [];
-
-    const sort = () => {
-      sortEntries(files, sortBy);
-    };
-    return untrack(() => {
-      sort();
-
-      const unsubscribes = files.map((file) =>
-        file.info.subscribe((value) => {
-          if (file.name === value.data?.name) return;
-          file.name = value.data?.name;
-          sort();
-        }),
-      );
-      return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
-    });
-  });
+  let fileInfos = $derived(
+    info.files
+      ?.filter(({ isRecursive }) => isFileRecursive || !isRecursive)
+      .map(({ id, isRecursive }) => ({
+        info: getFileInfo(id, $masterKeyStore?.get(1)?.key!),
+        isRecursive,
+      })) ?? [],
+  );
+  let files = $derived(
+    derived(
+      fileInfos.map(({ info }) => info),
+      (infos) => {
+        const files = infos
+          .map(($info, i) => {
+            if ($info.status === "success") {
+              return {
+                name: $info.data.name,
+                isRecursive: fileInfos[i]!.isRecursive,
+                info: $info.data,
+              };
+            }
+            return undefined;
+          })
+          .filter((info) => info !== undefined);
+        sortEntries(files, sortBy);
+        return files;
+      },
+    ),
+  );
 </script>
 
 <div class="space-y-4">
@@ -90,7 +87,7 @@
       </div>
       <div class="space-y-1">
         {#key info}
-          {#each files as { info, isRecursive }}
+          {#each $files as { info, isRecursive }}
             <File
               {info}
               onclick={onFileClick}

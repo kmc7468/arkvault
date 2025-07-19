@@ -1,12 +1,11 @@
 <script lang="ts">
-  import { untrack } from "svelte";
-  import { get, type Writable } from "svelte/store";
+  import { derived } from "svelte/store";
   import {
     getDirectoryInfo,
     getFileInfo,
     type DirectoryInfo,
-    type DirectoryInfoStore,
-    type FileInfoStore,
+    type SubDirectoryInfo,
+    type FileInfo,
   } from "$lib/modules/filesystem2";
   import { SortBy, sortEntries } from "$lib/modules/util";
   import {
@@ -31,96 +30,84 @@
 
   interface DirectoryEntry {
     name?: string;
-    info: DirectoryInfoStore;
+    info: SubDirectoryInfo;
   }
 
   type FileEntry =
     | {
         type: "file";
         name?: string;
-        info: FileInfoStore;
+        info: FileInfo;
       }
     | {
         type: "uploading-file";
         name: string;
-        info: Writable<FileUploadStatus>;
+        info: FileUploadStatus;
       };
 
-  let subDirectories: DirectoryEntry[] = $state([]);
-  let files: FileEntry[] = $state([]);
-
-  $effect(() => {
-    // TODO: Fix duplicated requests
-
-    subDirectories = info.subDirectoryIds.map((id) => {
-      const info = getDirectoryInfo(id, $masterKeyStore?.get(1)?.key!);
-      return { name: get(info).data?.name, info };
-    });
-    files = info.fileIds
-      .map((id): FileEntry => {
-        const info = getFileInfo(id, $masterKeyStore?.get(1)?.key!);
-        return {
-          type: "file",
-          name: get(info).data?.name,
-          info,
-        };
-      })
-      .concat(
-        $fileUploadStatusStore
-          .filter((statusStore) => {
-            const { parentId, status } = get(statusStore);
-            return parentId === info.id && isFileUploading(status);
-          })
-          .map((status) => ({
-            type: "uploading-file",
-            name: get(status).name,
-            info: status,
-          })),
-      );
-
-    const sort = () => {
-      sortEntries(subDirectories, sortBy);
-      sortEntries(files, sortBy);
-    };
-    return untrack(() => {
-      sort();
-
-      const unsubscribes = subDirectories
-        .map((subDirectory) =>
-          subDirectory.info.subscribe((value) => {
-            if (subDirectory.name === value.data?.name) return;
-            subDirectory.name = value.data?.name;
-            sort();
-          }),
-        )
-        .concat(
-          files.map((file) => {
-            if (file.type === "file") {
-              return file.info.subscribe((value) => {
-                if (file.name === value.data?.name) return;
-                file.name = value.data?.name;
-                sort();
-              });
-            } else {
-              return file.info.subscribe((value) => {
-                if (file.name === value.name) return;
-                file.name = value.name;
-                sort();
-              });
-            }
-          }),
-        );
-      return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
-    });
-  });
+  let subDirectories = $derived(
+    derived(
+      info.subDirectoryIds.map((id) => getDirectoryInfo(id, $masterKeyStore?.get(1)?.key!)),
+      (infos) => {
+        const subDirectories = infos
+          .filter(($info) => $info.status === "success")
+          .map(
+            ($info) =>
+              ({
+                name: $info.data.name,
+                info: $info.data as SubDirectoryInfo,
+              }) satisfies DirectoryEntry,
+          );
+        sortEntries(subDirectories, sortBy);
+        return subDirectories;
+      },
+    ),
+  );
+  let files = $derived(
+    derived(
+      info.fileIds.map((id) => getFileInfo(id, $masterKeyStore?.get(1)?.key!)),
+      (infos) =>
+        infos
+          .filter(($info) => $info.status === "success")
+          .map(
+            ($info) =>
+              ({
+                type: "file",
+                name: $info.data.name,
+                info: $info.data,
+              }) satisfies FileEntry,
+          ),
+    ),
+  );
+  let uploadingFiles = $derived(
+    derived($fileUploadStatusStore, (statuses) =>
+      statuses
+        .filter(({ parentId, status }) => parentId === info.id && isFileUploading(status))
+        .map(
+          ($status) =>
+            ({
+              type: "uploading-file",
+              name: $status.name,
+              info: $status,
+            }) satisfies FileEntry,
+        ),
+    ),
+  );
+  let everyFiles = $derived(
+    derived([files, uploadingFiles], ([$files, $uploadingFiles]) => {
+      const allFiles = [...$files, ...$uploadingFiles];
+      sortEntries(allFiles, sortBy);
+      return allFiles;
+    }),
+  );
 </script>
 
-{#if subDirectories.length + files.length > 0}
+{#if $subDirectories.length + $everyFiles.length > 0}
   <div class="space-y-1 pb-[4.5rem]">
-    {#each subDirectories as { info }}
+    {#each $subDirectories as { info }}
       <SubDirectory {info} onclick={onEntryClick} onOpenMenuClick={onEntryMenuClick} />
     {/each}
-    {#each files as file}
+    {#each $everyFiles as file}
       {#if file.type === "file"}
         <File info={file.info} onclick={onEntryClick} onOpenMenuClick={onEntryMenuClick} />
       {:else}

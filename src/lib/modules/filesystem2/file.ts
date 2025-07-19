@@ -1,5 +1,4 @@
 import { useQueryClient, createQuery, createMutation } from "@tanstack/svelte-query";
-import { browser } from "$app/environment";
 import { callGetApi, callPostApi } from "$lib/hooks";
 import {
   getFileInfo as getFileInfoFromIndexedDB,
@@ -26,31 +25,23 @@ export interface FileInfo {
   categoryIds: number[];
 }
 
-const initializedFileIds = new Set<number>();
-
-const getInitialFileInfo = async (id: number) => {
-  if (!browser || initializedFileIds.has(id)) {
-    return undefined;
-  }
-  initializedFileIds.add(id);
-  return await getFileInfoFromIndexedDB(id);
-};
-
 const decryptDate = async (ciphertext: string, iv: string, dataKey: CryptoKey) => {
   return new Date(parseInt(await decryptString(ciphertext, iv, dataKey), 10));
 };
 
 export const getFileInfo = (id: number, masterKey: CryptoKey) => {
-  const queryClient = useQueryClient();
-  getInitialFileInfo(id).then((info) => {
-    if (info && !queryClient.getQueryData(["file", id])) {
-      queryClient.setQueryData<FileInfo>(["file", id], info);
-    }
-  }); // Intended
   return createQuery<FileInfo>({
     queryKey: ["file", id],
-    queryFn: async () => {
-      const res = await callGetApi(`/api/file/${id}`); // TODO: 404
+    queryFn: async ({ client, signal }) => {
+      if (!client.getQueryData(["file", id])) {
+        const initialInfo = await getFileInfoFromIndexedDB(id);
+        if (initialInfo) {
+          setTimeout(() => client.invalidateQueries({ queryKey: ["file", id] }), 0);
+          return initialInfo;
+        }
+      }
+
+      const res = await callGetApi(`/api/file/${id}`, { signal }); // TODO: 404
       const metadata: FileInfoResponse = await res.json();
 
       const { dataKey } = await unwrapDataKey(metadata.dek, masterKey);

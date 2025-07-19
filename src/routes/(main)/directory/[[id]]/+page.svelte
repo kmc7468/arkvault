@@ -109,7 +109,7 @@
         <UploadStatusCard onclick={() => goto("/file/uploads")} />
         <DownloadStatusCard onclick={() => goto("/file/downloads")} />
       </div>
-      {#key $info}
+      {#key $info.data.id}
         <DirectoryEntries
           info={$info.data}
           onEntryClick={({ type, id }) => goto(`/${type}/${id}`)}

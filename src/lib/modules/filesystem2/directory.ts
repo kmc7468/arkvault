@@ -1,5 +1,4 @@
 import { useQueryClient, createQuery, createMutation } from "@tanstack/svelte-query";
-import { browser } from "$app/environment";
 import { callGetApi, callPostApi } from "$lib/hooks";
 import {
   getDirectoryInfos as getDirectoryInfosFromIndexedDB,
@@ -44,17 +43,11 @@ export type DirectoryInfo =
       subDirectoryIds: number[];
       fileIds: number[];
     };
+export type SubDirectoryInfo = DirectoryInfo & { id: number };
 
-const initializedIds = new Set<DirectoryId>();
 let temporaryIdCounter = -1;
 
 const getInitialDirectoryInfo = async (id: DirectoryId) => {
-  if (!browser || initializedIds.has(id)) {
-    return undefined;
-  } else {
-    initializedIds.add(id);
-  }
-
   const [directory, subDirectories, files] = await Promise.all([
     id !== "root" ? getDirectoryInfoFromIndexedDB(id) : undefined,
     getDirectoryInfosFromIndexedDB(id),
@@ -72,16 +65,18 @@ const getInitialDirectoryInfo = async (id: DirectoryId) => {
 };
 
 export const getDirectoryInfo = (id: DirectoryId, masterKey: CryptoKey) => {
-  const queryClient = useQueryClient();
-  getInitialDirectoryInfo(id).then((info) => {
-    if (info && !queryClient.getQueryData(["directory", id])) {
-      queryClient.setQueryData<DirectoryInfo>(["directory", id], info);
-    }
-  }); // Intended
   return createQuery<DirectoryInfo>({
     queryKey: ["directory", id],
-    queryFn: async () => {
-      const res = await callGetApi(`/api/directory/${id}`); // TODO: 404
+    queryFn: async ({ client, signal }) => {
+      if (!client.getQueryData(["directory", id])) {
+        const initialInfo = await getInitialDirectoryInfo(id);
+        if (initialInfo) {
+          setTimeout(() => client.invalidateQueries({ queryKey: ["directory", id] }), 0);
+          return initialInfo;
+        }
+      }
+
+      const res = await callGetApi(`/api/directory/${id}`, { signal }); // TODO: 404
       const {
         metadata,
         subDirectories: subDirectoryIds,
@@ -202,7 +197,7 @@ export const useDirectoryRename = () => {
     onMutate: async ({ id, newName }) => {
       await queryClient.cancelQueries({ queryKey: ["directory", id] });
 
-      const prevInfo = queryClient.getQueryData<DirectoryInfo & { id: number }>(["directory", id]);
+      const prevInfo = queryClient.getQueryData<SubDirectoryInfo>(["directory", id]);
       if (prevInfo) {
         queryClient.setQueryData<DirectoryInfo>(["directory", id], {
           ...prevInfo,
@@ -214,7 +209,7 @@ export const useDirectoryRename = () => {
     },
     onError: (_error, { id }, context) => {
       if (context?.oldName) {
-        queryClient.setQueryData<DirectoryInfo & { id: number }>(["directory", id], (prevInfo) => {
+        queryClient.setQueryData<SubDirectoryInfo>(["directory", id], (prevInfo) => {
           if (!prevInfo) return undefined;
           return { ...prevInfo, name: context.oldName! };
         });

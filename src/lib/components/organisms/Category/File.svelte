@@ -1,14 +1,13 @@
 <script lang="ts">
-  import type { Writable } from "svelte/store";
   import { ActionEntryButton } from "$lib/components/atoms";
   import { DirectoryEntryLabel } from "$lib/components/molecules";
-  import type { FileInfo, FileInfoStore } from "$lib/modules/filesystem2";
+  import type { FileInfo } from "$lib/modules/filesystem2";
   import { requestFileThumbnailDownload, type SelectedFile } from "./service";
 
   import IconClose from "~icons/material-symbols/close";
 
   interface Props {
-    info: FileInfoStore;
+    info: FileInfo;
     onclick: (selectedFile: SelectedFile) => void;
     onRemoveClick?: (selectedFile: SelectedFile) => void;
   }
@@ -18,22 +17,22 @@
   let thumbnail: string | undefined = $state();
 
   const openFile = () => {
-    const { id, dataKey, dataKeyVersion, name } = $info.data as FileInfo;
+    const { id, dataKey, dataKeyVersion, name } = info;
     if (!dataKey || !dataKeyVersion) return; // TODO: Error handling
 
     onclick({ id, dataKey, dataKeyVersion, name });
   };
 
   const removeFile = () => {
-    const { id, dataKey, dataKeyVersion, name } = $info.data as FileInfo;
+    const { id, dataKey, dataKeyVersion, name } = info;
     if (!dataKey || !dataKeyVersion) return; // TODO: Error handling
 
     onRemoveClick!({ id, dataKey, dataKeyVersion, name });
   };
 
   $effect(() => {
-    if ($info.data?.dataKey) {
-      requestFileThumbnailDownload($info.data.id, $info.data.dataKey)
+    if (info.dataKey) {
+      requestFileThumbnailDownload(info.id, info.dataKey)
         .then((thumbnailUrl) => {
           thumbnail = thumbnailUrl ?? undefined;
         })
@@ -47,13 +46,11 @@
   });
 </script>
 
-{#if $info.status === "success"}
-  <ActionEntryButton
-    class="h-12"
-    onclick={openFile}
-    actionButtonIcon={onRemoveClick && IconClose}
-    onActionButtonClick={removeFile}
-  >
-    <DirectoryEntryLabel type="file" {thumbnail} name={$info.data.name} />
-  </ActionEntryButton>
-{/if}
+<ActionEntryButton
+  class="h-12"
+  onclick={openFile}
+  actionButtonIcon={onRemoveClick && IconClose}
+  onActionButtonClick={removeFile}
+>
+  <DirectoryEntryLabel type="file" {thumbnail} name={info.name} />
+</ActionEntryButton>
