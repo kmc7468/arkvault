@@ -2,8 +2,7 @@
   import { derived } from "svelte/store";
   import { CheckBox } from "$lib/components/atoms";
   import { SubCategories, type SelectedCategory } from "$lib/components/molecules";
-  import type { CategoryInfo } from "$lib/modules/filesystem";
-  import { getFileInfo } from "$lib/modules/filesystem2";
+  import { getFileInfo, type CategoryInfo } from "$lib/modules/filesystem2";
   import { SortBy, sortEntries } from "$lib/modules/util";
   import { masterKeyStore } from "$lib/stores";
   import File from "./File.svelte";
@@ -19,7 +18,7 @@
     onSubCategoryCreateClick: () => void;
     onSubCategoryMenuClick: (subCategory: SelectedCategory) => void;
     sortBy?: SortBy;
-    isFileRecursive: boolean;
+    isFileRecursive?: boolean;
   }
 
   let {
@@ -81,9 +80,11 @@
     <div class="space-y-4 bg-white p-4">
       <div class="flex items-center justify-between">
         <p class="text-lg font-bold text-gray-800">파일</p>
-        <CheckBox bind:checked={isFileRecursive}>
-          <p class="font-medium">하위 카테고리의 파일</p>
-        </CheckBox>
+        {#if isFileRecursive !== undefined}
+          <CheckBox bind:checked={isFileRecursive}>
+            <p class="font-medium">하위 카테고리의 파일</p>
+          </CheckBox>
+        {/if}
       </div>
       <div class="space-y-1">
         {#key info}

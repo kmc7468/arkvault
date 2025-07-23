@@ -17,7 +17,7 @@ interface Category {
 export type NewCategory = Omit<Category, "id">;
 
 export const registerCategory = async (params: NewCategory) => {
-  await db.transaction().execute(async (trx) => {
+  return await db.transaction().execute(async (trx) => {
     const mek = await trx
       .selectFrom("master_encryption_key")
       .select("version")
@@ -51,6 +51,7 @@ export const registerCategory = async (params: NewCategory) => {
         new_name: params.encName,
       })
       .execute();
+    return { id: categoryId };
   });
 };
 

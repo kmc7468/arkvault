@@ -106,7 +106,10 @@ export const storeCategoryInfo = async (categoryInfo: CategoryInfo) => {
   await filesystem.category.put(categoryInfo);
 };
 
-export const updateCategoryInfo = async (id: number, changes: { isFileRecursive?: boolean }) => {
+export const updateCategoryInfo = async (
+  id: number,
+  changes: { name?: string; isFileRecursive?: boolean },
+) => {
   await filesystem.category.update(id, changes);
 };
 

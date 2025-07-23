@@ -53,3 +53,8 @@ export const categoryCreateRequest = z.object({
   nameIv: z.string().base64().nonempty(),
 });
 export type CategoryCreateRequest = z.input<typeof categoryCreateRequest>;
+
+export const categoryCreateResponse = z.object({
+  category: z.number().int().positive(),
+});
+export type CategoryCreateResponse = z.output<typeof categoryCreateResponse>;

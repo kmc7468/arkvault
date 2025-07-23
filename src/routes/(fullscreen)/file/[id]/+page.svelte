@@ -5,7 +5,7 @@
   import { goto } from "$app/navigation";
   import { FullscreenDiv } from "$lib/components/atoms";
   import { Categories, IconEntryButton, TopBar } from "$lib/components/molecules";
-  import { getCategoryInfo, type CategoryInfo } from "$lib/modules/filesystem";
+  import { getCategoryInfo, type CategoryInfo } from "$lib/modules/filesystem2";
   import { getFileInfo } from "$lib/modules/filesystem2";
   import { captureVideoThumbnail } from "$lib/modules/thumbnail";
   import { fileDownloadStatusStore, isFileDownloading, masterKeyStore } from "$lib/stores";
@@ -25,7 +25,6 @@
   let { data } = $props();
 
   let info = $derived(getFileInfo(data.id, $masterKeyStore?.get(1)?.key!));
-  let categories: Writable<CategoryInfo | null>[] = $state([]);
 
   let isAddToCategoryBottomSheetOpen = $state(false);
 
@@ -84,11 +83,6 @@
     data.id;
     isDownloadRequested = false;
     viewerType = undefined;
-  });
-
-  $effect(() => {
-    categories =
-      $info.data?.categoryIds.map((id) => getCategoryInfo(id, $masterKeyStore?.get(1)?.key!)) ?? [];
   });
 
   $effect(() => {
@@ -170,7 +164,7 @@
       <p class="text-lg font-bold">카테고리</p>
       <div class="space-y-1">
         <Categories
-          {categories}
+          categoryIds={$info.data?.categoryIds ?? []}
           categoryMenuIcon={IconClose}
           onCategoryClick={({ id }) => goto(`/category/${id}`)}
           onCategoryMenuClick={({ id }) => removeFromCategory(id)}

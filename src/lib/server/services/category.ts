@@ -123,7 +123,8 @@ export const createCategory = async (params: NewCategory) => {
   }
 
   try {
-    await registerCategory(params);
+    const { id } = await registerCategory(params);
+    return { id };
   } catch (e) {
     if (e instanceof IntegrityError && e.message === "Inactive MEK version") {
       error(400, "Inactive MEK version");

@@ -35,6 +35,8 @@
   };
 
   onMount(async () => {
+    window.__TANSTACK_QUERY_CLIENT__ = queryClient;
+
     const goto = async (url: string) => {
       const whitelist = ["/auth/login", "/key", "/client/pending"];
       if (!whitelist.some((path) => location.pathname.startsWith(path))) {

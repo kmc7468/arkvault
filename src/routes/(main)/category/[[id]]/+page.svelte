@@ -1,9 +1,8 @@
 <script lang="ts">
-  import type { Writable } from "svelte/store";
   import { goto } from "$app/navigation";
   import { TopBar } from "$lib/components/molecules";
   import { Category, CategoryCreateModal } from "$lib/components/organisms";
-  import { getCategoryInfo, updateCategoryInfo, type CategoryInfo } from "$lib/modules/filesystem";
+  import { getCategoryInfo, useCategoryFileRecursionToggle } from "$lib/modules/filesystem2";
   import { masterKeyStore } from "$lib/stores";
   import CategoryDeleteModal from "./CategoryDeleteModal.svelte";
   import CategoryMenuBottomSheet from "./CategoryMenuBottomSheet.svelte";
@@ -19,9 +18,9 @@
   let { data } = $props();
   let context = createContext();
 
-  let info: Writable<CategoryInfo | null> | undefined = $state();
-
-  let isFileRecursive: boolean | undefined = $state();
+  let info = $derived(getCategoryInfo(data.id, $masterKeyStore?.get(1)?.key!));
+  let toggleFileRecursion = useCategoryFileRecursionToggle();
+  let isFileRecursive = $derived($info.data?.isFileRecursive);
 
   let isCategoryCreateModalOpen = $state(false);
   let isCategoryMenuBottomSheetOpen = $state(false);
@@ -29,19 +28,8 @@
   let isCategoryDeleteModalOpen = $state(false);
 
   $effect(() => {
-    info = getCategoryInfo(data.id, $masterKeyStore?.get(1)?.key!);
-    isFileRecursive = undefined;
-  });
-
-  $effect(() => {
-    if ($info && isFileRecursive === undefined) {
-      isFileRecursive = $info.isFileRecursive ?? false;
-    }
-  });
-
-  $effect(() => {
-    if (data.id !== "root" && $info?.isFileRecursive !== isFileRecursive) {
-      updateCategoryInfo(data.id as number, { isFileRecursive });
+    if (isFileRecursive !== undefined && $info.data?.isFileRecursive !== isFileRecursive) {
+      $toggleFileRecursion.mutate({ id: data.id as number, isFileRecursive });
     }
   });
 </script>
@@ -51,13 +39,13 @@
 </svelte:head>
 
 {#if data.id !== "root"}
-  <TopBar title={$info?.name} />
+  <TopBar title={$info.data?.name} />
 {/if}
 <div class="min-h-full bg-gray-100 pb-[5.5em]">
-  {#if $info && isFileRecursive !== undefined}
+  {#if $info.status === "success"}
     <Category
       bind:isFileRecursive
-      info={$info}
+      info={$info.data}
       onFileClick={({ id }) => goto(`/file/${id}`)}
       onFileRemoveClick={async ({ id }) => {
         await requestFileRemovalFromCategory(id, data.id as number);
