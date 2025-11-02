@@ -21,8 +21,9 @@
     "@sveltejs/adapter-node": "^5.4.0",
     "@sveltejs/kit": "^2.48.4",
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "@trpc/client": "^11.7.1",
     "@types/file-saver": "^2.0.7",
-    "@types/ms": "^2.1.0",
+    "@types/ms": "^0.7.34",
     "@types/node-schedule": "^2.1.8",
     "@types/pg": "^8.15.6",
     "autoprefixer": "^10.4.21",
@@ -53,6 +54,7 @@
   },
   "dependencies": {
     "@fastify/busboy": "^3.2.0",
+    "@trpc/server": "^11.7.1",
     "argon2": "^0.44.0",
     "kysely": "^0.28.8",
     "ms": "^2.1.3",
