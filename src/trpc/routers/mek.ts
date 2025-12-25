@@ -37,8 +37,8 @@ const mekRouter = router({
   registerInitial: roleProcedure["pendingClient"]
     .input(
       z.object({
-        mek: z.string().base64().nonempty(),
-        mekSig: z.string().base64().nonempty(),
+        mek: z.base64().nonempty(),
+        mekSig: z.base64().nonempty(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

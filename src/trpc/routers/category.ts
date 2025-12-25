@@ -38,11 +38,11 @@ const categoryRouter = router({
     .input(
       z.object({
         parent: categoryIdSchema,
-        mekVersion: z.number().int().positive(),
-        dek: z.string().base64().nonempty(),
+        mekVersion: z.int().positive(),
+        dek: z.base64().nonempty(),
         dekVersion: z.date(),
-        name: z.string().base64().nonempty(),
-        nameIv: z.string().base64().nonempty(),
+        name: z.base64().nonempty(),
+        nameIv: z.base64().nonempty(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -72,10 +72,10 @@ const categoryRouter = router({
   rename: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: z.number().int().positive(),
+        id: z.int().positive(),
         dekVersion: z.date(),
-        name: z.string().base64().nonempty(),
-        nameIv: z.string().base64().nonempty(),
+        name: z.base64().nonempty(),
+        nameIv: z.base64().nonempty(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -99,7 +99,7 @@ const categoryRouter = router({
   delete: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: z.number().int().positive(),
+        id: z.int().positive(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -116,7 +116,7 @@ const categoryRouter = router({
   files: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: z.number().int().positive(),
+        id: z.int().positive(),
         recurse: z.boolean().default(false),
       }),
     )
@@ -137,8 +137,8 @@ const categoryRouter = router({
   addFile: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: z.number().int().positive(),
-        file: z.number().int().positive(),
+        id: z.int().positive(),
+        file: z.int().positive(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -165,8 +165,8 @@ const categoryRouter = router({
   removeFile: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: z.number().int().positive(),
-        file: z.number().int().positive(),
+        id: z.int().positive(),
+        file: z.int().positive(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

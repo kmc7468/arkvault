@@ -8,7 +8,7 @@ const fileRouter = router({
   get: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: z.number().int().positive(),
+        id: z.int().positive(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -42,8 +42,8 @@ const fileRouter = router({
   listByHash: roleProcedure["activeClient"]
     .input(
       z.object({
-        hskVersion: z.number().int().positive(),
-        contentHmac: z.string().base64().nonempty(),
+        hskVersion: z.int().positive(),
+        contentHmac: z.base64().nonempty(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -61,10 +61,10 @@ const fileRouter = router({
   rename: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: z.number().int().positive(),
+        id: z.int().positive(),
         dekVersion: z.date(),
-        name: z.string().base64().nonempty(),
-        nameIv: z.string().base64().nonempty(),
+        name: z.base64().nonempty(),
+        nameIv: z.base64().nonempty(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -88,7 +88,7 @@ const fileRouter = router({
   delete: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: z.number().int().positive(),
+        id: z.int().positive(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -107,7 +107,7 @@ const fileRouter = router({
   thumbnail: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: z.number().int().positive(),
+        id: z.int().positive(),
       }),
     )
     .query(async ({ ctx, input }) => {

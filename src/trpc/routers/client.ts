@@ -26,8 +26,8 @@ const clientRouter = router({
   register: roleProcedure["notClient"]
     .input(
       z.object({
-        encPubKey: z.string().base64().nonempty(),
-        sigPubKey: z.string().base64().nonempty(),
+        encPubKey: z.base64().nonempty(),
+        sigPubKey: z.base64().nonempty(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -66,8 +66,8 @@ const clientRouter = router({
   verify: roleProcedure["notClient"]
     .input(
       z.object({
-        id: z.number().int().positive(),
-        answerSig: z.string().base64().nonempty(),
+        id: z.int().positive(),
+        answerSig: z.base64().nonempty(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

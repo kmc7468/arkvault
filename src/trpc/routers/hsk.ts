@@ -17,8 +17,8 @@ const hskRouter = router({
   registerInitial: roleProcedure["activeClient"]
     .input(
       z.object({
-        mekVersion: z.number().int().positive(),
-        hsk: z.string().base64().nonempty(),
+        mekVersion: z.int().positive(),
+        hsk: z.base64().nonempty(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

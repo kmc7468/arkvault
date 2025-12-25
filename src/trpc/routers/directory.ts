@@ -41,11 +41,11 @@ const directoryRouter = router({
     .input(
       z.object({
         parent: directoryIdSchema,
-        mekVersion: z.number().int().positive(),
-        dek: z.string().base64().nonempty(),
+        mekVersion: z.int().positive(),
+        dek: z.base64().nonempty(),
         dekVersion: z.date(),
-        name: z.string().base64().nonempty(),
-        nameIv: z.string().base64().nonempty(),
+        name: z.base64().nonempty(),
+        nameIv: z.base64().nonempty(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -75,10 +75,10 @@ const directoryRouter = router({
   rename: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: z.number().int().positive(),
+        id: z.int().positive(),
         dekVersion: z.date(),
-        name: z.string().base64().nonempty(),
-        nameIv: z.string().base64().nonempty(),
+        name: z.base64().nonempty(),
+        nameIv: z.base64().nonempty(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -102,7 +102,7 @@ const directoryRouter = router({
   delete: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: z.number().int().positive(),
+        id: z.int().positive(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
