@@ -60,19 +60,6 @@ export const registerInitialMek = async (
   });
 };
 
-export const getInitialMek = async (userId: number) => {
-  const mek = await db
-    .selectFrom("master_encryption_key")
-    .selectAll()
-    .where("user_id", "=", userId)
-    .where("version", "=", 1)
-    .limit(1)
-    .executeTakeFirst();
-  return mek
-    ? ({ userId: mek.user_id, version: mek.version, state: mek.state } satisfies Mek)
-    : null;
-};
-
 export const getAllValidClientMeks = async (userId: number, clientId: number) => {
   const clientMeks = await db
     .selectFrom("client_master_encryption_key")

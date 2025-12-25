@@ -1,9 +1,10 @@
 import type { RequestEvent } from "@sveltejs/kit";
 import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
 import { createContext, router } from "./init.server";
+import { clientRouter } from "./routers";
 
 export const appRouter = router({
-  // TODO
+  client: clientRouter,
 });
 
 export const createCaller = (event: RequestEvent) => appRouter.createCaller(createContext(event));

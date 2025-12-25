@@ -10,15 +10,13 @@ import {
   verifyMasterKeyWrapped,
 } from "$lib/modules/crypto";
 import type {
-  ClientRegisterRequest,
-  ClientRegisterResponse,
-  ClientRegisterVerifyRequest,
   InitialHmacSecretRegisterRequest,
   MasterKeyListResponse,
   InitialMasterKeyRegisterRequest,
 } from "$lib/server/schemas";
 import { requestSessionUpgrade } from "$lib/services/auth";
 import { masterKeyStore, type ClientKeys } from "$lib/stores";
+import { useTRPC } from "$trpc/client";
 
 export const requestClientRegistration = async (
   encryptKeyBase64: string,
@@ -26,21 +24,24 @@ export const requestClientRegistration = async (
   verifyKeyBase64: string,
   signKey: CryptoKey,
 ) => {
-  let res = await callPostApi<ClientRegisterRequest>("/api/client/register", {
-    encPubKey: encryptKeyBase64,
-    sigPubKey: verifyKeyBase64,
-  });
-  if (!res.ok) return false;
+  const trpc = useTRPC();
 
-  const { id, challenge }: ClientRegisterResponse = await res.json();
-  const answer = await decryptChallenge(challenge, decryptKey);
-  const answerSig = await signMessageRSA(answer, signKey);
-
-  res = await callPostApi<ClientRegisterVerifyRequest>("/api/client/register/verify", {
-    id,
-    answerSig: encodeToBase64(answerSig),
-  });
-  return res.ok;
+  try {
+    const { id, challenge } = await trpc.client.register.mutate({
+      encPubKey: encryptKeyBase64,
+      sigPubKey: verifyKeyBase64,
+    });
+    const answer = await decryptChallenge(challenge, decryptKey);
+    const answerSig = await signMessageRSA(answer, signKey);
+    await trpc.client.verify.mutate({
+      id,
+      answerSig: encodeToBase64(answerSig),
+    });
+    return true;
+  } catch {
+    // TODO: Error Handling
+    return false;
+  }
 };
 
 export const requestClientRegistrationAndSessionUpgrade = async (
