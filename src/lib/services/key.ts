@@ -1,4 +1,4 @@
-import { callGetApi, callPostApi } from "$lib/hooks";
+import { TRPCClientError } from "@trpc/client";
 import { storeMasterKeys } from "$lib/indexedDB";
 import {
   encodeToBase64,
@@ -9,11 +9,6 @@ import {
   signMasterKeyWrapped,
   verifyMasterKeyWrapped,
 } from "$lib/modules/crypto";
-import type {
-  InitialHmacSecretRegisterRequest,
-  MasterKeyListResponse,
-  InitialMasterKeyRegisterRequest,
-} from "$lib/server/schemas";
 import { requestSessionUpgrade } from "$lib/services/auth";
 import { masterKeyStore, type ClientKeys } from "$lib/stores";
 import { useTRPC } from "$trpc/client";
@@ -74,10 +69,16 @@ export const requestClientRegistrationAndSessionUpgrade = async (
 };
 
 export const requestMasterKeyDownload = async (decryptKey: CryptoKey, verifyKey: CryptoKey) => {
-  const res = await callGetApi("/api/mek/list");
-  if (!res.ok) return false;
+  const trpc = useTRPC();
 
-  const { meks: masterKeysWrapped }: MasterKeyListResponse = await res.json();
+  let masterKeysWrapped;
+  try {
+    masterKeysWrapped = await trpc.mek.list.query();
+  } catch {
+    // TODO: Error Handling
+    return false;
+  }
+
   const masterKeys = await Promise.all(
     masterKeysWrapped.map(
       async ({ version, state, mek: masterKeyWrapped, mekSig: masterKeyWrappedSig }) => {
@@ -109,17 +110,32 @@ export const requestInitialMasterKeyAndHmacSecretRegistration = async (
   hmacSecretWrapped: string,
   signKey: CryptoKey,
 ) => {
-  let res = await callPostApi<InitialMasterKeyRegisterRequest>("/api/mek/register/initial", {
-    mek: masterKeyWrapped,
-    mekSig: await signMasterKeyWrapped(masterKeyWrapped, 1, signKey),
-  });
-  if (!res.ok) {
-    return res.status === 403 || res.status === 409;
+  const trpc = useTRPC();
+
+  try {
+    await trpc.mek.registerInitial.mutate({
+      mek: masterKeyWrapped,
+      mekSig: await signMasterKeyWrapped(masterKeyWrapped, 1, signKey),
+    });
+  } catch (e) {
+    if (
+      e instanceof TRPCClientError &&
+      (e.data?.code === "FORBIDDEN" || e.data?.code === "CONFLICT")
+    ) {
+      return true;
+    }
+    // TODO: Error Handling
+    return false;
   }
 
-  res = await callPostApi<InitialHmacSecretRegisterRequest>("/api/hsk/register/initial", {
-    mekVersion: 1,
-    hsk: hmacSecretWrapped,
-  });
-  return res.ok;
+  try {
+    await trpc.hsk.registerInitial.mutate({
+      mekVersion: 1,
+      hsk: hmacSecretWrapped,
+    });
+    return true;
+  } catch {
+    // TODO: Error Handling
+    return false;
+  }
 };

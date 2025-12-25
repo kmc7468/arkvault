@@ -1,5 +1,5 @@
 import { getContext, setContext } from "svelte";
-import { callGetApi, callPostApi } from "$lib/hooks";
+import { callPostApi } from "$lib/hooks";
 import { storeHmacSecrets } from "$lib/indexedDB";
 import { generateDataKey, wrapDataKey, unwrapHmacSecret, encryptString } from "$lib/modules/crypto";
 import {
@@ -13,10 +13,10 @@ import type {
   DirectoryRenameRequest,
   DirectoryCreateRequest,
   FileRenameRequest,
-  HmacSecretListResponse,
   DirectoryDeleteResponse,
 } from "$lib/server/schemas";
 import { hmacSecretStore, type MasterKey, type HmacSecret } from "$lib/stores";
+import { useTRPC } from "$trpc/client";
 
 export interface SelectedEntry {
   type: "directory" | "file";
@@ -40,10 +40,16 @@ export const useContext = () => {
 export const requestHmacSecretDownload = async (masterKey: CryptoKey) => {
   // TODO: MEK rotation
 
-  const res = await callGetApi("/api/hsk/list");
-  if (!res.ok) return false;
+  const trpc = useTRPC();
 
-  const { hsks: hmacSecretsWrapped }: HmacSecretListResponse = await res.json();
+  let hmacSecretsWrapped;
+  try {
+    hmacSecretsWrapped = await trpc.hsk.list.query();
+  } catch {
+    // TODO: Error Handling
+    return false;
+  }
+
   const hmacSecrets = await Promise.all(
     hmacSecretsWrapped.map(async ({ version, state, hsk: hmacSecretWrapped }) => {
       const { hmacSecret } = await unwrapHmacSecret(hmacSecretWrapped, masterKey);

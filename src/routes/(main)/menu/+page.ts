@@ -1,14 +1,14 @@
 import { error } from "@sveltejs/kit";
-import { callGetApi } from "$lib/hooks";
-import type { UserInfoResponse } from "$lib/server/schemas";
+import { useTRPC } from "$trpc/client";
 import type { PageLoad } from "./$types";
 
 export const load: PageLoad = async ({ fetch }) => {
-  const res = await callGetApi("/api/user", fetch);
-  if (!res.ok) {
+  const trpc = useTRPC(fetch);
+
+  try {
+    const { nickname } = await trpc.user.info.query();
+    return { nickname };
+  } catch {
     error(500, "Internal server error");
   }
-
-  const { nickname }: UserInfoResponse = await res.json();
-  return { nickname };
 };
