@@ -1,14 +1,14 @@
 import { error } from "@sveltejs/kit";
-import { callPostApi } from "$lib/hooks";
-import type { MissingThumbnailFileScanResponse } from "$lib/server/schemas";
+import { useTRPC } from "$trpc/client";
 import type { PageLoad } from "./$types";
 
 export const load: PageLoad = async ({ fetch }) => {
-  const res = await callPostApi("/api/file/scanMissingThumbnails", undefined, fetch);
-  if (!res.ok) {
+  const trpc = useTRPC(fetch);
+
+  try {
+    const files = await trpc.file.listWithoutThumbnail.query();
+    return { files };
+  } catch {
     error(500, "Internal server error");
   }
-
-  const { files }: MissingThumbnailFileScanResponse = await res.json();
-  return { files };
 };

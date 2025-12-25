@@ -1,4 +1,5 @@
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
+import superjson from "superjson";
 import { browser } from "$app/environment";
 import type { AppRouter } from "./router.server";
 
@@ -7,6 +8,7 @@ const createClient = (fetch: typeof globalThis.fetch) =>
     links: [
       httpBatchLink({
         url: "/api/trpc",
+        transformer: superjson,
         fetch,
       }),
     ],

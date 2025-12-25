@@ -6,7 +6,7 @@ export const load: PageLoad = async ({ fetch }) => {
   const trpc = useTRPC(fetch);
 
   try {
-    const { nickname } = await trpc.user.info.query();
+    const { nickname } = await trpc.user.get.query();
     return { nickname };
   } catch {
     error(500, "Internal server error");

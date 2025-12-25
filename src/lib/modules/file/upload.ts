@@ -13,8 +13,6 @@ import {
 } from "$lib/modules/crypto";
 import { generateThumbnail } from "$lib/modules/thumbnail";
 import type {
-  DuplicateFileScanRequest,
-  DuplicateFileScanResponse,
   FileThumbnailUploadRequest,
   FileUploadRequest,
   FileUploadResponse,
@@ -25,18 +23,18 @@ import {
   type HmacSecret,
   type FileUploadStatus,
 } from "$lib/stores";
+import { useTRPC } from "$trpc/client";
 
 const requestDuplicateFileScan = limitFunction(
   async (file: File, hmacSecret: HmacSecret, onDuplicate: () => Promise<boolean>) => {
+    const trpc = useTRPC();
     const fileBuffer = await file.arrayBuffer();
     const fileSigned = encodeToBase64(await signMessageHmac(fileBuffer, hmacSecret.secret));
 
-    const res = await axios.post("/api/file/scanDuplicates", {
+    const files = await trpc.file.listByHash.query({
       hskVersion: hmacSecret.version,
       contentHmac: fileSigned,
-    } satisfies DuplicateFileScanRequest);
-    const { files }: DuplicateFileScanResponse = res.data;
-
+    });
     if (files.length === 0 || (await onDuplicate())) {
       return { fileBuffer, fileSigned };
     } else {

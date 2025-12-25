@@ -1,8 +1,7 @@
 import { getContext, setContext } from "svelte";
-import { callPostApi } from "$lib/hooks";
 import { encryptString } from "$lib/modules/crypto";
 import type { SelectedCategory } from "$lib/components/molecules";
-import type { CategoryRenameRequest } from "$lib/server/schemas";
+import { useTRPC } from "$trpc/client";
 
 export { requestCategoryCreation, requestFileRemovalFromCategory } from "$lib/services/category";
 
@@ -18,17 +17,31 @@ export const useContext = () => {
 };
 
 export const requestCategoryRename = async (category: SelectedCategory, newName: string) => {
+  const trpc = useTRPC();
   const newNameEncrypted = await encryptString(newName, category.dataKey);
 
-  const res = await callPostApi<CategoryRenameRequest>(`/api/category/${category.id}/rename`, {
-    dekVersion: category.dataKeyVersion.toISOString(),
-    name: newNameEncrypted.ciphertext,
-    nameIv: newNameEncrypted.iv,
-  });
-  return res.ok;
+  try {
+    await trpc.category.rename.mutate({
+      id: category.id,
+      dekVersion: category.dataKeyVersion,
+      name: newNameEncrypted.ciphertext,
+      nameIv: newNameEncrypted.iv,
+    });
+    return true;
+  } catch {
+    // TODO: Error Handling
+    return false;
+  }
 };
 
 export const requestCategoryDeletion = async (category: SelectedCategory) => {
-  const res = await callPostApi(`/api/category/${category.id}/delete`);
-  return res.ok;
+  const trpc = useTRPC();
+
+  try {
+    await trpc.category.delete.mutate({ id: category.id });
+    return true;
+  } catch {
+    // TODO: Error Handling
+    return false;
+  }
 };

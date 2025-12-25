@@ -2,66 +2,11 @@ import mime from "mime";
 import { z } from "zod";
 import { directoryIdSchema } from "./directory";
 
-export const fileInfoResponse = z.object({
-  parent: directoryIdSchema,
-  mekVersion: z.number().int().positive(),
-  dek: z.string().base64().nonempty(),
-  dekVersion: z.string().datetime(),
-  contentType: z
-    .string()
-    .trim()
-    .nonempty()
-    .refine((value) => mime.getExtension(value) !== null), // MIME type
-  contentIv: z.string().base64().nonempty(),
-  name: z.string().base64().nonempty(),
-  nameIv: z.string().base64().nonempty(),
-  createdAt: z.string().base64().nonempty().optional(),
-  createdAtIv: z.string().base64().nonempty().optional(),
-  lastModifiedAt: z.string().base64().nonempty(),
-  lastModifiedAtIv: z.string().base64().nonempty(),
-  categories: z.number().int().positive().array(),
-});
-export type FileInfoResponse = z.output<typeof fileInfoResponse>;
-
-export const fileRenameRequest = z.object({
-  dekVersion: z.string().datetime(),
-  name: z.string().base64().nonempty(),
-  nameIv: z.string().base64().nonempty(),
-});
-export type FileRenameRequest = z.input<typeof fileRenameRequest>;
-
-export const fileThumbnailInfoResponse = z.object({
-  updatedAt: z.string().datetime(),
-  contentIv: z.string().base64().nonempty(),
-});
-export type FileThumbnailInfoResponse = z.output<typeof fileThumbnailInfoResponse>;
-
 export const fileThumbnailUploadRequest = z.object({
   dekVersion: z.string().datetime(),
   contentIv: z.string().base64().nonempty(),
 });
 export type FileThumbnailUploadRequest = z.input<typeof fileThumbnailUploadRequest>;
-
-export const fileListResponse = z.object({
-  files: z.number().int().positive().array(),
-});
-export type FileListResponse = z.output<typeof fileListResponse>;
-
-export const duplicateFileScanRequest = z.object({
-  hskVersion: z.number().int().positive(),
-  contentHmac: z.string().base64().nonempty(),
-});
-export type DuplicateFileScanRequest = z.input<typeof duplicateFileScanRequest>;
-
-export const duplicateFileScanResponse = z.object({
-  files: z.number().int().positive().array(),
-});
-export type DuplicateFileScanResponse = z.output<typeof duplicateFileScanResponse>;
-
-export const missingThumbnailFileScanResponse = z.object({
-  files: z.number().int().positive().array(),
-});
-export type MissingThumbnailFileScanResponse = z.output<typeof missingThumbnailFileScanResponse>;
 
 export const fileUploadRequest = z.object({
   parent: directoryIdSchema,

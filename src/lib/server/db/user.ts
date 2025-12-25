@@ -27,10 +27,6 @@ export const getUserByEmail = async (email: string) => {
   return user ? (user satisfies User) : null;
 };
 
-export const setUserNickname = async (userId: number, nickname: string) => {
-  await db.updateTable("user").set({ nickname }).where("id", "=", userId).execute();
-};
-
 export const setUserPassword = async (userId: number, password: string) => {
   await db.updateTable("user").set({ password }).where("id", "=", userId).execute();
 };
