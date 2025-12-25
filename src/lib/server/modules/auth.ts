@@ -11,9 +11,16 @@ interface Session {
   clientId?: number;
 }
 
-interface ClientSession extends Session {
+export interface ClientSession extends Session {
   clientId: number;
 }
+
+export type SessionPermission =
+  | "any"
+  | "notClient"
+  | "anyClient"
+  | "pendingClient"
+  | "activeClient";
 
 export class AuthenticationError extends Error {
   constructor(
@@ -22,6 +29,16 @@ export class AuthenticationError extends Error {
   ) {
     super(message);
     this.name = "AuthenticationError";
+  }
+}
+
+export class AuthorizationError extends Error {
+  constructor(
+    public status: 403 | 500,
+    message: string,
+  ) {
+    super(message);
+    this.name = "AuthorizationError";
   }
 }
 
@@ -52,34 +69,12 @@ export const authenticate = async (sessionIdSigned: string, ip: string, userAgen
   }
 };
 
-export async function authorize(locals: App.Locals, requiredPermission: "any"): Promise<Session>;
-
-export async function authorize(
+export const authorizeInternal = async (
   locals: App.Locals,
-  requiredPermission: "notClient",
-): Promise<Session>;
-
-export async function authorize(
-  locals: App.Locals,
-  requiredPermission: "anyClient",
-): Promise<ClientSession>;
-
-export async function authorize(
-  locals: App.Locals,
-  requiredPermission: "pendingClient",
-): Promise<ClientSession>;
-
-export async function authorize(
-  locals: App.Locals,
-  requiredPermission: "activeClient",
-): Promise<ClientSession>;
-
-export async function authorize(
-  locals: App.Locals,
-  requiredPermission: "any" | "notClient" | "anyClient" | "pendingClient" | "activeClient",
-): Promise<Session> {
+  requiredPermission: SessionPermission,
+): Promise<Session> => {
   if (!locals.session) {
-    error(500, "Unauthenticated");
+    throw new AuthorizationError(500, "Unauthenticated");
   }
 
   const { id: sessionId, userId, clientId } = locals.session;
@@ -89,39 +84,63 @@ export async function authorize(
       break;
     case "notClient":
       if (clientId) {
-        error(403, "Forbidden");
+        throw new AuthorizationError(403, "Forbidden");
       }
       break;
     case "anyClient":
       if (!clientId) {
-        error(403, "Forbidden");
+        throw new AuthorizationError(403, "Forbidden");
       }
       break;
     case "pendingClient": {
       if (!clientId) {
-        error(403, "Forbidden");
+        throw new AuthorizationError(403, "Forbidden");
       }
       const userClient = await getUserClient(userId, clientId);
       if (!userClient) {
-        error(500, "Invalid session id");
+        throw new AuthorizationError(500, "Invalid session id");
       } else if (userClient.state !== "pending") {
-        error(403, "Forbidden");
+        throw new AuthorizationError(403, "Forbidden");
       }
       break;
     }
     case "activeClient": {
       if (!clientId) {
-        error(403, "Forbidden");
+        throw new AuthorizationError(403, "Forbidden");
       }
       const userClient = await getUserClient(userId, clientId);
       if (!userClient) {
-        error(500, "Invalid session id");
+        throw new AuthorizationError(500, "Invalid session id");
       } else if (userClient.state !== "active") {
-        error(403, "Forbidden");
+        throw new AuthorizationError(403, "Forbidden");
       }
       break;
     }
   }
 
   return { sessionId, userId, clientId };
+};
+
+export async function authorize(
+  locals: App.Locals,
+  requiredPermission: "any" | "notClient",
+): Promise<Session>;
+
+export async function authorize(
+  locals: App.Locals,
+  requiredPermission: "anyClient" | "pendingClient" | "activeClient",
+): Promise<ClientSession>;
+
+export async function authorize(
+  locals: App.Locals,
+  requiredPermission: SessionPermission,
+): Promise<Session> {
+  try {
+    return await authorizeInternal(locals, requiredPermission);
+  } catch (e) {
+    if (e instanceof AuthorizationError) {
+      error(e.status, e.message);
+    }
+    throw e;
+  }
 }

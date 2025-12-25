@@ -4,7 +4,7 @@ import { authenticate, AuthenticationError } from "$lib/server/modules/auth";
 
 export const authenticateMiddleware: Handle = async ({ event, resolve }) => {
   const { pathname, search } = event.url;
-  if (pathname === "/api/auth/login") {
+  if (pathname === "/api/auth/login" || pathname.startsWith("/trpc")) {
     return await resolve(event);
   }
 
