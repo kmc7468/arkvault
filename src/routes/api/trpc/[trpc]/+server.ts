@@ -5,7 +5,7 @@ import type { RequestHandler } from "./$types";
 
 const trpcHandler: RequestHandler = (event) =>
   fetchRequestHandler({
-    endpoint: "/trpc",
+    endpoint: "/api/trpc",
     req: event.request,
     router: appRouter,
     createContext: () => createContext(event),

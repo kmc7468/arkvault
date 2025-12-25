@@ -6,7 +6,7 @@ const createClient = (fetch: typeof globalThis.fetch) =>
   createTRPCClient<AppRouter>({
     links: [
       httpBatchLink({
-        url: "/trpc",
+        url: "/api/trpc",
         fetch,
       }),
     ],
