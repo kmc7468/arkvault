@@ -1,10 +1,6 @@
-import { callPostApi } from "$lib/hooks";
+import { TRPCClientError } from "@trpc/client";
 import { encodeToBase64, decryptChallenge, signMessageRSA } from "$lib/modules/crypto";
-import type {
-  SessionUpgradeRequest,
-  SessionUpgradeResponse,
-  SessionUpgradeVerifyRequest,
-} from "$lib/server/schemas";
+import { useTRPC } from "$trpc/client";
 
 export const requestSessionUpgrade = async (
   encryptKeyBase64: string,
@@ -13,27 +9,45 @@ export const requestSessionUpgrade = async (
   signKey: CryptoKey,
   force = false,
 ) => {
-  let res = await callPostApi<SessionUpgradeRequest>("/api/auth/upgradeSession", {
-    encPubKey: encryptKeyBase64,
-    sigPubKey: verifyKeyBase64,
-  });
-  if (res.status === 403) return [false, "Unregistered client"] as const;
-  else if (!res.ok) return [false] as const;
-
-  const { id, challenge }: SessionUpgradeResponse = await res.json();
+  const trpc = useTRPC();
+  let id, challenge;
+  try {
+    ({ id, challenge } = await trpc.auth.upgradeSession.mutate({
+      encPubKey: encryptKeyBase64,
+      sigPubKey: verifyKeyBase64,
+    }));
+  } catch (e) {
+    if (e instanceof TRPCClientError && e.data?.code === "FORBIDDEN") {
+      return [false, "Unregistered client"] as const;
+    }
+    return [false] as const;
+  }
   const answer = await decryptChallenge(challenge, decryptKey);
   const answerSig = await signMessageRSA(answer, signKey);
 
-  res = await callPostApi<SessionUpgradeVerifyRequest>("/api/auth/upgradeSession/verify", {
-    id,
-    answerSig: encodeToBase64(answerSig),
-    force,
-  });
-  if (res.status === 409) return [false, "Already logged in"] as const;
-  else return [res.ok] as const;
+  try {
+    await trpc.auth.verifySessionUpgrade.mutate({
+      id,
+      answerSig: encodeToBase64(answerSig),
+      force,
+    });
+  } catch (e) {
+    if (e instanceof TRPCClientError && e.data?.code === "CONFLICT") {
+      return [false, "Already logged in"] as const;
+    }
+    return [false] as const;
+  }
+
+  return [true] as const;
 };
 
 export const requestLogout = async () => {
-  const res = await callPostApi("/api/auth/logout");
-  return res.ok;
+  const trpc = useTRPC();
+  try {
+    await trpc.auth.logout.mutate();
+    return true;
+  } catch {
+    // TODO: Error Handling
+    return false;
+  }
 };

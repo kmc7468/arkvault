@@ -2,6 +2,7 @@ import type { RequestEvent } from "@sveltejs/kit";
 import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
 import { createContext, router } from "./init.server";
 import {
+  authRouter,
   categoryRouter,
   clientRouter,
   directoryRouter,
@@ -12,6 +13,7 @@ import {
 } from "./routers";
 
 export const appRouter = router({
+  auth: authRouter,
   category: categoryRouter,
   client: clientRouter,
   directory: directoryRouter,
