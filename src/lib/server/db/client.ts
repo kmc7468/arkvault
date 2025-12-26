@@ -98,22 +98,6 @@ export const createUserClient = async (userId: number, clientId: number) => {
   }
 };
 
-export const getAllUserClients = async (userId: number) => {
-  const userClients = await db
-    .selectFrom("user_client")
-    .selectAll()
-    .where("user_id", "=", userId)
-    .execute();
-  return userClients.map(
-    ({ user_id, client_id, state }) =>
-      ({
-        userId: user_id,
-        clientId: client_id,
-        state,
-      }) satisfies UserClient,
-  );
-};
-
 export const getUserClient = async (userId: number, clientId: number) => {
   const userClient = await db
     .selectFrom("user_client")

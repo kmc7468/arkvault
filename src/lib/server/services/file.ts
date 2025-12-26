@@ -1,72 +1,17 @@
 import { error } from "@sveltejs/kit";
 import { createHash } from "crypto";
 import { createReadStream, createWriteStream } from "fs";
-import { mkdir, stat, unlink } from "fs/promises";
+import { mkdir, stat } from "fs/promises";
 import { dirname } from "path";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import { v4 as uuidv4 } from "uuid";
-import { IntegrityError } from "$lib/server/db/error";
-import {
-  registerFile,
-  getAllFileIds,
-  getAllFileIdsByContentHmac,
-  getFile,
-  setFileEncName,
-  unregisterFile,
-  getAllFileCategories,
-  type NewFile,
-} from "$lib/server/db/file";
-import {
-  updateFileThumbnail,
-  getFileThumbnail,
-  getMissingFileThumbnails,
-} from "$lib/server/db/media";
-import type { Ciphertext } from "$lib/server/db/schema";
+import { FileRepo, MediaRepo, IntegrityError } from "$lib/server/db";
 import env from "$lib/server/loadenv";
-
-export const getFileInformation = async (userId: number, fileId: number) => {
-  const file = await getFile(userId, fileId);
-  if (!file) {
-    error(404, "Invalid file id");
-  }
-
-  const categories = await getAllFileCategories(fileId);
-  return {
-    parentId: file.parentId ?? ("root" as const),
-    mekVersion: file.mekVersion,
-    encDek: file.encDek,
-    dekVersion: file.dekVersion,
-    contentType: file.contentType,
-    encContentIv: file.encContentIv,
-    encName: file.encName,
-    encCreatedAt: file.encCreatedAt,
-    encLastModifiedAt: file.encLastModifiedAt,
-    categories: categories.map(({ id }) => id),
-  };
-};
-
-const safeUnlink = async (path: string | null) => {
-  if (path) {
-    await unlink(path).catch(console.error);
-  }
-};
-
-export const deleteFile = async (userId: number, fileId: number) => {
-  try {
-    const { path, thumbnailPath } = await unregisterFile(userId, fileId);
-    safeUnlink(path); // Intended
-    safeUnlink(thumbnailPath); // Intended
-  } catch (e) {
-    if (e instanceof IntegrityError && e.message === "File not found") {
-      error(404, "Invalid file id");
-    }
-    throw e;
-  }
-};
+import { safeUnlink } from "$lib/server/modules/filesystem";
 
 export const getFileStream = async (userId: number, fileId: number) => {
-  const file = await getFile(userId, fileId);
+  const file = await FileRepo.getFile(userId, fileId);
   if (!file) {
     error(404, "Invalid file id");
   }
@@ -78,37 +23,8 @@ export const getFileStream = async (userId: number, fileId: number) => {
   };
 };
 
-export const renameFile = async (
-  userId: number,
-  fileId: number,
-  dekVersion: Date,
-  newEncName: Ciphertext,
-) => {
-  try {
-    await setFileEncName(userId, fileId, dekVersion, newEncName);
-  } catch (e) {
-    if (e instanceof IntegrityError) {
-      if (e.message === "File not found") {
-        error(404, "Invalid file id");
-      } else if (e.message === "Invalid DEK version") {
-        error(400, "Invalid DEK version");
-      }
-    }
-    throw e;
-  }
-};
-
-export const getFileThumbnailInformation = async (userId: number, fileId: number) => {
-  const thumbnail = await getFileThumbnail(userId, fileId);
-  if (!thumbnail) {
-    error(404, "File or its thumbnail not found");
-  }
-
-  return { updatedAt: thumbnail.updatedAt, encContentIv: thumbnail.encContentIv };
-};
-
 export const getFileThumbnailStream = async (userId: number, fileId: number) => {
-  const thumbnail = await getFileThumbnail(userId, fileId);
+  const thumbnail = await MediaRepo.getFileThumbnail(userId, fileId);
   if (!thumbnail) {
     error(404, "File or its thumbnail not found");
   }
@@ -133,7 +49,13 @@ export const uploadFileThumbnail = async (
   try {
     await pipeline(encContentStream, createWriteStream(path, { flags: "wx", mode: 0o600 }));
 
-    const oldPath = await updateFileThumbnail(userId, fileId, dekVersion, path, encContentIv);
+    const oldPath = await MediaRepo.updateFileThumbnail(
+      userId,
+      fileId,
+      dekVersion,
+      path,
+      encContentIv,
+    );
     safeUnlink(oldPath); // Intended
   } catch (e) {
     await safeUnlink(path);
@@ -149,27 +71,8 @@ export const uploadFileThumbnail = async (
   }
 };
 
-export const getFileList = async (userId: number) => {
-  const fileIds = await getAllFileIds(userId);
-  return { files: fileIds };
-};
-
-export const scanDuplicateFiles = async (
-  userId: number,
-  hskVersion: number,
-  contentHmac: string,
-) => {
-  const fileIds = await getAllFileIdsByContentHmac(userId, hskVersion, contentHmac);
-  return { files: fileIds };
-};
-
-export const scanMissingFileThumbnails = async (userId: number) => {
-  const fileIds = await getMissingFileThumbnails(userId);
-  return { files: fileIds };
-};
-
 export const uploadFile = async (
-  params: Omit<NewFile, "path" | "encContentHash">,
+  params: Omit<FileRepo.NewFile, "path" | "encContentHash">,
   encContentStream: Readable,
   encContentHash: Promise<string>,
 ) => {
@@ -201,7 +104,7 @@ export const uploadFile = async (
       throw new Error("Invalid checksum");
     }
 
-    const { id: fileId } = await registerFile({
+    const { id: fileId } = await FileRepo.registerFile({
       ...params,
       path,
       encContentHash: hash,

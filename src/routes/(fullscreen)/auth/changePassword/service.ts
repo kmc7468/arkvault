@@ -1,10 +1,11 @@
-import { callPostApi } from "$lib/hooks";
-import type { PasswordChangeRequest } from "$lib/server/schemas";
+import { trpc } from "$trpc/client";
 
 export const requestPasswordChange = async (oldPassword: string, newPassword: string) => {
-  const res = await callPostApi<PasswordChangeRequest>("/api/auth/changePassword", {
-    oldPassword,
-    newPassword,
-  });
-  return res.ok;
+  try {
+    await trpc().auth.changePassword.mutate({ oldPassword, newPassword });
+    return true;
+  } catch {
+    // TODO: Error Handling
+    return false;
+  }
 };

@@ -1,4 +1,3 @@
-import { callGetApi } from "$lib/hooks";
 import { getAllFileInfos } from "$lib/indexedDB/filesystem";
 import { decryptData } from "$lib/modules/crypto";
 import {
@@ -11,11 +10,8 @@ import {
   downloadFile,
 } from "$lib/modules/file";
 import { getThumbnailUrl } from "$lib/modules/thumbnail";
-import type {
-  FileThumbnailInfoResponse,
-  FileThumbnailUploadRequest,
-  FileListResponse,
-} from "$lib/server/schemas";
+import type { FileThumbnailUploadRequest } from "$lib/server/schemas";
+import { trpc } from "$trpc/client";
 
 export const requestFileDownload = async (
   fileId: number,
@@ -52,12 +48,16 @@ export const requestFileThumbnailDownload = async (fileId: number, dataKey?: Cry
   const cache = await getFileThumbnailCache(fileId);
   if (cache || !dataKey) return cache;
 
-  let res = await callGetApi(`/api/file/${fileId}/thumbnail`);
-  if (!res.ok) return null;
+  let thumbnailInfo;
+  try {
+    thumbnailInfo = await trpc().file.thumbnail.query({ id: fileId });
+  } catch {
+    // TODO: Error Handling
+    return null;
+  }
+  const { contentIv: thumbnailEncryptedIv } = thumbnailInfo;
 
-  const { contentIv: thumbnailEncryptedIv }: FileThumbnailInfoResponse = await res.json();
-
-  res = await callGetApi(`/api/file/${fileId}/thumbnail/download`);
+  const res = await fetch(`/api/file/${fileId}/thumbnail/download`);
   if (!res.ok) return null;
 
   const thumbnailEncrypted = await res.arrayBuffer();
@@ -68,10 +68,14 @@ export const requestFileThumbnailDownload = async (fileId: number, dataKey?: Cry
 };
 
 export const requestDeletedFilesCleanup = async () => {
-  const res = await callGetApi("/api/file/list");
-  if (!res.ok) return;
+  let liveFiles;
+  try {
+    liveFiles = await trpc().file.list.query();
+  } catch {
+    // TODO: Error Handling
+    return;
+  }
 
-  const { files: liveFiles }: FileListResponse = await res.json();
   const liveFilesSet = new Set(liveFiles);
   const maybeCachedFiles = await getAllFileInfos();
 

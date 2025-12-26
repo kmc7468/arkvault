@@ -1,5 +1,4 @@
 import { getContext, setContext } from "svelte";
-import { callGetApi, callPostApi } from "$lib/hooks";
 import { storeHmacSecrets } from "$lib/indexedDB";
 import { generateDataKey, wrapDataKey, unwrapHmacSecret, encryptString } from "$lib/modules/crypto";
 import {
@@ -9,14 +8,8 @@ import {
   deleteFileThumbnailCache,
   uploadFile,
 } from "$lib/modules/file";
-import type {
-  DirectoryRenameRequest,
-  DirectoryCreateRequest,
-  FileRenameRequest,
-  HmacSecretListResponse,
-  DirectoryDeleteResponse,
-} from "$lib/server/schemas";
 import { hmacSecretStore, type MasterKey, type HmacSecret } from "$lib/stores";
+import { trpc } from "$trpc/client";
 
 export interface SelectedEntry {
   type: "directory" | "file";
@@ -40,10 +33,14 @@ export const useContext = () => {
 export const requestHmacSecretDownload = async (masterKey: CryptoKey) => {
   // TODO: MEK rotation
 
-  const res = await callGetApi("/api/hsk/list");
-  if (!res.ok) return false;
+  let hmacSecretsWrapped;
+  try {
+    hmacSecretsWrapped = await trpc().hsk.list.query();
+  } catch {
+    // TODO: Error Handling
+    return false;
+  }
 
-  const { hsks: hmacSecretsWrapped }: HmacSecretListResponse = await res.json();
   const hmacSecrets = await Promise.all(
     hmacSecretsWrapped.map(async ({ version, state, hsk: hmacSecretWrapped }) => {
       const { hmacSecret } = await unwrapHmacSecret(hmacSecretWrapped, masterKey);
@@ -65,15 +62,20 @@ export const requestDirectoryCreation = async (
   const { dataKey, dataKeyVersion } = await generateDataKey();
   const nameEncrypted = await encryptString(name, dataKey);
 
-  const res = await callPostApi<DirectoryCreateRequest>("/api/directory/create", {
-    parent: parentId,
-    mekVersion: masterKey.version,
-    dek: await wrapDataKey(dataKey, masterKey.key),
-    dekVersion: dataKeyVersion.toISOString(),
-    name: nameEncrypted.ciphertext,
-    nameIv: nameEncrypted.iv,
-  });
-  return res.ok;
+  try {
+    await trpc().directory.create.mutate({
+      parent: parentId,
+      mekVersion: masterKey.version,
+      dek: await wrapDataKey(dataKey, masterKey.key),
+      dekVersion: dataKeyVersion,
+      name: nameEncrypted.ciphertext,
+      nameIv: nameEncrypted.iv,
+    });
+    return true;
+  } catch {
+    // TODO: Error Handling
+    return false;
+  }
 };
 
 export const requestFileUpload = async (
@@ -97,35 +99,46 @@ export const requestFileUpload = async (
 export const requestEntryRename = async (entry: SelectedEntry, newName: string) => {
   const newNameEncrypted = await encryptString(newName, entry.dataKey);
 
-  let res;
-  if (entry.type === "directory") {
-    res = await callPostApi<DirectoryRenameRequest>(`/api/directory/${entry.id}/rename`, {
-      dekVersion: entry.dataKeyVersion.toISOString(),
-      name: newNameEncrypted.ciphertext,
-      nameIv: newNameEncrypted.iv,
-    });
-  } else {
-    res = await callPostApi<FileRenameRequest>(`/api/file/${entry.id}/rename`, {
-      dekVersion: entry.dataKeyVersion.toISOString(),
-      name: newNameEncrypted.ciphertext,
-      nameIv: newNameEncrypted.iv,
-    });
+  try {
+    if (entry.type === "directory") {
+      await trpc().directory.rename.mutate({
+        id: entry.id,
+        dekVersion: entry.dataKeyVersion,
+        name: newNameEncrypted.ciphertext,
+        nameIv: newNameEncrypted.iv,
+      });
+    } else {
+      await trpc().file.rename.mutate({
+        id: entry.id,
+        dekVersion: entry.dataKeyVersion,
+        name: newNameEncrypted.ciphertext,
+        nameIv: newNameEncrypted.iv,
+      });
+    }
+    return true;
+  } catch {
+    // TODO: Error Handling
+    return false;
   }
-  return res.ok;
 };
 
 export const requestEntryDeletion = async (entry: SelectedEntry) => {
-  const res = await callPostApi(`/api/${entry.type}/${entry.id}/delete`);
-  if (!res.ok) return false;
-
-  if (entry.type === "directory") {
-    const { deletedFiles }: DirectoryDeleteResponse = await res.json();
-    await Promise.all(
-      deletedFiles.flatMap((fileId) => [deleteFileCache(fileId), deleteFileThumbnailCache(fileId)]),
-    );
+  try {
+    if (entry.type === "directory") {
+      const { deletedFiles } = await trpc().directory.delete.mutate({ id: entry.id });
+      await Promise.all(
+        deletedFiles.flatMap((fileId) => [
+          deleteFileCache(fileId),
+          deleteFileThumbnailCache(fileId),
+        ]),
+      );
+    } else {
+      await trpc().file.delete.mutate({ id: entry.id });
+      await Promise.all([deleteFileCache(entry.id), deleteFileThumbnailCache(entry.id)]);
+    }
     return true;
-  } else {
-    await Promise.all([deleteFileCache(entry.id), deleteFileThumbnailCache(entry.id)]);
-    return true;
+  } catch {
+    // TODO: Error Handling
+    return false;
   }
 };

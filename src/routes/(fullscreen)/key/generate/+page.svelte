@@ -4,9 +4,9 @@
   import { BottomDiv, Button, FullscreenDiv, TextButton } from "$lib/components/atoms";
   import { TitledDiv } from "$lib/components/molecules";
   import { ForceLoginModal } from "$lib/components/organisms";
-  import { gotoStateful } from "$lib/hooks";
   import { storeClientKeys } from "$lib/modules/key";
   import { clientKeyStore } from "$lib/stores";
+  import { gotoStateful } from "$lib/utils";
   import Order from "./Order.svelte";
   import {
     generateClientKeys,
