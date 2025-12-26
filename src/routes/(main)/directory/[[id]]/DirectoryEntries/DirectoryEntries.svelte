@@ -1,6 +1,8 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import { get, type Writable } from "svelte/store";
+  import { ActionEntryButton } from "$lib/components/atoms";
+  import { DirectoryEntryLabel } from "$lib/components/molecules";
   import {
     getDirectoryInfo,
     getFileInfo,
@@ -23,10 +25,19 @@
     info: DirectoryInfo;
     onEntryClick: (entry: SelectedEntry) => void;
     onEntryMenuClick: (entry: SelectedEntry) => void;
+    onParentClick?: () => void;
+    showParentEntry?: boolean;
     sortBy?: SortBy;
   }
 
-  let { info, onEntryClick, onEntryMenuClick, sortBy = SortBy.NAME_ASC }: Props = $props();
+  let {
+    info,
+    onEntryClick,
+    onEntryMenuClick,
+    onParentClick,
+    showParentEntry = false,
+    sortBy = SortBy.NAME_ASC,
+  }: Props = $props();
 
   interface DirectoryEntry {
     name?: string;
@@ -106,8 +117,13 @@
   });
 </script>
 
-{#if subDirectories.length + files.length > 0}
+{#if subDirectories.length + files.length > 0 || showParentEntry}
   <div class="space-y-1 pb-[4.5rem]">
+    {#if showParentEntry}
+      <ActionEntryButton class="h-14" onclick={onParentClick}>
+        <DirectoryEntryLabel type="parent-directory" name=".." />
+      </ActionEntryButton>
+    {/if}
     {#each subDirectories as { info }}
       <SubDirectory {info} onclick={onEntryClick} onOpenMenuClick={onEntryMenuClick} />
     {/each}

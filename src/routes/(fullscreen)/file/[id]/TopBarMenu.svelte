@@ -44,12 +44,13 @@
 
       {#if directoryId}
         {@render menuButton(IconFolderOpen, "폴더에서 보기", () =>
-          goto(directoryId === "root" ? "/directory" : `/directory/${directoryId}`),
+          goto(
+            directoryId === "root" ? "/directory?from=file" : `/directory/${directoryId}?from=file`,
+          ),
         )}
       {/if}
       {#if fileBlob}
         {@render menuButton(IconCloudDownload, "다운로드", () => {
-          console.log(filename);
           FileSaver.saveAs(fileBlob, filename);
         })}
       {/if}

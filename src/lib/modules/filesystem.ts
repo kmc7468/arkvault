@@ -23,6 +23,7 @@ import { trpc } from "$trpc/client";
 export type DirectoryInfo =
   | {
       id: "root";
+      parentId?: undefined;
       dataKey?: undefined;
       dataKeyVersion?: undefined;
       name?: undefined;
@@ -31,6 +32,7 @@ export type DirectoryInfo =
     }
   | {
       id: number;
+      parentId: DirectoryId;
       dataKey?: CryptoKey;
       dataKeyVersion?: Date;
       name: string;
@@ -93,7 +95,13 @@ const fetchDirectoryInfoFromIndexedDB = async (
     info.set({ id, subDirectoryIds, fileIds });
   } else {
     if (!directory) return;
-    info.set({ id, name: directory.name, subDirectoryIds, fileIds });
+    info.set({
+      id,
+      parentId: directory.parentId,
+      name: directory.name,
+      subDirectoryIds,
+      fileIds,
+    });
   }
 };
 
@@ -124,6 +132,7 @@ const fetchDirectoryInfoFromServer = async (
 
     info.set({
       id,
+      parentId: metadata!.parent,
       dataKey,
       dataKeyVersion: new Date(metadata!.dekVersion),
       name,

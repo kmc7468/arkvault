@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import type { Writable } from "svelte/store";
   import { goto } from "$app/navigation";
+  import { page } from "$app/state";
   import { FloatingButton } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
   import { getDirectoryInfo, type DirectoryInfo } from "$lib/modules/filesystem";
@@ -41,6 +42,9 @@
   let isEntryMenuBottomSheetOpen = $state(false);
   let isEntryRenameModalOpen = $state(false);
   let isEntryDeleteModalOpen = $state(false);
+
+  let isFromFilePage = $derived(page.url.searchParams.get("from") === "file");
+  let showTopBar = $derived(data.id !== "root" || isFromFilePage);
 
   const uploadFile = () => {
     const files = fileInput?.files;
@@ -86,11 +90,11 @@
 <input bind:this={fileInput} onchange={uploadFile} type="file" multiple class="hidden" />
 
 <div class="flex h-full flex-col">
-  {#if data.id !== "root"}
+  {#if showTopBar}
     <TopBar title={$info?.name} class="flex-shrink-0" />
   {/if}
   {#if $info}
-    <div class={["flex flex-grow flex-col px-4 pb-4", data.id === "root" && "pt-4"]}>
+    <div class={["flex flex-grow flex-col px-4 pb-4", !showTopBar && "pt-4"]}>
       <div class="flex gap-x-2">
         <UploadStatusCard onclick={() => goto("/file/uploads")} />
         <DownloadStatusCard onclick={() => goto("/file/downloads")} />
@@ -103,6 +107,13 @@
             context.selectedEntry = entry;
             isEntryMenuBottomSheetOpen = true;
           }}
+          showParentEntry={isFromFilePage && $info.parentId !== undefined}
+          onParentClick={() =>
+            goto(
+              $info.parentId === "root"
+                ? "/directory?from=file"
+                : `/directory/${$info.parentId}?from=file`,
+            )}
         />
       {/key}
     </div>
