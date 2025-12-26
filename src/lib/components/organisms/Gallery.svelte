@@ -2,9 +2,9 @@
   import { createWindowVirtualizer } from "@tanstack/svelte-virtual";
   import { untrack } from "svelte";
   import { get, type Writable } from "svelte/store";
+  import { FileThumbnailButton } from "$lib/components/molecules";
   import type { FileInfo } from "$lib/modules/filesystem";
   import { formatDate, formatDateSortable, SortBy, sortEntries } from "$lib/utils";
-  import Thumbnail from "./Thumbnail.svelte";
 
   interface Props {
     files: Writable<FileInfo | null>[];
@@ -105,7 +105,7 @@
         {:else}
           <div class="grid grid-cols-4 gap-1 pb-4">
             {#each row.items as { info }}
-              <Thumbnail {info} onclick={onFileClick} />
+              <FileThumbnailButton {info} onclick={onFileClick} />
             {/each}
           </div>
         {/if}
