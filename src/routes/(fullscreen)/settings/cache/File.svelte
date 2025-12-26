@@ -2,7 +2,7 @@
   import type { Writable } from "svelte/store";
   import type { FileCacheIndex } from "$lib/indexedDB";
   import type { FileInfo } from "$lib/modules/filesystem";
-  import { formatDate, formatFileSize } from "$lib/modules/util";
+  import { formatDate, formatFileSize } from "$lib/utils";
 
   import IconDraft from "~icons/material-symbols/draft";
   import IconScanDelete from "~icons/material-symbols/scan-delete";

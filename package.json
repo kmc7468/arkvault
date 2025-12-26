@@ -21,6 +21,7 @@
     "@sveltejs/adapter-node": "^5.4.0",
     "@sveltejs/kit": "^2.49.2",
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "@tanstack/svelte-virtual": "^3.13.13",
     "@trpc/client": "^11.8.1",
     "@types/file-saver": "^2.0.7",
     "@types/ms": "^0.7.34",

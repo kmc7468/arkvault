@@ -54,6 +54,9 @@ importers:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^6.2.1
         version: 6.2.1(svelte@5.46.1)(vite@7.3.0(@types/node@25.0.3)(jiti@1.21.7)(yaml@2.8.0))
+      '@tanstack/svelte-virtual':
+        specifier: ^3.13.13
+        version: 3.13.13(svelte@5.46.1)
       '@trpc/client':
         specifier: ^11.8.1
         version: 11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3)
@@ -609,6 +612,14 @@ packages:
     peerDependencies:
       svelte: ^5.0.0
       vite: ^6.3.0 || ^7.0.0
+
+  '@tanstack/svelte-virtual@3.13.13':
+    resolution: {integrity: sha512-VDOvbRw3R+XBQdFodEJ4E7AOmEyo3Bmr4zL4DLVnJ0fxICdbvY5F5t8zSwJ4f7lqjckXi0yKFzY8WBtjaNbsGQ==}
+    peerDependencies:
+      svelte: ^3.48.0 || ^4.0.0 || ^5.0.0
+
+  '@tanstack/virtual-core@3.13.13':
+    resolution: {integrity: sha512-uQFoSdKKf5S8k51W5t7b2qpfkyIbdHMzAn+AMQvHPxKUPeo1SsGaA4JRISQT87jm28b7z8OEqPcg1IOZagQHcA==}
 
   '@trpc/client@11.8.1':
     resolution: {integrity: sha512-L/SJFGanr9xGABmuDoeXR4xAdHJmsXsiF9OuH+apecJ+8sUITzVT1EPeqp0ebqA6lBhEl5pPfg3rngVhi/h60Q==}
@@ -2366,6 +2377,13 @@ snapshots:
       vitefu: 1.1.1(vite@7.3.0(@types/node@25.0.3)(jiti@1.21.7)(yaml@2.8.0))
     transitivePeerDependencies:
       - supports-color
+
+  '@tanstack/svelte-virtual@3.13.13(svelte@5.46.1)':
+    dependencies:
+      '@tanstack/virtual-core': 3.13.13
+      svelte: 5.46.1
+
+  '@tanstack/virtual-core@3.13.13': {}
 
   '@trpc/client@11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:

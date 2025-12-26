@@ -1,0 +1,25 @@
+<script lang="ts">
+  import type { Writable } from "svelte/store";
+  import { goto } from "$app/navigation";
+  import { FullscreenDiv } from "$lib/components/atoms";
+  import { Gallery, TopBar } from "$lib/components/molecules";
+  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
+  import { masterKeyStore } from "$lib/stores";
+
+  let { data } = $props();
+
+  let files: Writable<FileInfo | null>[] = $state([]);
+
+  $effect(() => {
+    files = data.files.map((file) => getFileInfo(file, $masterKeyStore?.get(1)?.key!));
+  });
+</script>
+
+<svelte:head>
+  <title>사진 및 동영상</title>
+</svelte:head>
+
+<TopBar title="사진 및 동영상" />
+<FullscreenDiv>
+  <Gallery {files} onFileClick={({ id }) => goto(`/file/${id}`)} />
+</FullscreenDiv>

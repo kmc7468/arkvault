@@ -7,6 +7,13 @@ export const formatDate = (date: Date) => {
   return `${year}. ${month}. ${day}.`;
 };
 
+export const formatDateSortable = (date: Date) => {
+  const year = date.getFullYear();
+  const month = pad2(date.getMonth() + 1);
+  const day = pad2(date.getDate());
+  return `${year}${month}${day}`;
+};
+
 export const formatDateTime = (date: Date) => {
   const dateFormatted = formatDate(date);
   const hours = date.getHours();
@@ -31,33 +38,4 @@ export const formatNetworkSpeed = (speed: number) => {
 export const truncateString = (str: string, maxLength = 20) => {
   if (str.length <= maxLength) return str;
   return `${str.slice(0, maxLength)}...`;
-};
-
-export enum SortBy {
-  NAME_ASC,
-  NAME_DESC,
-}
-
-type SortFunc = (a?: string, b?: string) => number;
-
-const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
-
-const sortByNameAsc: SortFunc = (a, b) => {
-  if (a && b) return collator.compare(a, b);
-  if (a) return -1;
-  if (b) return 1;
-  return 0;
-};
-
-const sortByNameDesc: SortFunc = (a, b) => -sortByNameAsc(a, b);
-
-export const sortEntries = <T extends { name?: string }>(entries: T[], sortBy: SortBy) => {
-  let sortFunc: SortFunc;
-  if (sortBy === SortBy.NAME_ASC) {
-    sortFunc = sortByNameAsc;
-  } else {
-    sortFunc = sortByNameDesc;
-  }
-
-  entries.sort((a, b) => sortFunc(a.name, b.name));
 };

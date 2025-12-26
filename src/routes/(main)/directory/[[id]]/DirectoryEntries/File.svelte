@@ -3,7 +3,7 @@
   import { ActionEntryButton } from "$lib/components/atoms";
   import { DirectoryEntryLabel } from "$lib/components/molecules";
   import type { FileInfo } from "$lib/modules/filesystem";
-  import { formatDateTime } from "$lib/modules/util";
+  import { formatDateTime } from "$lib/utils";
   import { requestFileThumbnailDownload } from "./service";
   import type { SelectedEntry } from "../service.svelte";
 

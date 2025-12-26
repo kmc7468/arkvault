@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Writable } from "svelte/store";
-  import { formatNetworkSpeed } from "$lib/modules/util";
   import type { FileUploadStatus } from "$lib/stores";
+  import { formatNetworkSpeed } from "$lib/utils";
 
   import IconPending from "~icons/material-symbols/pending";
   import IconLockClock from "~icons/material-symbols/lock-clock";
