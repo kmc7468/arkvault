@@ -5,13 +5,13 @@
   import { FileThumbnailButton } from "$lib/components/molecules";
   import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
-  import { requestFreshFilesRetrieval } from "./service";
+  import { requestFreshMediaFilesRetrieval } from "./service";
 
-  let files: Writable<FileInfo | null>[] = $state([]);
+  let mediaFiles: Writable<FileInfo | null>[] = $state([]);
 
   $effect(() => {
-    requestFreshFilesRetrieval().then((retrievedFiles) => {
-      files = retrievedFiles.map(({ id }) => getFileInfo(id, $masterKeyStore?.get(1)?.key!));
+    requestFreshMediaFilesRetrieval().then((files) => {
+      mediaFiles = files.map(({ id }) => getFileInfo(id, $masterKeyStore?.get(1)?.key!));
     });
   });
 </script>
@@ -27,7 +27,7 @@
       <p class="text-left font-semibold">사진 및 동영상</p>
     </EntryButton>
     <div class="grid grid-cols-4 gap-2 px-2">
-      {#each files as file}
+      {#each mediaFiles as file}
         <FileThumbnailButton info={file} onclick={({ id }) => goto(`/file/${id}`)} />
       {/each}
     </div>

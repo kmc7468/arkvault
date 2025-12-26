@@ -13,7 +13,9 @@
 
   let { files, onFileClick }: Props = $props();
 
-  type FileEntry = { date?: Date; info: Writable<FileInfo | null> };
+  type FileEntry =
+    | { date?: undefined; contentType?: undefined; info: Writable<FileInfo | null> }
+    | { date: Date; contentType: string; info: Writable<FileInfo | null> };
   type Row =
     | { type: "header"; key: string; label: string }
     | { type: "items"; key: string; items: FileEntry[] };
@@ -37,15 +39,28 @@
 
   $effect(() => {
     filesWithDate = files.map((file) => {
-      const { createdAt, lastModifiedAt } = get(file) ?? {};
-      return { date: createdAt ?? lastModifiedAt, info: file };
+      const info = get(file);
+      if (info) {
+        return {
+          date: info.createdAt ?? info.lastModifiedAt,
+          contentType: info.contentType,
+          info: file,
+        };
+      } else {
+        return { info: file };
+      }
     });
 
     const buildRows = () => {
       const map = new Map<string, FileEntry[]>();
 
       for (const file of filesWithDate) {
-        if (!file.date) continue;
+        if (
+          !file.date ||
+          !(file.contentType.startsWith("image/") || file.contentType.startsWith("video/"))
+        ) {
+          continue;
+        }
 
         const date = formatDateSortable(file.date);
         const entries = map.get(date) ?? [];
