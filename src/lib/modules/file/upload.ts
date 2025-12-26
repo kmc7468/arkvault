@@ -23,15 +23,14 @@ import {
   type HmacSecret,
   type FileUploadStatus,
 } from "$lib/stores";
-import { useTRPC } from "$trpc/client";
+import { trpc } from "$trpc/client";
 
 const requestDuplicateFileScan = limitFunction(
   async (file: File, hmacSecret: HmacSecret, onDuplicate: () => Promise<boolean>) => {
-    const trpc = useTRPC();
     const fileBuffer = await file.arrayBuffer();
     const fileSigned = encodeToBase64(await signMessageHmac(fileBuffer, hmacSecret.secret));
 
-    const files = await trpc.file.listByHash.query({
+    const files = await trpc().file.listByHash.query({
       hskVersion: hmacSecret.version,
       contentHmac: fileSigned,
     });

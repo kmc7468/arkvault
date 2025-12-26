@@ -18,7 +18,7 @@ import {
   type CategoryId,
 } from "$lib/indexedDB";
 import { unwrapDataKey, decryptString } from "$lib/modules/crypto";
-import { useTRPC } from "$trpc/client";
+import { trpc } from "$trpc/client";
 
 export type DirectoryInfo =
   | {
@@ -101,10 +101,9 @@ const fetchDirectoryInfoFromServer = async (
   info: Writable<DirectoryInfo | null>,
   masterKey: CryptoKey,
 ) => {
-  const trpc = useTRPC();
   let data;
   try {
-    data = await trpc.directory.get.query({ id });
+    data = await trpc().directory.get.query({ id });
   } catch (e) {
     if (e instanceof TRPCClientError && e.data?.code === "NOT_FOUND") {
       info.set(null);
@@ -174,10 +173,9 @@ const fetchFileInfoFromServer = async (
   info: Writable<FileInfo | null>,
   masterKey: CryptoKey,
 ) => {
-  const trpc = useTRPC();
   let metadata;
   try {
-    metadata = await trpc.file.get.query({ id });
+    metadata = await trpc().file.get.query({ id });
   } catch (e) {
     if (e instanceof TRPCClientError && e.data?.code === "NOT_FOUND") {
       info.set(null);
@@ -270,10 +268,9 @@ const fetchCategoryInfoFromServer = async (
   info: Writable<CategoryInfo | null>,
   masterKey: CryptoKey,
 ) => {
-  const trpc = useTRPC();
   let data;
   try {
-    data = await trpc.category.get.query({ id });
+    data = await trpc().category.get.query({ id });
   } catch (e) {
     if (e instanceof TRPCClientError && e.data?.code === "NOT_FOUND") {
       info.set(null);
@@ -293,7 +290,7 @@ const fetchCategoryInfoFromServer = async (
 
     let files;
     try {
-      files = await trpc.category.files.query({ id, recurse: true });
+      files = await trpc().category.files.query({ id, recurse: true });
     } catch {
       throw new Error("Failed to fetch category files");
     }

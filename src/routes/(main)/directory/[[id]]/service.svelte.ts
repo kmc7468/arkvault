@@ -9,7 +9,7 @@ import {
   uploadFile,
 } from "$lib/modules/file";
 import { hmacSecretStore, type MasterKey, type HmacSecret } from "$lib/stores";
-import { useTRPC } from "$trpc/client";
+import { trpc } from "$trpc/client";
 
 export interface SelectedEntry {
   type: "directory" | "file";
@@ -33,11 +33,9 @@ export const useContext = () => {
 export const requestHmacSecretDownload = async (masterKey: CryptoKey) => {
   // TODO: MEK rotation
 
-  const trpc = useTRPC();
-
   let hmacSecretsWrapped;
   try {
-    hmacSecretsWrapped = await trpc.hsk.list.query();
+    hmacSecretsWrapped = await trpc().hsk.list.query();
   } catch {
     // TODO: Error Handling
     return false;
@@ -61,12 +59,11 @@ export const requestDirectoryCreation = async (
   parentId: "root" | number,
   masterKey: MasterKey,
 ) => {
-  const trpc = useTRPC();
   const { dataKey, dataKeyVersion } = await generateDataKey();
   const nameEncrypted = await encryptString(name, dataKey);
 
   try {
-    await trpc.directory.create.mutate({
+    await trpc().directory.create.mutate({
       parent: parentId,
       mekVersion: masterKey.version,
       dek: await wrapDataKey(dataKey, masterKey.key),
@@ -100,19 +97,18 @@ export const requestFileUpload = async (
 };
 
 export const requestEntryRename = async (entry: SelectedEntry, newName: string) => {
-  const trpc = useTRPC();
   const newNameEncrypted = await encryptString(newName, entry.dataKey);
 
   try {
     if (entry.type === "directory") {
-      await trpc.directory.rename.mutate({
+      await trpc().directory.rename.mutate({
         id: entry.id,
         dekVersion: entry.dataKeyVersion,
         name: newNameEncrypted.ciphertext,
         nameIv: newNameEncrypted.iv,
       });
     } else {
-      await trpc.file.rename.mutate({
+      await trpc().file.rename.mutate({
         id: entry.id,
         dekVersion: entry.dataKeyVersion,
         name: newNameEncrypted.ciphertext,
@@ -127,11 +123,9 @@ export const requestEntryRename = async (entry: SelectedEntry, newName: string) 
 };
 
 export const requestEntryDeletion = async (entry: SelectedEntry) => {
-  const trpc = useTRPC();
-
   try {
     if (entry.type === "directory") {
-      const { deletedFiles } = await trpc.directory.delete.mutate({ id: entry.id });
+      const { deletedFiles } = await trpc().directory.delete.mutate({ id: entry.id });
       await Promise.all(
         deletedFiles.flatMap((fileId) => [
           deleteFileCache(fileId),
@@ -139,7 +133,7 @@ export const requestEntryDeletion = async (entry: SelectedEntry) => {
         ]),
       );
     } else {
-      await trpc.file.delete.mutate({ id: entry.id });
+      await trpc().file.delete.mutate({ id: entry.id });
       await Promise.all([deleteFileCache(entry.id), deleteFileThumbnailCache(entry.id)]);
     }
     return true;

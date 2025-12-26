@@ -1,18 +1,17 @@
 import { generateDataKey, wrapDataKey, encryptString } from "$lib/modules/crypto";
 import type { MasterKey } from "$lib/stores";
-import { useTRPC } from "$trpc/client";
+import { trpc } from "$trpc/client";
 
 export const requestCategoryCreation = async (
   name: string,
   parentId: "root" | number,
   masterKey: MasterKey,
 ) => {
-  const trpc = useTRPC();
   const { dataKey, dataKeyVersion } = await generateDataKey();
   const nameEncrypted = await encryptString(name, dataKey);
 
   try {
-    await trpc.category.create.mutate({
+    await trpc().category.create.mutate({
       parent: parentId,
       mekVersion: masterKey.version,
       dek: await wrapDataKey(dataKey, masterKey.key),
@@ -28,10 +27,9 @@ export const requestCategoryCreation = async (
 };
 
 export const requestFileRemovalFromCategory = async (fileId: number, categoryId: number) => {
-  const trpc = useTRPC();
 
   try {
-    await trpc.category.removeFile.mutate({ id: categoryId, file: fileId });
+    await trpc().category.removeFile.mutate({ id: categoryId, file: fileId });
     return true;
   } catch {
     // TODO: Error Handling

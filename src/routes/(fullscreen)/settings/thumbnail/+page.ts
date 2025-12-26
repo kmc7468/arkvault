@@ -1,14 +1,13 @@
 import { error } from "@sveltejs/kit";
-import { useTRPC } from "$trpc/client";
+import { trpc } from "$trpc/client";
 import type { PageLoad } from "./$types";
 
 export const load: PageLoad = async ({ fetch }) => {
-  const trpc = useTRPC(fetch);
-
   try {
-    const files = await trpc.file.listWithoutThumbnail.query();
+    const files = await trpc(fetch).file.listWithoutThumbnail.query();
     return { files };
   } catch {
+    // TODO: Error Handling
     error(500, "Internal server error");
   }
 };

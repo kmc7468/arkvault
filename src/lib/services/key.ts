@@ -11,7 +11,7 @@ import {
 } from "$lib/modules/crypto";
 import { requestSessionUpgrade } from "$lib/services/auth";
 import { masterKeyStore, type ClientKeys } from "$lib/stores";
-import { useTRPC } from "$trpc/client";
+import { trpc } from "$trpc/client";
 
 export const requestClientRegistration = async (
   encryptKeyBase64: string,
@@ -19,16 +19,14 @@ export const requestClientRegistration = async (
   verifyKeyBase64: string,
   signKey: CryptoKey,
 ) => {
-  const trpc = useTRPC();
-
   try {
-    const { id, challenge } = await trpc.client.register.mutate({
+    const { id, challenge } = await trpc().client.register.mutate({
       encPubKey: encryptKeyBase64,
       sigPubKey: verifyKeyBase64,
     });
     const answer = await decryptChallenge(challenge, decryptKey);
     const answerSig = await signMessageRSA(answer, signKey);
-    await trpc.client.verify.mutate({
+    await trpc().client.verify.mutate({
       id,
       answerSig: encodeToBase64(answerSig),
     });
@@ -69,11 +67,9 @@ export const requestClientRegistrationAndSessionUpgrade = async (
 };
 
 export const requestMasterKeyDownload = async (decryptKey: CryptoKey, verifyKey: CryptoKey) => {
-  const trpc = useTRPC();
-
   let masterKeysWrapped;
   try {
-    masterKeysWrapped = await trpc.mek.list.query();
+    masterKeysWrapped = await trpc().mek.list.query();
   } catch {
     // TODO: Error Handling
     return false;
@@ -110,10 +106,8 @@ export const requestInitialMasterKeyAndHmacSecretRegistration = async (
   hmacSecretWrapped: string,
   signKey: CryptoKey,
 ) => {
-  const trpc = useTRPC();
-
   try {
-    await trpc.mek.registerInitial.mutate({
+    await trpc().mek.registerInitial.mutate({
       mek: masterKeyWrapped,
       mekSig: await signMasterKeyWrapped(masterKeyWrapped, 1, signKey),
     });
@@ -129,7 +123,7 @@ export const requestInitialMasterKeyAndHmacSecretRegistration = async (
   }
 
   try {
-    await trpc.hsk.registerInitial.mutate({
+    await trpc().hsk.registerInitial.mutate({
       mekVersion: 1,
       hsk: hmacSecretWrapped,
     });

@@ -16,7 +16,7 @@ const createClient = (fetch: typeof globalThis.fetch) =>
 
 let browserClient: ReturnType<typeof createClient>;
 
-export const useTRPC = (fetch = globalThis.fetch) => {
+export const trpc = (fetch = globalThis.fetch) => {
   const client = browserClient ?? createClient(fetch);
   if (browser) {
     browserClient ??= client;

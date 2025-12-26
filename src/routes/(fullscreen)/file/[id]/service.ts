@@ -1,7 +1,7 @@
 import { encryptData } from "$lib/modules/crypto";
 import { storeFileThumbnailCache } from "$lib/modules/file";
 import { requestFileThumbnailUpload } from "$lib/services/file";
-import { useTRPC } from "$trpc/client";
+import { trpc } from "$trpc/client";
 
 export { requestCategoryCreation, requestFileRemovalFromCategory } from "$lib/services/category";
 export { requestFileDownload } from "$lib/services/file";
@@ -22,10 +22,8 @@ export const requestThumbnailUpload = async (
 };
 
 export const requestFileAdditionToCategory = async (fileId: number, categoryId: number) => {
-  const trpc = useTRPC();
-
   try {
-    await trpc.category.addFile.mutate({ id: categoryId, file: fileId });
+    await trpc().category.addFile.mutate({ id: categoryId, file: fileId });
     return true;
   } catch {
     // TODO: Error Handling

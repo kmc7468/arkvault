@@ -1,7 +1,7 @@
 import { getContext, setContext } from "svelte";
 import { encryptString } from "$lib/modules/crypto";
 import type { SelectedCategory } from "$lib/components/molecules";
-import { useTRPC } from "$trpc/client";
+import { trpc } from "$trpc/client";
 
 export { requestCategoryCreation, requestFileRemovalFromCategory } from "$lib/services/category";
 
@@ -17,11 +17,10 @@ export const useContext = () => {
 };
 
 export const requestCategoryRename = async (category: SelectedCategory, newName: string) => {
-  const trpc = useTRPC();
   const newNameEncrypted = await encryptString(newName, category.dataKey);
 
   try {
-    await trpc.category.rename.mutate({
+    await trpc().category.rename.mutate({
       id: category.id,
       dekVersion: category.dataKeyVersion,
       name: newNameEncrypted.ciphertext,
@@ -35,10 +34,8 @@ export const requestCategoryRename = async (category: SelectedCategory, newName:
 };
 
 export const requestCategoryDeletion = async (category: SelectedCategory) => {
-  const trpc = useTRPC();
-
   try {
-    await trpc.category.delete.mutate({ id: category.id });
+    await trpc().category.delete.mutate({ id: category.id });
     return true;
   } catch {
     // TODO: Error Handling

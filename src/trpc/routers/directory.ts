@@ -108,11 +108,13 @@ const directoryRouter = router({
     .mutation(async ({ ctx, input }) => {
       try {
         const files = await FileRepo.unregisterDirectory(ctx.session.userId, input.id);
-        files.forEach(({ path, thumbnailPath }) => {
-          safeUnlink(path); // Intended
-          safeUnlink(thumbnailPath); // Intended
-        });
-        return { deletedFiles: files.map(({ id }) => id) };
+        return {
+          deletedFiles: files.map((file) => {
+            safeUnlink(file.path); // Intended
+            safeUnlink(file.thumbnailPath); // Intended
+            return file.id;
+          }),
+        };
       } catch (e) {
         if (e instanceof IntegrityError && e.message === "Directory not found") {
           throw new TRPCError({ code: "NOT_FOUND", message: "Invalid directory id" });

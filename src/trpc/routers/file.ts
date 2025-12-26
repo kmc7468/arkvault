@@ -115,6 +115,7 @@ const fileRouter = router({
       if (!thumbnail) {
         throw new TRPCError({ code: "NOT_FOUND", message: "File or its thumbnail not found" });
       }
+
       return { updatedAt: thumbnail.updatedAt, contentIv: thumbnail.encContentIv };
     }),
 });

@@ -12,7 +12,7 @@ import {
 } from "$lib/modules/file";
 import { getThumbnailUrl } from "$lib/modules/thumbnail";
 import type { FileThumbnailUploadRequest } from "$lib/server/schemas";
-import { useTRPC } from "$trpc/client";
+import { trpc } from "$trpc/client";
 
 export const requestFileDownload = async (
   fileId: number,
@@ -49,10 +49,9 @@ export const requestFileThumbnailDownload = async (fileId: number, dataKey?: Cry
   const cache = await getFileThumbnailCache(fileId);
   if (cache || !dataKey) return cache;
 
-  const trpc = useTRPC();
   let thumbnailInfo;
   try {
-    thumbnailInfo = await trpc.file.thumbnail.query({ id: fileId });
+    thumbnailInfo = await trpc().file.thumbnail.query({ id: fileId });
   } catch {
     // TODO: Error Handling
     return null;
@@ -70,10 +69,9 @@ export const requestFileThumbnailDownload = async (fileId: number, dataKey?: Cry
 };
 
 export const requestDeletedFilesCleanup = async () => {
-  const trpc = useTRPC();
   let liveFiles;
   try {
-    liveFiles = await trpc.file.list.query();
+    liveFiles = await trpc().file.list.query();
   } catch {
     // TODO: Error Handling
     return;
