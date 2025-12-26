@@ -1,11 +1,9 @@
 import { error } from "@sveltejs/kit";
-import { getUserClient } from "$lib/server/db/client";
-import { IntegrityError } from "$lib/server/db/error";
-import { createSession, refreshSession } from "$lib/server/db/session";
+import { ClientRepo, SessionRepo, IntegrityError } from "$lib/server/db";
 import env from "$lib/server/loadenv";
-import { issueSessionId, verifySessionId } from "$lib/server/modules/crypto";
+import { verifySessionId } from "$lib/server/modules/crypto";
 
-interface Session {
+export interface Session {
   sessionId: string;
   userId: number;
   clientId?: number;
@@ -42,11 +40,12 @@ export class AuthorizationError extends Error {
   }
 }
 
-export const startSession = async (userId: number, ip: string, userAgent: string) => {
-  const { sessionId, sessionIdSigned } = await issueSessionId(32, env.session.secret);
-  await createSession(userId, sessionId, ip, userAgent);
-  return sessionIdSigned;
-};
+export const cookieOptions = {
+  path: "/",
+  maxAge: env.session.exp / 1000,
+  secure: true,
+  sameSite: "strict",
+} as const;
 
 export const authenticate = async (sessionIdSigned: string, ip: string, userAgent: string) => {
   const sessionId = verifySessionId(sessionIdSigned, env.session.secret);
@@ -55,7 +54,7 @@ export const authenticate = async (sessionIdSigned: string, ip: string, userAgen
   }
 
   try {
-    const { userId, clientId } = await refreshSession(sessionId, ip, userAgent);
+    const { userId, clientId } = await SessionRepo.refreshSession(sessionId, ip, userAgent);
     return {
       id: sessionId,
       userId,
@@ -96,7 +95,7 @@ export const authorizeInternal = async (
       if (!clientId) {
         throw new AuthorizationError(403, "Forbidden");
       }
-      const userClient = await getUserClient(userId, clientId);
+      const userClient = await ClientRepo.getUserClient(userId, clientId);
       if (!userClient) {
         throw new AuthorizationError(500, "Invalid session id");
       } else if (userClient.state !== "pending") {
@@ -108,7 +107,7 @@ export const authorizeInternal = async (
       if (!clientId) {
         throw new AuthorizationError(403, "Forbidden");
       }
-      const userClient = await getUserClient(userId, clientId);
+      const userClient = await ClientRepo.getUserClient(userId, clientId);
       if (!userClient) {
         throw new AuthorizationError(500, "Invalid session id");
       } else if (userClient.state !== "active") {

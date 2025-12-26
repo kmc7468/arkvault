@@ -12,7 +12,7 @@ export const requestSessionUpgrade = async (
   const trpc = useTRPC();
   let id, challenge;
   try {
-    ({ id, challenge } = await trpc.auth.upgradeSession.mutate({
+    ({ id, challenge } = await trpc.auth.upgrade.mutate({
       encPubKey: encryptKeyBase64,
       sigPubKey: verifyKeyBase64,
     }));
@@ -26,7 +26,7 @@ export const requestSessionUpgrade = async (
   const answerSig = await signMessageRSA(answer, signKey);
 
   try {
-    await trpc.auth.verifySessionUpgrade.mutate({
+    await trpc.auth.verifyUpgrade.mutate({
       id,
       answerSig: encodeToBase64(answerSig),
       force,

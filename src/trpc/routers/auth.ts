@@ -3,51 +3,39 @@ import argon2 from "argon2";
 import { z } from "zod";
 import { ClientRepo, SessionRepo, UserRepo, IntegrityError } from "$lib/server/db";
 import env from "$lib/server/loadenv";
-import { startSession } from "$lib/server/modules/auth";
-import { generateChallenge, verifySignature } from "$lib/server/modules/crypto";
-import { publicProcedure, roleProcedure, router } from "../init.server";
-
-const hashPassword = async (password: string) => {
-  return await argon2.hash(password);
-};
-
-const verifyPassword = async (hash: string, password: string) => {
-  return await argon2.verify(hash, password);
-};
+import { cookieOptions } from "$lib/server/modules/auth";
+import { generateChallenge, verifySignature, issueSessionId } from "$lib/server/modules/crypto";
+import { router, publicProcedure, roleProcedure } from "../init.server";
 
 const authRouter = router({
   login: publicProcedure
     .input(
       z.object({
         email: z.email(),
-        password: z.string().trim().nonempty(),
+        password: z.string().nonempty(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const user = await UserRepo.getUserByEmail(input.email);
-      if (!user || !(await verifyPassword(user.password, input.password))) {
+      if (!user || !(await argon2.verify(user.password, input.password))) {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
       }
 
-      const sessionIdSigned = await startSession(user.id, ctx.locals.ip, ctx.locals.userAgent);
-      ctx.cookies.set("sessionId", sessionIdSigned, {
-        path: "/",
-        maxAge: env.session.exp / 1000,
-        secure: true,
-        sameSite: "strict",
-      });
+      const { sessionId, sessionIdSigned } = await issueSessionId(32, env.session.secret);
+      await SessionRepo.createSession(user.id, sessionId, ctx.locals.ip, ctx.locals.userAgent);
+      ctx.cookies.set("sessionId", sessionIdSigned, cookieOptions);
     }),
 
   logout: roleProcedure["any"].mutation(async ({ ctx }) => {
     await SessionRepo.deleteSession(ctx.session.sessionId);
-    ctx.cookies.delete("sessionId", { path: "/" });
+    ctx.cookies.delete("sessionId", cookieOptions);
   }),
 
   changePassword: roleProcedure["any"]
     .input(
       z.object({
-        oldPassword: z.string().trim().nonempty(),
-        newPassword: z.string().trim().nonempty(),
+        oldPassword: z.string().nonempty(),
+        newPassword: z.string().nonempty(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -60,15 +48,15 @@ const authRouter = router({
       const user = await UserRepo.getUser(ctx.session.userId);
       if (!user) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Invalid session id" });
-      } else if (!(await verifyPassword(user.password, input.oldPassword))) {
+      } else if (!(await argon2.verify(user.password, input.oldPassword))) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Invalid password" });
       }
 
-      await UserRepo.setUserPassword(ctx.session.userId, await hashPassword(input.newPassword));
+      await UserRepo.setUserPassword(ctx.session.userId, await argon2.hash(input.newPassword));
       await SessionRepo.deleteAllOtherSessions(ctx.session.userId, ctx.session.sessionId);
     }),
 
-  upgradeSession: roleProcedure["notClient"]
+  upgrade: roleProcedure["notClient"]
     .input(
       z.object({
         encPubKey: z.base64().nonempty(),
@@ -94,10 +82,11 @@ const authRouter = router({
         ctx.locals.ip,
         new Date(Date.now() + env.challenge.sessionUpgradeExp),
       );
+
       return { id, challenge: challenge.toString("base64") };
     }),
 
-  verifySessionUpgrade: roleProcedure["notClient"]
+  verifyUpgrade: roleProcedure["notClient"]
     .input(
       z.object({
         id: z.int().positive(),

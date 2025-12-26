@@ -19,6 +19,7 @@ const createUserClientChallenge = async (
     ip,
     new Date(Date.now() + env.challenge.userClientExp),
   );
+
   return { id, challenge: challenge.toString("base64") };
 };
 
