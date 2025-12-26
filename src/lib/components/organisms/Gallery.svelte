@@ -95,8 +95,13 @@
       const unsubscribes = filesWithDate.map((file) =>
         file.info.subscribe((value) => {
           const newDate = value?.createdAt ?? value?.lastModifiedAt;
-          if (file.date?.getTime() === newDate?.getTime()) return;
+          const newContentType = value?.contentType;
+          if (file.date?.getTime() === newDate?.getTime() && file.contentType === newContentType) {
+            return;
+          }
+
           file.date = newDate;
+          file.contentType = newContentType;
           buildRows();
         }),
       );
