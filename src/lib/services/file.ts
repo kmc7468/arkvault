@@ -1,4 +1,3 @@
-import { callGetApi } from "$lib/hooks";
 import { getAllFileInfos } from "$lib/indexedDB/filesystem";
 import { decryptData } from "$lib/modules/crypto";
 import {
@@ -58,7 +57,7 @@ export const requestFileThumbnailDownload = async (fileId: number, dataKey?: Cry
   }
   const { contentIv: thumbnailEncryptedIv } = thumbnailInfo;
 
-  const res = await callGetApi(`/api/file/${fileId}/thumbnail/download`);
+  const res = await fetch(`/api/file/${fileId}/thumbnail/download`);
   if (!res.ok) return null;
 
   const thumbnailEncrypted = await res.arrayBuffer();

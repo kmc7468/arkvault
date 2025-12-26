@@ -27,7 +27,6 @@ export const requestCategoryCreation = async (
 };
 
 export const requestFileRemovalFromCategory = async (fileId: number, categoryId: number) => {
-
   try {
     await trpc().category.removeFile.mutate({ id: categoryId, file: fileId });
     return true;
