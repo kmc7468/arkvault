@@ -40,6 +40,7 @@ export type DirectoryInfo =
 
 export interface FileInfo {
   id: number;
+  parentId: DirectoryId;
   dataKey?: CryptoKey;
   dataKeyVersion?: Date;
   contentType: string;
@@ -199,6 +200,7 @@ const fetchFileInfoFromServer = async (
 
   info.set({
     id,
+    parentId: metadata.parent,
     dataKey,
     dataKeyVersion: new Date(metadata.dekVersion),
     contentType: metadata.contentType,

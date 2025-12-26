@@ -3,6 +3,7 @@
   import { untrack } from "svelte";
   import { get, type Writable } from "svelte/store";
   import { goto } from "$app/navigation";
+  import { page } from "$app/state";
   import { FullscreenDiv } from "$lib/components/atoms";
   import { Categories, IconEntryButton, TopBar } from "$lib/components/molecules";
   import {
@@ -21,7 +22,9 @@
     requestThumbnailUpload,
     requestFileAdditionToCategory,
   } from "./service";
+  import TopBarMenu from "./TopBarMenu.svelte";
 
+  import IconMoreVert from "~icons/material-symbols/more-vert";
   import IconCamera from "~icons/material-symbols/camera";
   import IconClose from "~icons/material-symbols/close";
   import IconAddCircle from "~icons/material-symbols/add-circle";
@@ -31,6 +34,7 @@
   let info: Writable<FileInfo | null> | undefined = $state();
   let categories: Writable<CategoryInfo | null>[] = $state([]);
 
+  let isMenuOpen = $state(false);
   let isAddToCategoryBottomSheetOpen = $state(false);
 
   let downloadStatus = $derived(
@@ -42,30 +46,26 @@
 
   let isDownloadRequested = $state(false);
   let viewerType: "image" | "video" | undefined = $state();
+  let fileBlob: Blob | undefined = $state();
   let fileBlobUrl: string | undefined = $state();
-  let heicBlob: Blob | undefined = $state();
   let videoElement: HTMLVideoElement | undefined = $state();
 
   const updateViewer = async (buffer: ArrayBuffer, contentType: string) => {
-    const fileBlob = new Blob([buffer], { type: contentType });
-    if (viewerType) {
-      fileBlobUrl = URL.createObjectURL(fileBlob);
-      heicBlob = contentType === "image/heic" ? fileBlob : undefined;
-    }
+    fileBlob = new Blob([buffer], { type: contentType });
+    fileBlobUrl = URL.createObjectURL(fileBlob);
     return fileBlob;
   };
 
   const convertHeicToJpeg = async () => {
-    if (!heicBlob) return;
+    if (fileBlob?.type !== "image/heic") return;
 
     URL.revokeObjectURL(fileBlobUrl!);
     fileBlobUrl = undefined;
 
     const { default: heic2any } = await import("heic2any");
     fileBlobUrl = URL.createObjectURL(
-      (await heic2any({ blob: heicBlob, toType: "image/jpeg" })) as Blob,
+      (await heic2any({ blob: fileBlob, toType: "image/jpeg" })) as Blob,
     );
-    heicBlob = undefined;
   };
 
   const updateThumbnail = async (dataKey: CryptoKey, dataKeyVersion: Date) => {
@@ -133,7 +133,24 @@
   <title>파일</title>
 </svelte:head>
 
-<TopBar title={$info?.name} />
+<TopBar title={$info?.name}>
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div onclick={(e) => e.stopPropagation()}>
+    <button
+      onclick={() => (isMenuOpen = !isMenuOpen)}
+      class="w-[2.3rem] flex-shrink-0 rounded-full p-1 active:bg-black active:bg-opacity-[0.04]"
+    >
+      <IconMoreVert class="text-2xl" />
+    </button>
+    <TopBarMenu
+      bind:isOpen={isMenuOpen}
+      directoryId={page.url.searchParams.get("from") === "category" ? $info?.parentId : undefined}
+      {fileBlob}
+      filename={$info?.name}
+    />
+  </div>
+</TopBar>
 <FullscreenDiv>
   <div class="space-y-4 pb-4">
     <DownloadStatus status={downloadStatus} />

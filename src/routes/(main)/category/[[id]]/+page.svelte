@@ -58,7 +58,7 @@
     <Category
       bind:isFileRecursive
       info={$info}
-      onFileClick={({ id }) => goto(`/file/${id}`)}
+      onFileClick={({ id }) => goto(`/file/${id}?from=category`)}
       onFileRemoveClick={async ({ id }) => {
         await requestFileRemovalFromCategory(id, data.id as number);
         info = getCategoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
