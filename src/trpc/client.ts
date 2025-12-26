@@ -8,6 +8,7 @@ const createClient = (fetch: typeof globalThis.fetch) =>
     links: [
       httpBatchLink({
         url: "/api/trpc",
+        maxURLLength: 4096,
         transformer: superjson,
         fetch,
       }),
