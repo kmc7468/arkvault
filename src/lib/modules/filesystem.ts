@@ -1,5 +1,5 @@
+import { TRPCClientError } from "@trpc/client";
 import { get, writable, type Writable } from "svelte/store";
-import { callGetApi } from "$lib/hooks";
 import {
   getDirectoryInfos as getDirectoryInfosFromIndexedDB,
   getDirectoryInfo as getDirectoryInfoFromIndexedDB,
@@ -18,16 +18,12 @@ import {
   type CategoryId,
 } from "$lib/indexedDB";
 import { unwrapDataKey, decryptString } from "$lib/modules/crypto";
-import type {
-  CategoryInfoResponse,
-  CategoryFileListResponse,
-  DirectoryInfoResponse,
-  FileInfoResponse,
-} from "$lib/server/schemas";
+import { trpc } from "$trpc/client";
 
 export type DirectoryInfo =
   | {
       id: "root";
+      parentId?: undefined;
       dataKey?: undefined;
       dataKeyVersion?: undefined;
       name?: undefined;
@@ -36,6 +32,7 @@ export type DirectoryInfo =
     }
   | {
       id: number;
+      parentId: DirectoryId;
       dataKey?: CryptoKey;
       dataKeyVersion?: Date;
       name: string;
@@ -45,6 +42,7 @@ export type DirectoryInfo =
 
 export interface FileInfo {
   id: number;
+  parentId: DirectoryId;
   dataKey?: CryptoKey;
   dataKeyVersion?: Date;
   contentType: string;
@@ -97,7 +95,13 @@ const fetchDirectoryInfoFromIndexedDB = async (
     info.set({ id, subDirectoryIds, fileIds });
   } else {
     if (!directory) return;
-    info.set({ id, name: directory.name, subDirectoryIds, fileIds });
+    info.set({
+      id,
+      parentId: directory.parentId,
+      name: directory.name,
+      subDirectoryIds,
+      fileIds,
+    });
   }
 };
 
@@ -106,20 +110,19 @@ const fetchDirectoryInfoFromServer = async (
   info: Writable<DirectoryInfo | null>,
   masterKey: CryptoKey,
 ) => {
-  const res = await callGetApi(`/api/directory/${id}`);
-  if (res.status === 404) {
-    info.set(null);
-    await deleteDirectoryInfo(id as number);
-    return;
-  } else if (!res.ok) {
+  let data;
+  try {
+    data = await trpc().directory.get.query({ id });
+  } catch (e) {
+    if (e instanceof TRPCClientError && e.data?.code === "NOT_FOUND") {
+      info.set(null);
+      await deleteDirectoryInfo(id as number);
+      return;
+    }
     throw new Error("Failed to fetch directory information");
   }
 
-  const {
-    metadata,
-    subDirectories: subDirectoryIds,
-    files: fileIds,
-  }: DirectoryInfoResponse = await res.json();
+  const { metadata, subDirectories: subDirectoryIds, files: fileIds } = data;
 
   if (id === "root") {
     info.set({ id, subDirectoryIds, fileIds });
@@ -129,6 +132,7 @@ const fetchDirectoryInfoFromServer = async (
 
     info.set({
       id,
+      parentId: metadata!.parent,
       dataKey,
       dataKeyVersion: new Date(metadata!.dekVersion),
       name,
@@ -179,16 +183,17 @@ const fetchFileInfoFromServer = async (
   info: Writable<FileInfo | null>,
   masterKey: CryptoKey,
 ) => {
-  const res = await callGetApi(`/api/file/${id}`);
-  if (res.status === 404) {
-    info.set(null);
-    await deleteFileInfo(id);
-    return;
-  } else if (!res.ok) {
+  let metadata;
+  try {
+    metadata = await trpc().file.get.query({ id });
+  } catch (e) {
+    if (e instanceof TRPCClientError && e.data?.code === "NOT_FOUND") {
+      info.set(null);
+      await deleteFileInfo(id);
+      return;
+    }
     throw new Error("Failed to fetch file information");
   }
-
-  const metadata: FileInfoResponse = await res.json();
   const { dataKey } = await unwrapDataKey(metadata.dek, masterKey);
 
   const name = await decryptString(metadata.name, metadata.nameIv, dataKey);
@@ -204,6 +209,7 @@ const fetchFileInfoFromServer = async (
 
   info.set({
     id,
+    parentId: metadata.parent,
     dataKey,
     dataKeyVersion: new Date(metadata.dekVersion),
     contentType: metadata.contentType,
@@ -273,16 +279,19 @@ const fetchCategoryInfoFromServer = async (
   info: Writable<CategoryInfo | null>,
   masterKey: CryptoKey,
 ) => {
-  let res = await callGetApi(`/api/category/${id}`);
-  if (res.status === 404) {
-    info.set(null);
-    await deleteCategoryInfo(id as number);
-    return;
-  } else if (!res.ok) {
+  let data;
+  try {
+    data = await trpc().category.get.query({ id });
+  } catch (e) {
+    if (e instanceof TRPCClientError && e.data?.code === "NOT_FOUND") {
+      info.set(null);
+      await deleteCategoryInfo(id as number);
+      return;
+    }
     throw new Error("Failed to fetch category information");
   }
 
-  const { metadata, subCategories }: CategoryInfoResponse = await res.json();
+  const { metadata, subCategories } = data;
 
   if (id === "root") {
     info.set({ id, subCategoryIds: subCategories });
@@ -290,12 +299,13 @@ const fetchCategoryInfoFromServer = async (
     const { dataKey } = await unwrapDataKey(metadata!.dek, masterKey);
     const name = await decryptString(metadata!.name, metadata!.nameIv, dataKey);
 
-    res = await callGetApi(`/api/category/${id}/file/list?recurse=true`);
-    if (!res.ok) {
+    let files;
+    try {
+      files = await trpc().category.files.query({ id, recurse: true });
+    } catch {
       throw new Error("Failed to fetch category files");
     }
 
-    const { files }: CategoryFileListResponse = await res.json();
     const filesMapped = files.map(({ file, isRecursive }) => ({ id: file, isRecursive }));
     let isFileRecursive: boolean | undefined = undefined;
 

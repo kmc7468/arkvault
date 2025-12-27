@@ -1,8 +1,8 @@
 <script lang="ts">
   import { get, type Writable } from "svelte/store";
   import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
-  import { formatNetworkSpeed } from "$lib/modules/util";
   import { masterKeyStore, type FileDownloadStatus } from "$lib/stores";
+  import { formatNetworkSpeed } from "$lib/utils";
 
   import IconCloud from "~icons/material-symbols/cloud";
   import IconCloudDownload from "~icons/material-symbols/cloud-download";

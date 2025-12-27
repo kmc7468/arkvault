@@ -5,14 +5,14 @@ import type { ClientKeys } from "$lib/stores";
 const serializedClientKeysSchema = z.intersection(
   z.object({
     generator: z.literal("ArkVault"),
-    exportedAt: z.string().datetime(),
+    exportedAt: z.iso.datetime(),
   }),
   z.object({
     version: z.literal(1),
-    encryptKey: z.string().base64().nonempty(),
-    decryptKey: z.string().base64().nonempty(),
-    signKey: z.string().base64().nonempty(),
-    verifyKey: z.string().base64().nonempty(),
+    encryptKey: z.base64().nonempty(),
+    decryptKey: z.base64().nonempty(),
+    signKey: z.base64().nonempty(),
+    verifyKey: z.base64().nonempty(),
   }),
 );
 

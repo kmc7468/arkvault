@@ -3,6 +3,7 @@
   import { IconLabel } from "$lib/components/molecules";
 
   import IconFolder from "~icons/material-symbols/folder";
+  import IconDriveFolderUpload from "~icons/material-symbols/drive-folder-upload";
   import IconDraft from "~icons/material-symbols/draft";
 
   interface Props {
@@ -11,7 +12,7 @@
     subtext?: string;
     textClass?: ClassValue;
     thumbnail?: string;
-    type: "directory" | "file";
+    type: "directory" | "parent-directory" | "file";
   }
 
   let {
@@ -30,6 +31,8 @@
       <img src={thumbnail} alt={name} loading="lazy" class="aspect-square rounded object-cover" />
     {:else if type === "directory"}
       <IconFolder />
+    {:else if type === "parent-directory"}
+      <IconDriveFolderUpload class="text-yellow-500" />
     {:else}
       <IconDraft class="text-blue-400" />
     {/if}

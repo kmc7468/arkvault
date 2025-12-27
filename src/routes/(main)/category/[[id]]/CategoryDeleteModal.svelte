@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ActionModal } from "$lib/components/molecules";
-  import { truncateString } from "$lib/modules/util";
+  import { truncateString } from "$lib/utils";
   import { useContext } from "./service.svelte";
 
   interface Props {

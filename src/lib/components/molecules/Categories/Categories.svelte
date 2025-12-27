@@ -3,7 +3,7 @@
   import type { SvelteHTMLElements } from "svelte/elements";
   import { get, type Writable } from "svelte/store";
   import type { CategoryInfo } from "$lib/modules/filesystem";
-  import { SortBy, sortEntries } from "$lib/modules/util";
+  import { SortBy, sortEntries } from "$lib/utils";
   import Category from "./Category.svelte";
   import type { SelectedCategory } from "./service";
 

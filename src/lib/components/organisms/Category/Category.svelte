@@ -4,8 +4,8 @@
   import { CheckBox } from "$lib/components/atoms";
   import { SubCategories, type SelectedCategory } from "$lib/components/molecules";
   import { getFileInfo, type FileInfo, type CategoryInfo } from "$lib/modules/filesystem";
-  import { SortBy, sortEntries } from "$lib/modules/util";
   import { masterKeyStore } from "$lib/stores";
+  import { SortBy, sortEntries } from "$lib/utils";
   import File from "./File.svelte";
   import type { SelectedFile } from "./service";
 

@@ -22,7 +22,7 @@
   <AdaptiveDiv class="flex justify-evenly px-4 py-2">
     {#each pages as { path, label, icon: Icon }}
       <button
-        onclick={() => goto(path)}
+        onclick={() => goto(path, { replaceState: true })}
         class={[
           "w-16 active:rounded-xl active:bg-gray-100",
           !page.url.pathname.startsWith(path) && "text-gray-600",

@@ -1,13 +1,7 @@
 import { error, redirect, type Handle } from "@sveltejs/kit";
-import env from "$lib/server/loadenv";
-import { authenticate, AuthenticationError } from "$lib/server/modules/auth";
+import { cookieOptions, authenticate, AuthenticationError } from "$lib/server/modules/auth";
 
 export const authenticateMiddleware: Handle = async ({ event, resolve }) => {
-  const { pathname, search } = event.url;
-  if (pathname === "/api/auth/login") {
-    return await resolve(event);
-  }
-
   try {
     const sessionIdSigned = event.cookies.get("sessionId");
     if (!sessionIdSigned) {
@@ -16,15 +10,11 @@ export const authenticateMiddleware: Handle = async ({ event, resolve }) => {
 
     const { ip, userAgent } = event.locals;
     event.locals.session = await authenticate(sessionIdSigned, ip, userAgent);
-    event.cookies.set("sessionId", sessionIdSigned, {
-      path: "/",
-      maxAge: env.session.exp / 1000,
-      secure: true,
-      sameSite: "strict",
-    });
+    event.cookies.set("sessionId", sessionIdSigned, cookieOptions);
   } catch (e) {
     if (e instanceof AuthenticationError) {
-      if (pathname === "/auth/login") {
+      const { pathname, search } = event.url;
+      if (pathname === "/auth/login" || pathname.startsWith("/api/trpc")) {
         return await resolve(event);
       } else if (pathname.startsWith("/api")) {
         error(e.status, e.message);

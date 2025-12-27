@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Writable } from "svelte/store";
-  import { formatNetworkSpeed } from "$lib/modules/util";
   import { isFileDownloading, type FileDownloadStatus } from "$lib/stores";
+  import { formatNetworkSpeed } from "$lib/utils";
 
   interface Props {
     status?: Writable<FileDownloadStatus>;

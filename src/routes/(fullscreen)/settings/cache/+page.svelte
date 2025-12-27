@@ -6,8 +6,8 @@
   import type { FileCacheIndex } from "$lib/indexedDB";
   import { getFileCacheIndex, deleteFileCache as doDeleteFileCache } from "$lib/modules/file";
   import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
-  import { formatFileSize } from "$lib/modules/util";
   import { masterKeyStore } from "$lib/stores";
+  import { formatFileSize } from "$lib/utils";
   import File from "./File.svelte";
 
   interface FileCache {
