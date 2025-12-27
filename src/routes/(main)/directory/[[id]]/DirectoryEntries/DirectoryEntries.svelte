@@ -1,7 +1,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import { get, type Writable } from "svelte/store";
-  import { ActionEntryButton } from "$lib/components/atoms";
+  import { ActionEntryButton, RowVirtualizer } from "$lib/components/atoms";
   import { DirectoryEntryLabel } from "$lib/components/molecules";
   import {
     getDirectoryInfo,
@@ -127,13 +127,23 @@
     {#each subDirectories as { info }}
       <SubDirectory {info} onclick={onEntryClick} onOpenMenuClick={onEntryMenuClick} />
     {/each}
-    {#each files as file}
-      {#if file.type === "file"}
-        <File info={file.info} onclick={onEntryClick} onOpenMenuClick={onEntryMenuClick} />
-      {:else}
-        <UploadingFile status={file.info} />
-      {/if}
-    {/each}
+    {#if files.length > 0}
+      <RowVirtualizer
+        count={files.length}
+        itemHeight={(index) => 48 + (index + 1 < files.length ? 4 : 0)}
+      >
+        {#snippet item(index)}
+          {@const file = files[index]!}
+          <div class={index + 1 < files.length ? "pb-1" : ""}>
+            {#if file.type === "file"}
+              <File info={file.info} onclick={onEntryClick} onOpenMenuClick={onEntryMenuClick} />
+            {:else}
+              <UploadingFile status={file.info} />
+            {/if}
+          </div>
+        {/snippet}
+      </RowVirtualizer>
+    {/if}
   </div>
 {:else}
   <div class="flex flex-grow items-center justify-center">

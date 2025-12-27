@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { createWindowVirtualizer } from "@tanstack/svelte-virtual";
   import { untrack } from "svelte";
   import { get, type Writable } from "svelte/store";
-  import { FileThumbnailButton } from "$lib/components/atoms";
+  import { FileThumbnailButton, RowVirtualizer } from "$lib/components/atoms";
   import type { FileInfo } from "$lib/modules/filesystem";
   import { formatDate, formatDateSortable, SortBy, sortEntries } from "$lib/utils";
 
@@ -17,25 +16,11 @@
     | { date?: undefined; contentType?: undefined; info: Writable<FileInfo | null> }
     | { date: Date; contentType: string; info: Writable<FileInfo | null> };
   type Row =
-    | { type: "header"; key: string; label: string }
-    | { type: "items"; key: string; items: FileEntry[] };
+    | { type: "header"; label: string }
+    | { type: "items"; items: FileEntry[]; isLast: boolean };
 
   let filesWithDate: FileEntry[] = $state([]);
   let rows: Row[] = $state([]);
-  let listElement: HTMLDivElement | undefined = $state();
-
-  const virtualizer = createWindowVirtualizer({
-    count: 0,
-    getItemKey: (index) => rows[index]!.key,
-    estimateSize: () => 1000, // TODO
-  });
-
-  const measureRow = (node: HTMLElement) => {
-    $virtualizer.measureElement(node);
-    return {
-      update: () => $virtualizer.measureElement(node),
-    };
-  };
 
   $effect(() => {
     filesWithDate = files.map((file) => {
@@ -76,18 +61,19 @@
 
         newRows.push({
           type: "header",
-          key: `header-${date}`,
           label: formatDate(entries[0]!.date!),
         });
-        newRows.push({
-          type: "items",
-          key: `items-${date}`,
-          items: entries,
-        });
+
+        for (let i = 0; i < entries.length; i += 4) {
+          newRows.push({
+            type: "items",
+            items: entries.slice(i, i + 4),
+            isLast: i + 4 >= entries.length,
+          });
+        }
       }
 
       rows = newRows;
-      $virtualizer.setOptions({ count: rows.length });
     };
     return untrack(() => {
       buildRows();
@@ -110,29 +96,29 @@
   });
 </script>
 
-<div bind:this={listElement} class="relative flex flex-grow flex-col">
-  <div style="height: {$virtualizer.getTotalSize()}px;">
-    {#each $virtualizer.getVirtualItems() as virtualRow (virtualRow.key)}
-      {@const row = rows[virtualRow.index]!}
-      <div
-        use:measureRow
-        data-index={virtualRow.index}
-        class="absolute left-0 top-0 w-full"
-        style="transform: translateY({virtualRow.start}px);"
-      >
-        {#if row.type === "header"}
-          <p class="pb-2 font-medium">{row.label}</p>
-        {:else}
-          <div class="grid grid-cols-4 gap-1 pb-4">
-            {#each row.items as { info }}
-              <FileThumbnailButton {info} onclick={onFileClick} />
-            {/each}
-          </div>
-        {/if}
+<RowVirtualizer
+  count={rows.length}
+  itemHeight={(index) =>
+    rows[index]!.type === "header"
+      ? 32
+      : Math.ceil(rows[index]!.items.length / 4) * 181 +
+        (Math.ceil(rows[index]!.items.length / 4) - 1) * 4 +
+        16}
+  class="flex flex-grow flex-col"
+>
+  {#snippet item(index)}
+    {@const row = rows[index]!}
+    {#if row.type === "header"}
+      <p class="pb-2 font-medium">{row.label}</p>
+    {:else}
+      <div class={["grid grid-cols-4 gap-x-1", row.isLast ? "pb-4" : "pb-1"]}>
+        {#each row.items as { info }}
+          <FileThumbnailButton {info} onclick={onFileClick} />
+        {/each}
       </div>
-    {/each}
-  </div>
-  {#if $virtualizer.getVirtualItems().length === 0}
+    {/if}
+  {/snippet}
+  {#snippet placeholder()}
     <div class="flex h-full flex-grow items-center justify-center">
       <p class="text-gray-500">
         {#if files.length === 0}
@@ -144,5 +130,5 @@
         {/if}
       </p>
     </div>
-  {/if}
-</div>
+  {/snippet}
+</RowVirtualizer>

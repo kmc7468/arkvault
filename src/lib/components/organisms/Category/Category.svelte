@@ -1,7 +1,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import { get, type Writable } from "svelte/store";
-  import { CheckBox } from "$lib/components/atoms";
+  import { CheckBox, RowVirtualizer } from "$lib/components/atoms";
   import { SubCategories, type SelectedCategory } from "$lib/components/molecules";
   import { getFileInfo, type FileInfo, type CategoryInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
@@ -89,19 +89,26 @@
           <p class="font-medium">하위 카테고리의 파일</p>
         </CheckBox>
       </div>
-      <div class="space-y-1">
-        {#key info}
-          {#each files as { info, isRecursive }}
-            <File
-              {info}
-              onclick={onFileClick}
-              onRemoveClick={!isRecursive ? onFileRemoveClick : undefined}
-            />
-          {:else}
-            <p class="text-gray-500 text-center">이 카테고리에 추가된 파일이 없어요.</p>
-          {/each}
-        {/key}
-      </div>
+      {#key info}
+        <RowVirtualizer
+          count={files.length}
+          itemHeight={(index) => 56 + (index + 1 < files.length ? 4 : 0)}
+        >
+          {#snippet item(index)}
+            {@const { info, isRecursive } = files[index]!}
+            <div class={[index + 1 < files.length && "pb-1"]}>
+              <File
+                {info}
+                onclick={onFileClick}
+                onRemoveClick={!isRecursive ? onFileRemoveClick : undefined}
+              />
+            </div>
+          {/snippet}
+          {#snippet placeholder()}
+            <p class="text-center text-gray-500">이 카테고리에 추가된 파일이 없어요.</p>
+          {/snippet}
+        </RowVirtualizer>
+      {/key}
     </div>
   {/if}
 </div>
