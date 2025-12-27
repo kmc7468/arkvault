@@ -1,5 +1,5 @@
 import { error } from "@sveltejs/kit";
-import { keyExportState } from "$lib/utils/gotoStateful";
+import { keyExportState } from "$lib/utils";
 import type { PageLoad } from "./$types";
 
 export const load: PageLoad = async () => {

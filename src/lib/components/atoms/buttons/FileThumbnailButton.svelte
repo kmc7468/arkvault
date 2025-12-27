@@ -31,7 +31,7 @@
 {#if $info}
   <button
     onclick={() => onclick?.($info)}
-    class="relative aspect-square w-full overflow-hidden rounded transition active:scale-95 active:brightness-90"
+    class="aspect-square overflow-hidden rounded transition active:scale-95 active:brightness-90"
   >
     {#if thumbnail}
       <img src={thumbnail} alt={$info.name} class="h-full w-full object-cover" />

@@ -1,8 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { ClientRepo, IntegrityError } from "$lib/server/db";
-import { verifyPubKey, verifySignature, generateChallenge } from "$lib/server/modules/crypto";
 import env from "$lib/server/loadenv";
+import { verifyPubKey, verifySignature, generateChallenge } from "$lib/server/modules/crypto";
 import { router, roleProcedure } from "../init.server";
 
 const createUserClientChallenge = async (

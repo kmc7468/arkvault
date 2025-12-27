@@ -2,7 +2,7 @@
   import { createWindowVirtualizer } from "@tanstack/svelte-virtual";
   import { untrack } from "svelte";
   import { get, type Writable } from "svelte/store";
-  import { FileThumbnailButton } from "$lib/components/molecules";
+  import { FileThumbnailButton } from "$lib/components/atoms";
   import type { FileInfo } from "$lib/modules/filesystem";
   import { formatDate, formatDateSortable, SortBy, sortEntries } from "$lib/utils";
 

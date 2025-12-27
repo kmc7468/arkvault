@@ -1,8 +1,7 @@
 <script lang="ts">
   import type { Writable } from "svelte/store";
   import { goto } from "$app/navigation";
-  import { EntryButton } from "$lib/components/atoms";
-  import { FileThumbnailButton } from "$lib/components/molecules";
+  import { EntryButton, FileThumbnailButton } from "$lib/components/atoms";
   import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import { requestFreshMediaFilesRetrieval } from "./service";
