@@ -1,4 +1,4 @@
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
+import { createTRPCClient, httpBatchLink, TRPCClientError } from "@trpc/client";
 import superjson from "superjson";
 import { browser } from "$app/environment";
 import type { AppRouter } from "./router.server";
@@ -23,4 +23,8 @@ export const trpc = (fetch = globalThis.fetch) => {
     browserClient ??= client;
   }
   return client;
+};
+
+export const isTRPCClientError = (e: unknown): e is TRPCClientError<AppRouter> => {
+  return e instanceof TRPCClientError;
 };

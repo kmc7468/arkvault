@@ -130,7 +130,7 @@
     {#if files.length > 0}
       <RowVirtualizer
         count={files.length}
-        itemHeight={(index) => 48 + (index + 1 < files.length ? 4 : 0)}
+        itemHeight={(index) => 56 + (index + 1 < files.length ? 4 : 0)}
       >
         {#snippet item(index)}
           {@const file = files[index]!}

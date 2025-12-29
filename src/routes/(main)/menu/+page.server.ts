@@ -1,0 +1,7 @@
+import { createCaller } from "$trpc/router.server";
+import type { PageServerLoad } from "./$types";
+
+export const load: PageServerLoad = async (event) => {
+  const { nickname } = await createCaller(event).user.get();
+  return { nickname };
+};

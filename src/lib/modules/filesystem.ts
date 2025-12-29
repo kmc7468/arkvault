@@ -1,4 +1,3 @@
-import { TRPCClientError } from "@trpc/client";
 import { get, writable, type Writable } from "svelte/store";
 import {
   getDirectoryInfos as getDirectoryInfosFromIndexedDB,
@@ -18,7 +17,7 @@ import {
   type CategoryId,
 } from "$lib/indexedDB";
 import { unwrapDataKey, decryptString } from "$lib/modules/crypto";
-import { trpc } from "$trpc/client";
+import { trpc, isTRPCClientError } from "$trpc/client";
 
 export type DirectoryInfo =
   | {
@@ -114,7 +113,7 @@ const fetchDirectoryInfoFromServer = async (
   try {
     data = await trpc().directory.get.query({ id });
   } catch (e) {
-    if (e instanceof TRPCClientError && e.data?.code === "NOT_FOUND") {
+    if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
       info.set(null);
       await deleteDirectoryInfo(id as number);
       return;
@@ -187,7 +186,7 @@ const fetchFileInfoFromServer = async (
   try {
     metadata = await trpc().file.get.query({ id });
   } catch (e) {
-    if (e instanceof TRPCClientError && e.data?.code === "NOT_FOUND") {
+    if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
       info.set(null);
       await deleteFileInfo(id);
       return;
@@ -283,7 +282,7 @@ const fetchCategoryInfoFromServer = async (
   try {
     data = await trpc().category.get.query({ id });
   } catch (e) {
-    if (e instanceof TRPCClientError && e.data?.code === "NOT_FOUND") {
+    if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
       info.set(null);
       await deleteCategoryInfo(id as number);
       return;

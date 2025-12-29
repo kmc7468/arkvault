@@ -92,7 +92,7 @@
       {#key info}
         <RowVirtualizer
           count={files.length}
-          itemHeight={(index) => 56 + (index + 1 < files.length ? 4 : 0)}
+          itemHeight={(index) => 48 + (index + 1 < files.length ? 4 : 0)}
         >
           {#snippet item(index)}
             {@const { info, isRecursive } = files[index]!}
