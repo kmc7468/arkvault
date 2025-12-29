@@ -100,7 +100,7 @@
   count={rows.length}
   itemHeight={(index) =>
     rows[index]!.type === "header"
-      ? 32
+      ? 28
       : Math.ceil(rows[index]!.items.length / 4) * 181 +
         (Math.ceil(rows[index]!.items.length / 4) - 1) * 4 +
         16}
@@ -109,7 +109,7 @@
   {#snippet item(index)}
     {@const row = rows[index]!}
     {#if row.type === "header"}
-      <p class="pb-2 font-medium">{row.label}</p>
+      <p class="pb-2 text-sm font-medium">{row.label}</p>
     {:else}
       <div class={["grid grid-cols-4 gap-x-1", row.isLast ? "pb-4" : "pb-1"]}>
         {#each row.items as { info }}
