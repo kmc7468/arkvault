@@ -4,6 +4,8 @@
   import { getUploadingFiles, clearUploadedFiles } from "$lib/modules/file";
   import File from "./File.svelte";
 
+  const uploadingFiles = getUploadingFiles();
+
   $effect(() => clearUploadedFiles);
 </script>
 
@@ -14,7 +16,7 @@
 <TopBar />
 <FullscreenDiv>
   <div class="space-y-2 pb-4">
-    {#each getUploadingFiles() as file}
+    {#each uploadingFiles as file}
       <File state={file} />
     {/each}
   </div>

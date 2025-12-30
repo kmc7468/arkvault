@@ -45,7 +45,7 @@ export const clearDownloadedFiles = () => {
 
 const requestFileDownload = limitFunction(
   async (state: FileDownloadState, id: number) => {
-    state.status = "download-pending";
+    state.status = "downloading";
 
     const res = await axios.get(`/api/file/${id}/download`, {
       responseType: "arraybuffer",
