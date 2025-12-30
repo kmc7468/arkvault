@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FileCacheIndex } from "$lib/indexedDB";
-  import type { SummarizedFileInfo } from "$lib/modules/filesystem2.svelte";
+  import type { SummarizedFileInfo } from "$lib/modules/filesystem";
   import { formatDate, formatFileSize } from "$lib/utils";
 
   import IconDraft from "~icons/material-symbols/draft";

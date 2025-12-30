@@ -2,7 +2,7 @@
   import type { Component } from "svelte";
   import type { ClassValue, SvelteHTMLElements } from "svelte/elements";
   import { Categories, IconEntryButton, type SelectedCategory } from "$lib/components/molecules";
-  import type { CategoryInfo } from "$lib/modules/filesystem2.svelte";
+  import type { CategoryInfo } from "$lib/modules/filesystem";
 
   import IconAddCircle from "~icons/material-symbols/add-circle";
 

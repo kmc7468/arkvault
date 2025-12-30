@@ -2,7 +2,7 @@
   import { ActionEntryButton, RowVirtualizer } from "$lib/components/atoms";
   import { DirectoryEntryLabel } from "$lib/components/molecules";
   import { getUploadingFiles, type LiveFileUploadState } from "$lib/modules/file";
-  import type { DirectoryInfo } from "$lib/modules/filesystem2.svelte";
+  import type { DirectoryInfo } from "$lib/modules/filesystem";
   import { sortEntries } from "$lib/utils";
   import File from "./File.svelte";
   import SubDirectory from "./SubDirectory.svelte";

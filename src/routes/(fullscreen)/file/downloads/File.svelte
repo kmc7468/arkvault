@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FileDownloadState } from "$lib/modules/file";
-  import type { FileInfo } from "$lib/modules/filesystem2.svelte";
+  import type { FileInfo } from "$lib/modules/filesystem";
   import { formatNetworkSpeed } from "$lib/utils";
 
   import IconCloud from "~icons/material-symbols/cloud";

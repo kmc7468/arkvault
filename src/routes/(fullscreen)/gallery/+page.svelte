@@ -4,7 +4,7 @@
   import { FullscreenDiv } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
   import { Gallery } from "$lib/components/organisms";
-  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem2.svelte";
+  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
 
   let { data } = $props();

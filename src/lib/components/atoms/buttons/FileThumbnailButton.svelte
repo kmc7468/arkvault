@@ -1,6 +1,6 @@
 <script lang="ts">
   import { browser } from "$app/environment";
-  import type { SummarizedFileInfo } from "$lib/modules/filesystem2.svelte";
+  import type { SummarizedFileInfo } from "$lib/modules/filesystem";
   import { requestFileThumbnailDownload } from "$lib/services/file";
 
   interface Props {

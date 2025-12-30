@@ -1,6 +1,6 @@
 <script lang="ts">
   import { FileThumbnailButton, RowVirtualizer } from "$lib/components/atoms";
-  import type { SummarizedFileInfo } from "$lib/modules/filesystem2.svelte";
+  import type { SummarizedFileInfo } from "$lib/modules/filesystem";
   import { formatDate, formatDateSortable, SortBy, sortEntries } from "$lib/utils";
 
   interface Props {

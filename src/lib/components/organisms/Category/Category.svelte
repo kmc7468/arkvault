@@ -1,7 +1,7 @@
 <script lang="ts">
   import { CheckBox, RowVirtualizer } from "$lib/components/atoms";
   import { SubCategories, type SelectedCategory } from "$lib/components/molecules";
-  import type { CategoryInfo } from "$lib/modules/filesystem2.svelte";
+  import type { CategoryInfo } from "$lib/modules/filesystem";
   import { sortEntries } from "$lib/utils";
   import File from "./File.svelte";
   import type { SelectedFile } from "./service";

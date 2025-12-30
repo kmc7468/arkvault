@@ -3,7 +3,7 @@
   import type { SvelteHTMLElements } from "svelte/elements";
   import { ActionEntryButton } from "$lib/components/atoms";
   import { CategoryLabel } from "$lib/components/molecules";
-  import type { SubCategoryInfo } from "$lib/modules/filesystem2.svelte";
+  import type { SubCategoryInfo } from "$lib/modules/filesystem";
   import type { SelectedCategory } from "./service";
 
   interface Props {

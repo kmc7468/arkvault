@@ -5,7 +5,7 @@
   import { BottomDiv, Button, FullscreenDiv } from "$lib/components/atoms";
   import { IconEntryButton, TopBar } from "$lib/components/molecules";
   import { deleteAllFileThumbnailCaches } from "$lib/modules/file";
-  import { getFileInfo } from "$lib/modules/filesystem2.svelte";
+  import { getFileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import File from "./File.svelte";
   import {

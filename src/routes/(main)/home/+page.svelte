@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { EntryButton, FileThumbnailButton } from "$lib/components/atoms";
-  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem2.svelte";
+  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import { requestFreshMediaFilesRetrieval } from "./service";
 

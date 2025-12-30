@@ -2,7 +2,7 @@
   import { goto } from "$app/navigation";
   import { TopBar } from "$lib/components/molecules";
   import { Category, CategoryCreateModal } from "$lib/components/organisms";
-  import { getCategoryInfo, type CategoryInfo } from "$lib/modules/filesystem2.svelte";
+  import { getCategoryInfo, type CategoryInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import CategoryDeleteModal from "./CategoryDeleteModal.svelte";
   import CategoryMenuBottomSheet from "./CategoryMenuBottomSheet.svelte";

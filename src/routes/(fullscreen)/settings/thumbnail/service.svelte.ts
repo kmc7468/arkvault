@@ -2,7 +2,7 @@ import { limitFunction } from "p-limit";
 import { get, writable, type Writable } from "svelte/store";
 import { encryptData } from "$lib/modules/crypto";
 import { storeFileThumbnailCache } from "$lib/modules/file";
-import type { FileInfo } from "$lib/modules/filesystem2.svelte";
+import type { FileInfo } from "$lib/modules/filesystem";
 import { generateThumbnail as doGenerateThumbnail } from "$lib/modules/thumbnail";
 import { requestFileDownload, requestFileThumbnailUpload } from "$lib/services/file";
 

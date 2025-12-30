@@ -2,7 +2,7 @@
   import { BottomDiv, BottomSheet, Button, FullscreenDiv } from "$lib/components/atoms";
   import { SubCategories } from "$lib/components/molecules";
   import { CategoryCreateModal } from "$lib/components/organisms";
-  import { getCategoryInfo, type CategoryInfo } from "$lib/modules/filesystem2.svelte";
+  import { getCategoryInfo, type CategoryInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import { requestCategoryCreation } from "./service";
 

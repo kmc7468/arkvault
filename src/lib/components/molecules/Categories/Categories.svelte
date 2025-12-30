@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Component } from "svelte";
   import type { SvelteHTMLElements } from "svelte/elements";
-  import type { SubCategoryInfo } from "$lib/modules/filesystem2.svelte";
+  import type { SubCategoryInfo } from "$lib/modules/filesystem";
   import { SortBy, sortEntries } from "$lib/utils";
   import Category from "./Category.svelte";
   import type { SelectedCategory } from "./service";

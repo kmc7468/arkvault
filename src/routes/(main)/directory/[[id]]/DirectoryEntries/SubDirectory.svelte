@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ActionEntryButton } from "$lib/components/atoms";
   import { DirectoryEntryLabel } from "$lib/components/molecules";
-  import type { SubDirectoryInfo } from "$lib/modules/filesystem2.svelte";
+  import type { SubDirectoryInfo } from "$lib/modules/filesystem";
   import type { SelectedEntry } from "../service.svelte";
 
   import IconMoreVert from "~icons/material-symbols/more-vert";

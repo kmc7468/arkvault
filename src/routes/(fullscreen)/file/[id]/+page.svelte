@@ -5,7 +5,7 @@
   import { page } from "$app/state";
   import { FullscreenDiv } from "$lib/components/atoms";
   import { Categories, IconEntryButton, TopBar } from "$lib/components/molecules";
-  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem2.svelte";
+  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
   import { captureVideoThumbnail } from "$lib/modules/thumbnail";
   import { getFileDownloadState } from "$lib/modules/file";
   import { masterKeyStore } from "$lib/stores";

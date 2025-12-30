@@ -4,7 +4,7 @@
   import { page } from "$app/state";
   import { FloatingButton } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
-  import { getDirectoryInfo, type DirectoryInfo } from "$lib/modules/filesystem2.svelte";
+  import { getDirectoryInfo, type DirectoryInfo } from "$lib/modules/filesystem";
   import { masterKeyStore, hmacSecretStore } from "$lib/stores";
   import DirectoryCreateModal from "./DirectoryCreateModal.svelte";
   import DirectoryEntries from "./DirectoryEntries";

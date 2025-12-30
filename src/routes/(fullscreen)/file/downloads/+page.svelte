@@ -1,7 +1,7 @@
 <script lang="ts">
   import { FullscreenDiv } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
-  import { getFileInfo } from "$lib/modules/filesystem2.svelte";
+  import { getFileInfo } from "$lib/modules/filesystem";
   import { getDownloadingFiles, clearDownloadedFiles } from "$lib/modules/file";
   import { masterKeyStore } from "$lib/stores";
   import File from "./File.svelte";

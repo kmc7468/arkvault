@@ -2,7 +2,7 @@
   import { browser } from "$app/environment";
   import { ActionEntryButton } from "$lib/components/atoms";
   import { DirectoryEntryLabel } from "$lib/components/molecules";
-  import type { CategoryFileInfo } from "$lib/modules/filesystem2.svelte";
+  import type { CategoryFileInfo } from "$lib/modules/filesystem";
   import { requestFileThumbnailDownload } from "$lib/services/file";
   import type { SelectedFile } from "./service";
 

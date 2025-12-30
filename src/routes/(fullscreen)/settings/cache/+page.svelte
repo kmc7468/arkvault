@@ -4,7 +4,7 @@
   import { TopBar } from "$lib/components/molecules";
   import type { FileCacheIndex } from "$lib/indexedDB";
   import { getFileCacheIndex, deleteFileCache as doDeleteFileCache } from "$lib/modules/file";
-  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem2.svelte";
+  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import { formatFileSize } from "$lib/utils";
   import File from "./File.svelte";
