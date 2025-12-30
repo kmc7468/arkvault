@@ -1,18 +1,17 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import type { Writable } from "svelte/store";
   import { FullscreenDiv } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
   import type { FileCacheIndex } from "$lib/indexedDB";
   import { getFileCacheIndex, deleteFileCache as doDeleteFileCache } from "$lib/modules/file";
-  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
+  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem2.svelte";
   import { masterKeyStore } from "$lib/stores";
   import { formatFileSize } from "$lib/utils";
   import File from "./File.svelte";
 
   interface FileCache {
     index: FileCacheIndex;
-    fileInfo: Writable<FileInfo | null>;
+    fileInfo: FileInfo | null;
   }
 
   let fileCache: FileCache[] | undefined = $state();
@@ -23,13 +22,14 @@
     fileCache = fileCache?.filter(({ index }) => index.fileId !== fileId);
   };
 
-  onMount(() => {
-    fileCache = getFileCacheIndex()
-      .map((index) => ({
+  onMount(async () => {
+    fileCache = await Promise.all(
+      getFileCacheIndex().map(async (index) => ({
         index,
-        fileInfo: getFileInfo(index.fileId, $masterKeyStore?.get(1)?.key!),
-      }))
-      .sort((a, b) => a.index.lastRetrievedAt.getTime() - b.index.lastRetrievedAt.getTime());
+        fileInfo: await getFileInfo(index.fileId, $masterKeyStore?.get(1)?.key!),
+      })),
+    );
+    fileCache.sort((a, b) => a.index.lastRetrievedAt.getTime() - b.index.lastRetrievedAt.getTime());
   });
 
   $effect(() => {

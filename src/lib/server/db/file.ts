@@ -1,4 +1,4 @@
-import { sql, type NotNull } from "kysely";
+import { sql } from "kysely";
 import pg from "pg";
 import { IntegrityError } from "./error";
 import db from "./kysely";
@@ -486,10 +486,17 @@ export const addFileToCategory = async (fileId: number, categoryId: number) => {
 export const getAllFileCategories = async (fileId: number) => {
   const categories = await db
     .selectFrom("file_category")
-    .select("category_id")
+    .innerJoin("category", "file_category.category_id", "category.id")
+    .selectAll("category")
     .where("file_id", "=", fileId)
     .execute();
-  return categories.map(({ category_id }) => ({ id: category_id }));
+  return categories.map((category) => ({
+    id: category.id,
+    mekVersion: category.master_encryption_key_version,
+    encDek: category.encrypted_data_encryption_key,
+    dekVersion: category.data_encryption_key_version,
+    encName: category.encrypted_name,
+  }));
 };
 
 export const removeFileFromCategory = async (fileId: number, categoryId: number) => {

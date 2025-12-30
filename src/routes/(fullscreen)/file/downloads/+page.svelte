@@ -1,19 +1,21 @@
 <script lang="ts">
-  import { get } from "svelte/store";
   import { FullscreenDiv } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
-  import { fileDownloadStatusStore, isFileDownloading } from "$lib/stores";
+  import { getFileInfo } from "$lib/modules/filesystem2.svelte";
+  import { getDownloadingFiles, clearDownloadedFiles } from "$lib/modules/file";
+  import { masterKeyStore } from "$lib/stores";
   import File from "./File.svelte";
 
-  let downloadingFiles = $derived(
-    $fileDownloadStatusStore.filter((status) => isFileDownloading(get(status).status)),
+  let downloadingFilesPromise = $derived(
+    Promise.all(
+      getDownloadingFiles().map(async (file) => ({
+        state: file,
+        fileInfo: await getFileInfo(file.id, $masterKeyStore?.get(1)?.key!),
+      })),
+    ),
   );
 
-  $effect(() => () => {
-    $fileDownloadStatusStore = $fileDownloadStatusStore.filter((status) =>
-      isFileDownloading(get(status).status),
-    );
-  });
+  $effect(() => clearDownloadedFiles);
 </script>
 
 <svelte:head>
@@ -22,9 +24,9 @@
 
 <TopBar />
 <FullscreenDiv>
-  <div class="space-y-2 pb-4">
-    {#each downloadingFiles as status}
-      <File {status} />
+  {#await downloadingFilesPromise then downloadingFiles}
+    {#each downloadingFiles as { state, fileInfo }}
+      <File {state} info={fileInfo} />
     {/each}
-  </div>
+  {/await}
 </FullscreenDiv>

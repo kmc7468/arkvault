@@ -1,17 +1,18 @@
 <script lang="ts">
-  import type { Writable } from "svelte/store";
+  import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { EntryButton, FileThumbnailButton } from "$lib/components/atoms";
-  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
+  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem2.svelte";
   import { masterKeyStore } from "$lib/stores";
   import { requestFreshMediaFilesRetrieval } from "./service";
 
-  let mediaFiles: Writable<FileInfo | null>[] = $state([]);
+  let mediaFiles: (FileInfo | null)[] = $state([]);
 
-  $effect(() => {
-    requestFreshMediaFilesRetrieval().then((files) => {
-      mediaFiles = files.map(({ id }) => getFileInfo(id, $masterKeyStore?.get(1)?.key!));
-    });
+  onMount(async () => {
+    const files = await requestFreshMediaFilesRetrieval();
+    mediaFiles = await Promise.all(
+      files.map(({ id }) => getFileInfo(id, $masterKeyStore?.get(1)?.key!)),
+    );
   });
 </script>
 
@@ -28,7 +29,9 @@
     {#if mediaFiles.length > 0}
       <div class="grid grid-cols-4 gap-2 p-2">
         {#each mediaFiles as file}
-          <FileThumbnailButton info={file} onclick={({ id }) => goto(`/file/${id}`)} />
+          {#if file}
+            <FileThumbnailButton info={file} onclick={({ id }) => goto(`/file/${id}`)} />
+          {/if}
         {/each}
       </div>
     {/if}

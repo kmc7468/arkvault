@@ -1,23 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { get } from "svelte/store";
   import { goto as svelteGoto } from "$app/navigation";
-  import { getUploadingFiles } from "$lib/modules/file";
-  import {
-    fileDownloadStatusStore,
-    isFileDownloading,
-    clientKeyStore,
-    masterKeyStore,
-  } from "$lib/stores";
+  import { getDownloadingFiles, getUploadingFiles } from "$lib/modules/file";
+  import { clientKeyStore, masterKeyStore } from "$lib/stores";
   import "../app.css";
 
   let { children } = $props();
 
   const protectFileUploadAndDownload = (e: BeforeUnloadEvent) => {
-    if (
-      getUploadingFiles().length > 0 ||
-      $fileDownloadStatusStore.some((status) => isFileDownloading(get(status).status))
-    ) {
+    if (getDownloadingFiles().length > 0 || getUploadingFiles().length > 0) {
       e.preventDefault();
     }
   };

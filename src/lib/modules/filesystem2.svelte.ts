@@ -41,12 +41,12 @@ interface RootDirectoryInfo {
 export type DirectoryInfo = LocalDirectoryInfo | RootDirectoryInfo;
 export type SubDirectoryInfo = Omit<LocalDirectoryInfo, "parentId" | "subDirectories" | "files">;
 
-interface FileInfo {
+export interface FileInfo {
   id: number;
   parentId: DirectoryId;
   dataKey?: DataKey;
   contentType: string;
-  contentIv: string | undefined;
+  contentIv?: string;
   name: string;
   createdAt?: Date;
   lastModifiedAt: Date;
@@ -81,6 +81,7 @@ export type SubCategoryInfo = Omit<
 >;
 
 const directoryInfoCache = new Map<DirectoryId, DirectoryInfo | Promise<DirectoryInfo>>();
+const fileInfoCache = new Map<number, FileInfo | Promise<FileInfo>>();
 const categoryInfoCache = new Map<CategoryId, CategoryInfo | Promise<CategoryInfo>>();
 
 export const getDirectoryInfo = async (id: DirectoryId, masterKey: CryptoKey) => {
@@ -195,6 +196,100 @@ const fetchDirectoryInfoFromServer = async (
 
 const decryptDate = async (ciphertext: string, iv: string, dataKey: CryptoKey) => {
   return new Date(parseInt(await decryptString(ciphertext, iv, dataKey), 10));
+};
+
+export const getFileInfo = async (id: number, masterKey: CryptoKey) => {
+  const info = fileInfoCache.get(id);
+  if (info instanceof Promise) {
+    return info;
+  }
+
+  const { promise, resolve } = Promise.withResolvers<FileInfo>();
+  if (!info) {
+    fileInfoCache.set(id, promise);
+  }
+
+  monotonicResolve(
+    [!info && fetchFileInfoFromIndexedDB(id), fetchFileInfoFromServer(id, masterKey)],
+    (fileInfo) => {
+      let info = fileInfoCache.get(id);
+      if (info instanceof Promise) {
+        const state = $state(fileInfo);
+        fileInfoCache.set(id, state);
+        resolve(state);
+      } else {
+        Object.assign(info!, fileInfo);
+        resolve(info!);
+      }
+    },
+  );
+  return info ?? promise;
+};
+
+const fetchFileInfoFromIndexedDB = async (id: number): Promise<FileInfo | undefined> => {
+  const file = await getFileInfoFromIndexedDB(id);
+  const categories = await Promise.all(
+    file?.categoryIds.map(async (categoryId) => {
+      const categoryInfo = await getCategoryInfoFromIndexedDB(categoryId);
+      return categoryInfo ? { id: categoryId, name: categoryInfo.name } : undefined;
+    }) ?? [],
+  );
+
+  if (file) {
+    return {
+      id,
+      parentId: file.parentId,
+      contentType: file.contentType,
+      name: file.name,
+      createdAt: file.createdAt,
+      lastModifiedAt: file.lastModifiedAt,
+      categories: categories.filter((category) => !!category),
+    };
+  }
+};
+
+const fetchFileInfoFromServer = async (
+  id: number,
+  masterKey: CryptoKey,
+): Promise<FileInfo | undefined> => {
+  try {
+    const { categories: categoriesRaw, ...metadata } = await trpc().file.get.query({ id });
+    const categories = await Promise.all(
+      categoriesRaw.map(async (category) => {
+        const { dataKey } = await unwrapDataKey(category.dek, masterKey);
+        const name = await decryptString(category.name, category.nameIv, dataKey);
+        return { id: category.id, name };
+      }),
+    );
+
+    const { dataKey } = await unwrapDataKey(metadata.dek, masterKey);
+    const [name, createdAt, lastModifiedAt] = await Promise.all([
+      decryptString(metadata.name, metadata.nameIv, dataKey),
+      metadata.createdAt
+        ? decryptDate(metadata.createdAt, metadata.createdAtIv!, dataKey)
+        : undefined,
+      decryptDate(metadata.lastModifiedAt, metadata.lastModifiedAtIv, dataKey),
+    ]);
+
+    return {
+      id,
+      parentId: metadata.parent,
+      dataKey: { key: dataKey, version: new Date(metadata.dekVersion) },
+      contentType: metadata.contentType,
+      contentIv: metadata.contentIv,
+      name,
+      createdAt,
+      lastModifiedAt,
+      categories,
+    };
+  } catch (e) {
+    if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
+      fileInfoCache.delete(id);
+      await deleteFileInfo(id);
+      return;
+    }
+    throw new Error("Failed to fetch file information");
+  }
 };
 
 export const getCategoryInfo = async (id: CategoryId, masterKey: CryptoKey) => {

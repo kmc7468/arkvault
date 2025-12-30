@@ -1,7 +1,6 @@
 <script lang="ts">
-  import type { Writable } from "svelte/store";
   import type { FileCacheIndex } from "$lib/indexedDB";
-  import type { FileInfo } from "$lib/modules/filesystem";
+  import type { SummarizedFileInfo } from "$lib/modules/filesystem2.svelte";
   import { formatDate, formatFileSize } from "$lib/utils";
 
   import IconDraft from "~icons/material-symbols/draft";
@@ -10,7 +9,7 @@
 
   interface Props {
     index: FileCacheIndex;
-    info: Writable<FileInfo | null>;
+    info: SummarizedFileInfo | null;
     onDeleteClick: (fileId: number) => void;
   }
 
@@ -18,7 +17,7 @@
 </script>
 
 <div class="flex h-14 items-center gap-x-4 p-2">
-  {#if $info}
+  {#if info}
     <div class="flex-shrink-0 rounded-full bg-blue-100 p-1 text-xl">
       <IconDraft class="text-blue-400" />
     </div>
@@ -28,8 +27,8 @@
     </div>
   {/if}
   <div class="flex-grow overflow-hidden">
-    {#if $info}
-      <p title={$info.name} class="truncate font-medium">{$info.name}</p>
+    {#if info}
+      <p title={info.name} class="truncate font-medium">{info.name}</p>
     {:else}
       <p class="font-medium">삭제된 파일</p>
     {/if}

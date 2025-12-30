@@ -31,7 +31,14 @@ const fileRouter = router({
         createdAtIv: file.encCreatedAt?.iv,
         lastModifiedAt: file.encLastModifiedAt.ciphertext,
         lastModifiedAtIv: file.encLastModifiedAt.iv,
-        categories: categories.map(({ id }) => id),
+        categories: categories.map((category) => ({
+          id: category.id,
+          mekVersion: category.mekVersion,
+          dek: category.encDek,
+          dekVersion: category.dekVersion,
+          name: category.encName.ciphertext,
+          nameIv: category.encName.iv,
+        })),
       };
     }),
 

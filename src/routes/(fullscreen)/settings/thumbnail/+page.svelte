@@ -5,7 +5,7 @@
   import { BottomDiv, Button, FullscreenDiv } from "$lib/components/atoms";
   import { IconEntryButton, TopBar } from "$lib/components/molecules";
   import { deleteAllFileThumbnailCaches } from "$lib/modules/file";
-  import { getFileInfo } from "$lib/modules/filesystem";
+  import { getFileInfo } from "$lib/modules/filesystem2.svelte";
   import { masterKeyStore } from "$lib/stores";
   import File from "./File.svelte";
   import {
@@ -20,19 +20,20 @@
 
   const generateAllThumbnails = () => {
     persistentStates.files.forEach(({ info }) => {
-      const fileInfo = get(info);
-      if (fileInfo) {
-        requestThumbnailGeneration(fileInfo);
+      if (info) {
+        requestThumbnailGeneration(info);
       }
     });
   };
 
-  onMount(() => {
-    persistentStates.files = data.files.map((fileId) => ({
-      id: fileId,
-      info: getFileInfo(fileId, $masterKeyStore?.get(1)?.key!),
-      status: getGenerationStatus(fileId),
-    }));
+  onMount(async () => {
+    persistentStates.files = await Promise.all(
+      data.files.map(async (fileId) => ({
+        id: fileId,
+        info: await getFileInfo(fileId, $masterKeyStore?.get(1)?.key!),
+        status: getGenerationStatus(fileId),
+      })),
+    );
   });
 </script>
 
