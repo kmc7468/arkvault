@@ -3,7 +3,7 @@ import { unwrapDataKey, decryptString } from "$lib/modules/crypto";
 export class FilesystemCache<K, V extends RV, RV = V> {
   private map = new Map<K, V | Promise<V>>();
 
-  get(key: K, loader: (isInitial: boolean, resolve: (value: RV) => void) => void) {
+  get(key: K, loader: (isInitial: boolean, resolve: (value: RV | undefined) => void) => void) {
     const info = this.map.get(key);
     if (info instanceof Promise) {
       return info;
@@ -15,6 +15,8 @@ export class FilesystemCache<K, V extends RV, RV = V> {
     }
 
     loader(!info, (loadedInfo) => {
+      if (!loadedInfo) return;
+
       let info = this.map.get(key)!;
       if (info instanceof Promise) {
         const state = $state(loadedInfo);

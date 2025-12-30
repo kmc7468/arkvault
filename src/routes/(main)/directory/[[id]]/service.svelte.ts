@@ -8,13 +8,14 @@ import {
   deleteFileThumbnailCache,
   uploadFile,
 } from "$lib/modules/file";
+import type { DataKey } from "$lib/modules/filesystem";
 import { hmacSecretStore, type MasterKey, type HmacSecret } from "$lib/stores";
 import { trpc } from "$trpc/client";
 
 export interface SelectedEntry {
   type: "directory" | "file";
   id: number;
-  dataKey: { key: CryptoKey; version: Date } | undefined;
+  dataKey: DataKey | undefined;
   name: string;
 }
 

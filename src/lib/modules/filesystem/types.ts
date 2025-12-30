@@ -1,4 +1,4 @@
-type DataKey = { key: CryptoKey; version: Date };
+export type DataKey = { key: CryptoKey; version: Date };
 
 interface LocalDirectoryInfo {
   id: number;
@@ -13,7 +13,6 @@ interface RootDirectoryInfo {
   id: "root";
   parentId?: undefined;
   dataKey?: undefined;
-  dataKeyVersion?: undefined;
   name?: undefined;
   subDirectories: SubDirectoryInfo[];
   files: SummarizedFileInfo[];
@@ -39,7 +38,7 @@ export type CategoryFileInfo = SummarizedFileInfo & { isRecursive: boolean };
 
 interface LocalCategoryInfo {
   id: number;
-  dataKey?: DataKey | undefined;
+  dataKey?: DataKey;
   name: string;
   subCategories: SubCategoryInfo[];
   files: CategoryFileInfo[];

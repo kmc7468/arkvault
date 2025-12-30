@@ -1,5 +1,7 @@
+import type { DataKey } from "$lib/modules/filesystem";
+
 export interface SelectedCategory {
   id: number;
-  dataKey?: { key: CryptoKey; version: Date };
+  dataKey?: DataKey;
   name: string;
 }

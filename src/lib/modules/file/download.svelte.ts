@@ -18,7 +18,7 @@ export interface FileDownloadState {
   result?: ArrayBuffer;
 }
 
-export type LiveFileDownloadState = FileDownloadState & {
+type LiveFileDownloadState = FileDownloadState & {
   status: "download-pending" | "downloading" | "decryption-pending" | "decrypting";
 };
 
@@ -34,9 +34,7 @@ export const getFileDownloadState = (fileId: number) => {
 };
 
 export const getDownloadingFiles = () => {
-  return downloadingFiles.filter((file): file is LiveFileDownloadState =>
-    isFileDownloading(file.status),
-  );
+  return downloadingFiles.filter((file) => isFileDownloading(file.status));
 };
 
 export const clearDownloadedFiles = () => {
