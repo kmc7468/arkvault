@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createWindowVirtualizer } from "@tanstack/svelte-virtual";
-  import { untrack, type Snippet } from "svelte";
+  import type { Snippet } from "svelte";
   import type { ClassValue } from "svelte/elements";
 
   interface Props {
@@ -15,7 +15,7 @@
 
   const virtualizer = $derived(
     createWindowVirtualizer({
-      count: untrack(() => count),
+      count,
       estimateSize: itemHeight,
     }),
   );
@@ -23,8 +23,6 @@
   const measureItem = (node: HTMLElement) => {
     $effect(() => $virtualizer.measureElement(node));
   };
-
-  $effect(() => $virtualizer.setOptions({ count }));
 </script>
 
 <div class={["relative", className]}>

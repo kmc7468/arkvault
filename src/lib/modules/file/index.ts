@@ -1,3 +1,3 @@
 export * from "./cache";
 export * from "./download";
-export * from "./upload";
+export * from "./upload.svelte";

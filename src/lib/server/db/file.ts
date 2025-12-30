@@ -4,8 +4,6 @@ import { IntegrityError } from "./error";
 import db from "./kysely";
 import type { Ciphertext } from "./schema";
 
-export type DirectoryId = "root" | number;
-
 interface Directory {
   id: number;
   parentId: DirectoryId;

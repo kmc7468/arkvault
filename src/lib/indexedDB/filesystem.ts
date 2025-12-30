@@ -1,7 +1,5 @@
 import { Dexie, type EntityTable } from "dexie";
 
-export type DirectoryId = "root" | number;
-
 interface DirectoryInfo {
   id: number;
   parentId: DirectoryId;
@@ -17,8 +15,6 @@ interface FileInfo {
   lastModifiedAt: Date;
   categoryIds: number[];
 }
-
-export type CategoryId = "root" | number;
 
 interface CategoryInfo {
   id: number;

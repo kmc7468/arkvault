@@ -1,10 +1,5 @@
 import { get, writable, type Writable } from "svelte/store";
 import {
-  getDirectoryInfos as getDirectoryInfosFromIndexedDB,
-  getDirectoryInfo as getDirectoryInfoFromIndexedDB,
-  storeDirectoryInfo,
-  deleteDirectoryInfo,
-  getFileInfos as getFileInfosFromIndexedDB,
   getFileInfo as getFileInfoFromIndexedDB,
   storeFileInfo,
   deleteFileInfo,
@@ -13,31 +8,9 @@ import {
   storeCategoryInfo,
   updateCategoryInfo as updateCategoryInfoInIndexedDB,
   deleteCategoryInfo,
-  type DirectoryId,
-  type CategoryId,
 } from "$lib/indexedDB";
 import { unwrapDataKey, decryptString } from "$lib/modules/crypto";
 import { trpc, isTRPCClientError } from "$trpc/client";
-
-export type DirectoryInfo =
-  | {
-      id: "root";
-      parentId?: undefined;
-      dataKey?: undefined;
-      dataKeyVersion?: undefined;
-      name?: undefined;
-      subDirectoryIds: number[];
-      fileIds: number[];
-    }
-  | {
-      id: number;
-      parentId: DirectoryId;
-      dataKey?: CryptoKey;
-      dataKeyVersion?: Date;
-      name: string;
-      subDirectoryIds: number[];
-      fileIds: number[];
-    };
 
 export interface FileInfo {
   id: number;
@@ -72,97 +45,8 @@ export type CategoryInfo =
       isFileRecursive: boolean;
     };
 
-const directoryInfoStore = new Map<DirectoryId, Writable<DirectoryInfo | null>>();
 const fileInfoStore = new Map<number, Writable<FileInfo | null>>();
 const categoryInfoStore = new Map<CategoryId, Writable<CategoryInfo | null>>();
-
-const fetchDirectoryInfoFromIndexedDB = async (
-  id: DirectoryId,
-  info: Writable<DirectoryInfo | null>,
-) => {
-  if (get(info)) return;
-
-  const [directory, subDirectories, files] = await Promise.all([
-    id !== "root" ? getDirectoryInfoFromIndexedDB(id) : undefined,
-    getDirectoryInfosFromIndexedDB(id),
-    getFileInfosFromIndexedDB(id),
-  ]);
-  const subDirectoryIds = subDirectories.map(({ id }) => id);
-  const fileIds = files.map(({ id }) => id);
-
-  if (id === "root") {
-    info.set({ id, subDirectoryIds, fileIds });
-  } else {
-    if (!directory) return;
-    info.set({
-      id,
-      parentId: directory.parentId,
-      name: directory.name,
-      subDirectoryIds,
-      fileIds,
-    });
-  }
-};
-
-const fetchDirectoryInfoFromServer = async (
-  id: DirectoryId,
-  info: Writable<DirectoryInfo | null>,
-  masterKey: CryptoKey,
-) => {
-  let data;
-  try {
-    data = await trpc().directory.get.query({ id });
-  } catch (e) {
-    if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
-      info.set(null);
-      await deleteDirectoryInfo(id as number);
-      return;
-    }
-    throw new Error("Failed to fetch directory information");
-  }
-
-  const { metadata, subDirectories: subDirectoryIds, files: fileIds } = data;
-
-  if (id === "root") {
-    info.set({ id, subDirectoryIds, fileIds });
-  } else {
-    const { dataKey } = await unwrapDataKey(metadata!.dek, masterKey);
-    const name = await decryptString(metadata!.name, metadata!.nameIv, dataKey);
-
-    info.set({
-      id,
-      parentId: metadata!.parent,
-      dataKey,
-      dataKeyVersion: new Date(metadata!.dekVersion),
-      name,
-      subDirectoryIds,
-      fileIds,
-    });
-    await storeDirectoryInfo({ id, parentId: metadata!.parent, name });
-  }
-};
-
-const fetchDirectoryInfo = async (
-  id: DirectoryId,
-  info: Writable<DirectoryInfo | null>,
-  masterKey: CryptoKey,
-) => {
-  await fetchDirectoryInfoFromIndexedDB(id, info);
-  await fetchDirectoryInfoFromServer(id, info, masterKey);
-};
-
-export const getDirectoryInfo = (id: DirectoryId, masterKey: CryptoKey) => {
-  // TODO: MEK rotation
-
-  let info = directoryInfoStore.get(id);
-  if (!info) {
-    info = writable(null);
-    directoryInfoStore.set(id, info);
-  }
-
-  fetchDirectoryInfo(id, info, masterKey); // Intended
-  return info;
-};
 
 const fetchFileInfoFromIndexedDB = async (id: number, info: Writable<FileInfo | null>) => {
   if (get(info)) return;
