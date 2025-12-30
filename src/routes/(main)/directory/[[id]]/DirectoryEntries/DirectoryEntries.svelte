@@ -25,56 +25,57 @@
     showParentEntry = false,
   }: Props = $props();
 
-  type FileEntry =
+  type Entry =
+    | { type: "parent" }
+    | { type: "directory"; name: string; details: (typeof info.subDirectories)[number] }
     | { type: "file"; name: string; details: (typeof info.files)[number] }
     | { type: "uploading-file"; name: string; details: LiveFileUploadState };
 
-  const toFileEntry =
-    <T extends FileEntry["type"]>(type: T) =>
-    (details: Extract<FileEntry, { type: T }>["details"]) => ({
+  const toEntry =
+    <T extends Exclude<Entry["type"], "parent">>(type: T) =>
+    (details: Extract<Entry, { type: T }>["details"]) => ({
       type,
       name: details.name,
       details,
     });
 
-  const subDirectories = $derived(
-    sortEntries(structuredClone($state.snapshot(info.subDirectories))),
-  );
-  const files = $derived(
-    sortEntries<FileEntry>([
-      ...info.files.map(toFileEntry("file")),
-      ...getUploadingFiles(info.id).map(toFileEntry("uploading-file")),
+  const entries = $derived([
+    ...(showParentEntry ? ([{ type: "parent" }] as const) : []),
+    ...sortEntries(info.subDirectories.map(toEntry("directory"))),
+    ...sortEntries([
+      ...info.files.map(toEntry("file")),
+      ...getUploadingFiles(info.id).map(toEntry("uploading-file")),
     ]),
-  );
+  ]);
 </script>
 
-{#if subDirectories.length + files.length > 0 || showParentEntry}
-  <div class="space-y-1 pb-[4.5rem]">
-    {#if showParentEntry}
-      <ActionEntryButton class="h-14" onclick={onParentClick}>
-        <DirectoryEntryLabel type="parent-directory" name=".." />
-      </ActionEntryButton>
-    {/if}
-    {#each subDirectories as subDirectory}
-      <SubDirectory info={subDirectory} onclick={onEntryClick} onOpenMenuClick={onEntryMenuClick} />
-    {/each}
-    {#if files.length > 0}
-      <RowVirtualizer
-        count={files.length}
-        itemHeight={(index) => 56 + (index + 1 < files.length ? 4 : 0)}
-      >
-        {#snippet item(index)}
-          {@const file = files[index]!}
-          <div class={index + 1 < files.length ? "pb-1" : ""}>
-            {#if file.type === "file"}
-              <File info={file.details} onclick={onEntryClick} onOpenMenuClick={onEntryMenuClick} />
-            {:else}
-              <UploadingFile state={file.details} />
-            {/if}
-          </div>
-        {/snippet}
-      </RowVirtualizer>
-    {/if}
+{#if entries.length > 0}
+  <div class="pb-[4.5rem]">
+    <RowVirtualizer
+      count={entries.length}
+      itemHeight={(index) => 56 + (index + 1 < entries.length ? 4 : 0)}
+    >
+      {#snippet item(index)}
+        {@const entry = entries[index]!}
+        <div class={index + 1 < entries.length ? "pb-1" : ""}>
+          {#if entry.type === "parent"}
+            <ActionEntryButton class="h-14" onclick={onParentClick}>
+              <DirectoryEntryLabel type="parent-directory" name=".." />
+            </ActionEntryButton>
+          {:else if entry.type === "directory"}
+            <SubDirectory
+              info={entry.details}
+              onclick={onEntryClick}
+              onOpenMenuClick={onEntryMenuClick}
+            />
+          {:else if entry.type === "file"}
+            <File info={entry.details} onclick={onEntryClick} onOpenMenuClick={onEntryMenuClick} />
+          {:else}
+            <UploadingFile state={entry.details} />
+          {/if}
+        </div>
+      {/snippet}
+    </RowVirtualizer>
   </div>
 {:else}
   <div class="flex flex-grow items-center justify-center">

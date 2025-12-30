@@ -22,5 +22,5 @@
 
 <TopBar title="사진 및 동영상" />
 <FullscreenDiv>
-  <Gallery {files} onFileClick={({ id }) => goto(`/file/${id}`)} />
+  <Gallery {files} onFileClick={({ id }) => goto(`/file/${id}?from=gallery`)} />
 </FullscreenDiv>

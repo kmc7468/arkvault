@@ -145,7 +145,9 @@
     </button>
     <TopBarMenu
       bind:isOpen={isMenuOpen}
-      directoryId={page.url.searchParams.get("from") === "category" ? $info?.parentId : undefined}
+      directoryId={["category", "gallery"].includes(page.url.searchParams.get("from") ?? "")
+        ? $info?.parentId
+        : undefined}
       {fileBlob}
       filename={$info?.name}
     />
