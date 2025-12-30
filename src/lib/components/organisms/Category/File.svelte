@@ -1,59 +1,38 @@
 <script lang="ts">
-  import type { Writable } from "svelte/store";
+  import { browser } from "$app/environment";
   import { ActionEntryButton } from "$lib/components/atoms";
   import { DirectoryEntryLabel } from "$lib/components/molecules";
-  import type { FileInfo } from "$lib/modules/filesystem";
-  import { requestFileThumbnailDownload, type SelectedFile } from "./service";
+  import type { CategoryFileInfo } from "$lib/modules/filesystem2.svelte";
+  import { requestFileThumbnailDownload } from "$lib/services/file";
+  import type { SelectedFile } from "./service";
 
   import IconClose from "~icons/material-symbols/close";
 
   interface Props {
-    info: Writable<FileInfo | null>;
-    onclick: (selectedFile: SelectedFile) => void;
-    onRemoveClick?: (selectedFile: SelectedFile) => void;
+    info: CategoryFileInfo;
+    onclick: (file: SelectedFile) => void;
+    onRemoveClick?: (file: SelectedFile) => void;
   }
 
   let { info, onclick, onRemoveClick }: Props = $props();
 
-  let thumbnail: string | undefined = $state();
-
-  const openFile = () => {
-    const { id, dataKey, dataKeyVersion, name } = $info as FileInfo;
-    if (!dataKey || !dataKeyVersion) return; // TODO: Error handling
-
-    onclick({ id, dataKey, dataKeyVersion, name });
-  };
-
-  const removeFile = () => {
-    const { id, dataKey, dataKeyVersion, name } = $info as FileInfo;
-    if (!dataKey || !dataKeyVersion) return; // TODO: Error handling
-
-    onRemoveClick!({ id, dataKey, dataKeyVersion, name });
-  };
-
-  $effect(() => {
-    if ($info) {
-      requestFileThumbnailDownload($info.id, $info.dataKey)
-        .then((thumbnailUrl) => {
-          thumbnail = thumbnailUrl ?? undefined;
-        })
-        .catch(() => {
-          // TODO: Error Handling
-          thumbnail = undefined;
-        });
-    } else {
-      thumbnail = undefined;
-    }
-  });
+  let showThumbnail = $derived(
+    browser && (info.contentType.startsWith("image/") || info.contentType.startsWith("video/")),
+  );
+  let thumbnailPromise = $derived(
+    showThumbnail ? requestFileThumbnailDownload(info.id, info.dataKey?.key) : null,
+  );
 </script>
 
-{#if $info}
-  <ActionEntryButton
-    class="h-12"
-    onclick={openFile}
-    actionButtonIcon={onRemoveClick && IconClose}
-    onActionButtonClick={removeFile}
-  >
-    <DirectoryEntryLabel type="file" {thumbnail} name={$info.name} />
-  </ActionEntryButton>
-{/if}
+<ActionEntryButton
+  class="h-12"
+  onclick={() => onclick(info)}
+  actionButtonIcon={onRemoveClick && IconClose}
+  onActionButtonClick={() => onRemoveClick?.(info)}
+>
+  {#await thumbnailPromise}
+    <DirectoryEntryLabel type="file" name={info.name} />
+  {:then thumbnail}
+    <DirectoryEntryLabel type="file" thumbnail={thumbnail ?? undefined} name={info.name} />
+  {/await}
+</ActionEntryButton>

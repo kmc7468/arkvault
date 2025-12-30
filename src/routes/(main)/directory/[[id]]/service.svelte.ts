@@ -98,7 +98,6 @@ export const requestFileUpload = async (
 export const requestEntryRename = async (entry: SelectedEntry, newName: string) => {
   if (!entry.dataKey) {
     // TODO: Error Handling
-    console.log("hi");
     return false;
   }
 

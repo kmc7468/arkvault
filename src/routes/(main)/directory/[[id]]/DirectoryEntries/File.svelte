@@ -35,7 +35,13 @@
   actionButtonIcon={IconMoreVert}
   onActionButtonClick={() => action(onOpenMenuClick)}
 >
-  {#await thumbnailPromise then thumbnail}
+  {#await thumbnailPromise}
+    <DirectoryEntryLabel
+      type="file"
+      name={info.name}
+      subtext={formatDateTime(info.createdAt ?? info.lastModifiedAt)}
+    />
+  {:then thumbnail}
     <DirectoryEntryLabel
       type="file"
       thumbnail={thumbnail ?? undefined}

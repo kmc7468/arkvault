@@ -54,13 +54,14 @@ interface FileInfo {
 }
 
 export type SummarizedFileInfo = Omit<FileInfo, "parentId" | "contentIv" | "categories">;
+export type CategoryFileInfo = SummarizedFileInfo & { isRecursive: boolean };
 
 interface LocalCategoryInfo {
   id: number;
-  dataKey: DataKey | undefined;
+  dataKey?: DataKey | undefined;
   name: string;
-  subCategories: Omit<LocalCategoryInfo, "subCategories" | "files" | "isFileRecursive">[];
-  files: { id: number; name: string; isRecursive: boolean }[];
+  subCategories: SubCategoryInfo[];
+  files: CategoryFileInfo[];
   isFileRecursive: boolean;
 }
 
@@ -68,13 +69,19 @@ interface RootCategoryInfo {
   id: "root";
   dataKey?: undefined;
   name?: undefined;
-  subCategories: Omit<LocalCategoryInfo, "subCategories" | "files" | "isFileRecursive">[];
+  subCategories: SubCategoryInfo[];
   files?: undefined;
+  isFileRecursive?: undefined;
 }
 
 export type CategoryInfo = LocalCategoryInfo | RootCategoryInfo;
+export type SubCategoryInfo = Omit<
+  LocalCategoryInfo,
+  "subCategories" | "files" | "isFileRecursive"
+>;
 
 const directoryInfoCache = new Map<DirectoryId, DirectoryInfo | Promise<DirectoryInfo>>();
+const categoryInfoCache = new Map<CategoryId, CategoryInfo | Promise<CategoryInfo>>();
 
 export const getDirectoryInfo = async (id: DirectoryId, masterKey: CryptoKey) => {
   const info = directoryInfoCache.get(id);
@@ -188,4 +195,147 @@ const fetchDirectoryInfoFromServer = async (
 
 const decryptDate = async (ciphertext: string, iv: string, dataKey: CryptoKey) => {
   return new Date(parseInt(await decryptString(ciphertext, iv, dataKey), 10));
+};
+
+export const getCategoryInfo = async (id: CategoryId, masterKey: CryptoKey) => {
+  const info = categoryInfoCache.get(id);
+  if (info instanceof Promise) {
+    return info;
+  }
+
+  const { promise, resolve } = Promise.withResolvers<CategoryInfo>();
+  if (!info) {
+    categoryInfoCache.set(id, promise);
+    const categoryInfo = await fetchCategoryInfoFromIndexedDB(id);
+    if (categoryInfo) {
+      const state = $state(categoryInfo);
+      categoryInfoCache.set(id, state);
+      resolve(state);
+    }
+  }
+
+  fetchCategoryInfoFromServer(id, masterKey).then((categoryInfo) => {
+    if (!categoryInfo) return;
+
+    let info = categoryInfoCache.get(id);
+    if (info instanceof Promise) {
+      const state = $state(categoryInfo);
+      categoryInfoCache.set(id, state);
+      resolve(state);
+    } else {
+      Object.assign(info!, categoryInfo);
+      resolve(info!);
+    }
+  });
+
+  return info ?? promise;
+};
+
+const fetchCategoryInfoFromIndexedDB = async (
+  id: CategoryId,
+): Promise<CategoryInfo | undefined> => {
+  const [category, subCategories] = await Promise.all([
+    id !== "root" ? getCategoryInfoFromIndexedDB(id) : undefined,
+    getCategoryInfosFromIndexedDB(id),
+  ]);
+  const files = category
+    ? await Promise.all(
+        category.files.map(async (file) => {
+          const fileInfo = await getFileInfoFromIndexedDB(file.id);
+          return fileInfo
+            ? {
+                id: file.id,
+                contentType: fileInfo.contentType,
+                name: fileInfo.name,
+                createdAt: fileInfo.createdAt,
+                lastModifiedAt: fileInfo.lastModifiedAt,
+                isRecursive: file.isRecursive,
+              }
+            : undefined;
+        }),
+      )
+    : undefined;
+
+  if (id === "root") {
+    return { id, subCategories };
+  } else if (category) {
+    return {
+      id,
+      name: category.name,
+      subCategories,
+      files: files!.filter((file) => !!file),
+      isFileRecursive: category.isFileRecursive,
+    };
+  }
+};
+
+const fetchCategoryInfoFromServer = async (
+  id: CategoryId,
+  masterKey: CryptoKey,
+): Promise<CategoryInfo | undefined> => {
+  try {
+    const {
+      metadata,
+      subCategories: subCategoriesRaw,
+      files: filesRaw,
+    } = await trpc().category.get.query({ id, recurse: true });
+    const [subCategories, files] = await Promise.all([
+      Promise.all(
+        subCategoriesRaw.map(async (category) => {
+          const { dataKey } = await unwrapDataKey(category.dek, masterKey);
+          const name = await decryptString(category.name, category.nameIv, dataKey);
+          return {
+            id: category.id,
+            dataKey: { key: dataKey, version: category.dekVersion },
+            name,
+          };
+        }),
+      ),
+      id !== "root"
+        ? Promise.all(
+            filesRaw!.map(async (file) => {
+              const { dataKey } = await unwrapDataKey(file.dek, masterKey);
+              const [name, createdAt, lastModifiedAt] = await Promise.all([
+                decryptString(file.name, file.nameIv, dataKey),
+                file.createdAt
+                  ? decryptDate(file.createdAt, file.createdAtIv!, dataKey)
+                  : undefined,
+                decryptDate(file.lastModifiedAt, file.lastModifiedAtIv, dataKey),
+              ]);
+              return {
+                id: file.id,
+                dataKey: { key: dataKey, version: file.dekVersion },
+                contentType: file.contentType,
+                name,
+                createdAt,
+                lastModifiedAt,
+                isRecursive: file.isRecursive,
+              };
+            }),
+          )
+        : undefined,
+    ]);
+
+    if (id === "root") {
+      return { id, subCategories };
+    } else {
+      const { dataKey } = await unwrapDataKey(metadata!.dek, masterKey);
+      const name = await decryptString(metadata!.name, metadata!.nameIv, dataKey);
+      return {
+        id,
+        dataKey: { key: dataKey, version: metadata!.dekVersion },
+        name,
+        subCategories,
+        files: files!,
+        isFileRecursive: false,
+      };
+    }
+  } catch (e) {
+    if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
+      categoryInfoCache.delete(id);
+      await deleteCategoryInfo(id as number);
+      return;
+    }
+    throw new Error("Failed to fetch category information");
+  }
 };

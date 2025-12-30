@@ -39,7 +39,7 @@
       details,
     });
 
-  const entries = $derived([
+  let entries = $derived([
     ...(showParentEntry ? ([{ type: "parent" }] as const) : []),
     ...sortEntries(info.subDirectories.map(toEntry("directory"))),
     ...sortEntries([

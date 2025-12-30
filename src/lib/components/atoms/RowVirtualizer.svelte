@@ -16,7 +16,7 @@
   let element: HTMLElement | undefined = $state();
   let scrollMargin = $state(0);
 
-  const virtualizer = $derived(
+  let virtualizer = $derived(
     createWindowVirtualizer({
       count,
       estimateSize: itemHeight,

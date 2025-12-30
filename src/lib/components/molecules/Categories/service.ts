@@ -1,6 +1,5 @@
 export interface SelectedCategory {
   id: number;
-  dataKey: CryptoKey;
-  dataKeyVersion: Date;
+  dataKey?: { key: CryptoKey; version: Date };
   name: string;
 }

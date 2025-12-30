@@ -6,12 +6,7 @@
   import { page } from "$app/state";
   import { FullscreenDiv } from "$lib/components/atoms";
   import { Categories, IconEntryButton, TopBar } from "$lib/components/molecules";
-  import {
-    getFileInfo,
-    getCategoryInfo,
-    type FileInfo,
-    type CategoryInfo,
-  } from "$lib/modules/filesystem";
+  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
   import { captureVideoThumbnail } from "$lib/modules/thumbnail";
   import { fileDownloadStatusStore, isFileDownloading, masterKeyStore } from "$lib/stores";
   import AddToCategoryBottomSheet from "./AddToCategoryBottomSheet.svelte";
@@ -32,7 +27,7 @@
   let { data } = $props();
 
   let info: Writable<FileInfo | null> | undefined = $state();
-  let categories: Writable<CategoryInfo | null>[] = $state([]);
+  // let categories: Writable<CategoryInfo | null>[] = $state([]);
 
   let isMenuOpen = $state(false);
   let isAddToCategoryBottomSheetOpen = $state(false);
@@ -90,10 +85,10 @@
     viewerType = undefined;
   });
 
-  $effect(() => {
-    categories =
-      $info?.categoryIds.map((id) => getCategoryInfo(id, $masterKeyStore?.get(1)?.key!)) ?? [];
-  });
+  // $effect(() => {
+  //   categories =
+  //     $info?.categoryIds.map((id) => getCategoryInfo(id, $masterKeyStore?.get(1)?.key!)) ?? [];
+  // });
 
   $effect(() => {
     if ($info && $info.dataKey && $info.contentIv) {
@@ -190,12 +185,12 @@
     <div class="space-y-2">
       <p class="text-lg font-bold">카테고리</p>
       <div class="space-y-1">
-        <Categories
+        <!-- <Categories
           {categories}
           categoryMenuIcon={IconClose}
           onCategoryClick={({ id }) => goto(`/category/${id}`)}
           onCategoryMenuClick={({ id }) => removeFromCategory(id)}
-        />
+        /> -->
         <IconEntryButton
           icon={IconAddCircle}
           onclick={() => (isAddToCategoryBottomSheetOpen = true)}

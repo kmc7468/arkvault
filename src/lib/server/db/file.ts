@@ -304,39 +304,51 @@ export const getAllFilesByCategory = async (
   recurse: boolean,
 ) => {
   const files = await db
-    .withRecursive("cte", (db) =>
+    .withRecursive("category_tree", (db) =>
       db
         .selectFrom("category")
-        .leftJoin("file_category", "category.id", "file_category.category_id")
-        .select(["id", "parent_id", "user_id", "file_category.file_id"])
-        .select(sql<number>`0`.as("depth"))
+        .select(["id", sql<number>`0`.as("depth")])
         .where("id", "=", categoryId)
+        .where("user_id", "=", userId)
         .$if(recurse, (qb) =>
           qb.unionAll((db) =>
             db
               .selectFrom("category")
-              .leftJoin("file_category", "category.id", "file_category.category_id")
-              .innerJoin("cte", "category.parent_id", "cte.id")
-              .select([
-                "category.id",
-                "category.parent_id",
-                "category.user_id",
-                "file_category.file_id",
-              ])
-              .select(sql<number>`cte.depth + 1`.as("depth")),
+              .innerJoin("category_tree", "category.parent_id", "category_tree.id")
+              .select(["category.id", sql<number>`depth + 1`.as("depth")]),
           ),
         ),
     )
-    .selectFrom("cte")
+    .selectFrom("category_tree")
+    .innerJoin("file_category", "category_tree.id", "file_category.category_id")
+    .innerJoin("file", "file_category.file_id", "file.id")
     .select(["file_id", "depth"])
+    .selectAll("file")
     .distinctOn("file_id")
-    .where("user_id", "=", userId)
-    .where("file_id", "is not", null)
-    .$narrowType<{ file_id: NotNull }>()
     .orderBy("file_id")
     .orderBy("depth")
     .execute();
-  return files.map(({ file_id, depth }) => ({ id: file_id, isRecursive: depth > 0 }));
+  return files.map(
+    (file) =>
+      ({
+        id: file.file_id,
+        parentId: file.parent_id ?? "root",
+        userId: file.user_id,
+        path: file.path,
+        mekVersion: file.master_encryption_key_version,
+        encDek: file.encrypted_data_encryption_key,
+        dekVersion: file.data_encryption_key_version,
+        hskVersion: file.hmac_secret_key_version,
+        contentHmac: file.content_hmac,
+        contentType: file.content_type,
+        encContentIv: file.encrypted_content_iv,
+        encContentHash: file.encrypted_content_hash,
+        encName: file.encrypted_name,
+        encCreatedAt: file.encrypted_created_at,
+        encLastModifiedAt: file.encrypted_last_modified_at,
+        isRecursive: file.depth > 0,
+      }) satisfies File & { isRecursive: boolean },
+  );
 };
 
 export const getAllFileIds = async (userId: number) => {
