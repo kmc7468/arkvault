@@ -1,9 +1,9 @@
 import * as IndexedDB from "$lib/indexedDB";
 import { trpc, isTRPCClientError } from "$trpc/client";
 import { FilesystemCache, decryptFileMetadata, decryptCategoryMetadata } from "./internal.svelte";
-import type { CategoryInfo } from "./types";
+import type { MaybeCategoryInfo } from "./types";
 
-const cache = new FilesystemCache<CategoryId, CategoryInfo, Partial<CategoryInfo>>();
+const cache = new FilesystemCache<CategoryId, MaybeCategoryInfo, Partial<MaybeCategoryInfo>>();
 
 const fetchFromIndexedDB = async (id: CategoryId) => {
   const [category, subCategories] = await Promise.all([
@@ -29,10 +29,15 @@ const fetchFromIndexedDB = async (id: CategoryId) => {
     : undefined;
 
   if (id === "root") {
-    return { id, subCategories };
+    return {
+      id,
+      exists: true as const,
+      subCategories,
+    };
   } else if (category) {
     return {
       id,
+      exists: true as const,
       name: category.name,
       subCategories,
       files: files!.filter((file) => !!file),
@@ -68,10 +73,15 @@ const fetchFromServer = async (id: CategoryId, masterKey: CryptoKey) => {
     ]);
 
     if (id === "root") {
-      return { id, subCategories };
+      return {
+        id,
+        exists: true as const,
+        subCategories,
+      };
     } else {
       return {
         id,
+        exists: true as const,
         subCategories,
         files,
         ...(await decryptCategoryMetadata(metadata!, masterKey)),
@@ -79,9 +89,8 @@ const fetchFromServer = async (id: CategoryId, masterKey: CryptoKey) => {
     }
   } catch (e) {
     if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
-      cache.delete(id);
       await IndexedDB.deleteCategoryInfo(id as number);
-      return;
+      return { id, exists: false as const };
     }
     throw e;
   }

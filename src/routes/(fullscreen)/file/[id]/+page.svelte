@@ -5,7 +5,7 @@
   import { page } from "$app/state";
   import { FullscreenDiv } from "$lib/components/atoms";
   import { Categories, IconEntryButton, TopBar } from "$lib/components/molecules";
-  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
+  import { getFileInfo, type FileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
   import { captureVideoThumbnail } from "$lib/modules/thumbnail";
   import { getFileDownloadState } from "$lib/modules/file";
   import { masterKeyStore } from "$lib/stores";
@@ -26,7 +26,7 @@
 
   let { data } = $props();
 
-  let infoPromise: Promise<FileInfo | null> | undefined = $state();
+  let infoPromise: Promise<MaybeFileInfo> | undefined = $state();
   let info: FileInfo | null = $state(null);
   let downloadState = $derived(getFileDownloadState(data.id));
 
@@ -75,7 +75,9 @@
 
   $effect(() => {
     infoPromise = getFileInfo(data.id, $masterKeyStore?.get(1)?.key!).then((fileInfo) => {
-      info = fileInfo;
+      if (fileInfo.exists) {
+        info = fileInfo;
+      }
       return fileInfo;
     });
     info = null;

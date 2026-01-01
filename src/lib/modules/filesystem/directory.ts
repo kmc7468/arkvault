@@ -2,9 +2,9 @@ import * as IndexedDB from "$lib/indexedDB";
 import { monotonicResolve } from "$lib/utils";
 import { trpc, isTRPCClientError } from "$trpc/client";
 import { FilesystemCache, decryptDirectoryMetadata, decryptFileMetadata } from "./internal.svelte";
-import type { DirectoryInfo } from "./types";
+import type { MaybeDirectoryInfo } from "./types";
 
-const cache = new FilesystemCache<DirectoryId, DirectoryInfo>();
+const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>();
 
 const fetchFromIndexedDB = async (id: DirectoryId) => {
   const [directory, subDirectories, files] = await Promise.all([
@@ -14,9 +14,21 @@ const fetchFromIndexedDB = async (id: DirectoryId) => {
   ]);
 
   if (id === "root") {
-    return { id, subDirectories, files };
+    return {
+      id,
+      exists: true as const,
+      subDirectories,
+      files,
+    };
   } else if (directory) {
-    return { id, parentId: directory.parentId, name: directory.name, subDirectories, files };
+    return {
+      id,
+      exists: true as const,
+      parentId: directory.parentId,
+      name: directory.name,
+      subDirectories,
+      files,
+    };
   }
 };
 
@@ -44,10 +56,16 @@ const fetchFromServer = async (id: DirectoryId, masterKey: CryptoKey) => {
     ]);
 
     if (id === "root") {
-      return { id, subDirectories, files };
+      return {
+        id,
+        exists: true as const,
+        subDirectories,
+        files,
+      };
     } else {
       return {
         id,
+        exists: true as const,
         parentId: metadata!.parent,
         subDirectories,
         files,
@@ -56,9 +74,8 @@ const fetchFromServer = async (id: DirectoryId, masterKey: CryptoKey) => {
     }
   } catch (e) {
     if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
-      cache.delete(id);
       await IndexedDB.deleteDirectoryInfo(id as number);
-      return;
+      return { id, exists: false as const };
     }
     throw e;
   }

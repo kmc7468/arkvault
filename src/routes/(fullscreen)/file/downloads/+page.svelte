@@ -23,7 +23,9 @@
   {#await filesPromise then files}
     <div class="space-y-2 pb-4">
       {#each files as file, index}
-        <File state={downloadingFiles[index]!} info={file} />
+        {#if file.exists}
+          <File state={downloadingFiles[index]!} info={file} />
+        {/if}
       {/each}
     </div>
   {/await}

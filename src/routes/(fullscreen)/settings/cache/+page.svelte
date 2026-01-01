@@ -4,14 +4,14 @@
   import { TopBar } from "$lib/components/molecules";
   import type { FileCacheIndex } from "$lib/indexedDB";
   import { getFileCacheIndex, deleteFileCache as doDeleteFileCache } from "$lib/modules/file";
-  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
+  import { getFileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import { formatFileSize } from "$lib/utils";
   import File from "./File.svelte";
 
   interface FileCache {
     index: FileCacheIndex;
-    fileInfo: FileInfo | null;
+    info: MaybeFileInfo;
   }
 
   let fileCache: FileCache[] | undefined = $state();
@@ -26,7 +26,7 @@
     fileCache = await Promise.all(
       getFileCacheIndex().map(async (index) => ({
         index,
-        fileInfo: await getFileInfo(index.fileId, $masterKeyStore?.get(1)?.key!),
+        info: await getFileInfo(index.fileId, $masterKeyStore?.get(1)?.key!),
       })),
     );
     fileCache.sort((a, b) => a.index.lastRetrievedAt.getTime() - b.index.lastRetrievedAt.getTime());
@@ -55,8 +55,8 @@
         <p>캐시를 삭제하더라도 원본 파일은 삭제되지 않아요.</p>
       </div>
       <div class="space-y-2">
-        {#each fileCache as { index, fileInfo }}
-          <File {index} info={fileInfo} onDeleteClick={deleteFileCache} />
+        {#each fileCache as { index, info }}
+          <File {index} {info} onDeleteClick={deleteFileCache} />
         {/each}
       </div>
     </div>

@@ -2,9 +2,9 @@ import * as IndexedDB from "$lib/indexedDB";
 import { monotonicResolve } from "$lib/utils";
 import { trpc, isTRPCClientError } from "$trpc/client";
 import { FilesystemCache, decryptFileMetadata, decryptCategoryMetadata } from "./internal.svelte";
-import type { FileInfo } from "./types";
+import type { MaybeFileInfo } from "./types";
 
-const cache = new FilesystemCache<number, FileInfo>();
+const cache = new FilesystemCache<number, MaybeFileInfo>();
 
 const fetchFromIndexedDB = async (id: number) => {
   const file = await IndexedDB.getFileInfo(id);
@@ -20,6 +20,7 @@ const fetchFromIndexedDB = async (id: number) => {
   if (file) {
     return {
       id,
+      exists: true as const,
       parentId: file.parentId,
       contentType: file.contentType,
       name: file.name,
@@ -44,6 +45,7 @@ const fetchFromServer = async (id: number, masterKey: CryptoKey) => {
 
     return {
       id,
+      exists: true as const,
       parentId: metadata.parent,
       contentType: metadata.contentType,
       contentIv: metadata.contentIv,
@@ -52,9 +54,8 @@ const fetchFromServer = async (id: number, masterKey: CryptoKey) => {
     };
   } catch (e) {
     if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
-      cache.delete(id);
       await IndexedDB.deleteFileInfo(id);
-      return;
+      return { id, exists: false as const };
     }
     throw e;
   }

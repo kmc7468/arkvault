@@ -2,7 +2,7 @@
   import { goto } from "$app/navigation";
   import { TopBar } from "$lib/components/molecules";
   import { Category, CategoryCreateModal } from "$lib/components/organisms";
-  import { getCategoryInfo, type CategoryInfo } from "$lib/modules/filesystem";
+  import { getCategoryInfo, type MaybeCategoryInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import CategoryDeleteModal from "./CategoryDeleteModal.svelte";
   import CategoryMenuBottomSheet from "./CategoryMenuBottomSheet.svelte";
@@ -18,7 +18,7 @@
   let { data } = $props();
   let context = createContext();
 
-  let infoPromise: Promise<CategoryInfo> | undefined = $state();
+  let infoPromise: Promise<MaybeCategoryInfo> | undefined = $state();
 
   let isCategoryCreateModalOpen = $state(false);
   let isCategoryMenuBottomSheetOpen = $state(false);
@@ -35,7 +35,7 @@
 </svelte:head>
 
 {#await infoPromise then info}
-  {#if info}
+  {#if info?.exists}
     {#if info.id !== "root"}
       <TopBar title={info.name} />
     {/if}

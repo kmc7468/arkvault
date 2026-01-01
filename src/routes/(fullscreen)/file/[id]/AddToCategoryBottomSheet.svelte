@@ -2,7 +2,7 @@
   import { BottomDiv, BottomSheet, Button, FullscreenDiv } from "$lib/components/atoms";
   import { SubCategories } from "$lib/components/molecules";
   import { CategoryCreateModal } from "$lib/components/organisms";
-  import { getCategoryInfo, type CategoryInfo } from "$lib/modules/filesystem";
+  import { getCategoryInfo, type MaybeCategoryInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import { requestCategoryCreation } from "./service";
 
@@ -13,7 +13,7 @@
 
   let { onAddToCategoryClick, isOpen = $bindable() }: Props = $props();
 
-  let categoryInfoPromise: Promise<CategoryInfo | null> | undefined = $state();
+  let categoryInfoPromise: Promise<MaybeCategoryInfo> | undefined = $state();
 
   let isCategoryCreateModalOpen = $state(false);
 
@@ -25,7 +25,7 @@
 </script>
 
 {#await categoryInfoPromise then categoryInfo}
-  {#if categoryInfo}
+  {#if categoryInfo?.exists}
     <BottomSheet bind:isOpen class="flex flex-col">
       <FullscreenDiv>
         <SubCategories

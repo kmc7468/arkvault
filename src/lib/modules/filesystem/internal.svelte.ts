@@ -30,10 +30,6 @@ export class FilesystemCache<K, V extends RV, RV = V> {
 
     return info ?? promise;
   }
-
-  delete(key: K) {
-    this.map.delete(key);
-  }
 }
 
 export const decryptDirectoryMetadata = async (

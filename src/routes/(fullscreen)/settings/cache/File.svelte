@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FileCacheIndex } from "$lib/indexedDB";
-  import type { SummarizedFileInfo } from "$lib/modules/filesystem";
+  import type { MaybeFileInfo } from "$lib/modules/filesystem";
   import { formatDate, formatFileSize } from "$lib/utils";
 
   import IconDraft from "~icons/material-symbols/draft";
@@ -9,7 +9,7 @@
 
   interface Props {
     index: FileCacheIndex;
-    info: SummarizedFileInfo | null;
+    info: MaybeFileInfo;
     onDeleteClick: (fileId: number) => void;
   }
 
@@ -17,7 +17,7 @@
 </script>
 
 <div class="flex h-14 items-center gap-x-4 p-2">
-  {#if info}
+  {#if info.exists}
     <div class="flex-shrink-0 rounded-full bg-blue-100 p-1 text-xl">
       <IconDraft class="text-blue-400" />
     </div>
@@ -27,7 +27,7 @@
     </div>
   {/if}
   <div class="flex-grow overflow-hidden">
-    {#if info}
+    {#if info.exists}
       <p title={info.name} class="truncate font-medium">{info.name}</p>
     {:else}
       <p class="font-medium">삭제된 파일</p>

@@ -4,7 +4,7 @@
   import { page } from "$app/state";
   import { FloatingButton } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
-  import { getDirectoryInfo, type DirectoryInfo } from "$lib/modules/filesystem";
+  import { getDirectoryInfo, type MaybeDirectoryInfo } from "$lib/modules/filesystem";
   import { masterKeyStore, hmacSecretStore } from "$lib/stores";
   import DirectoryCreateModal from "./DirectoryCreateModal.svelte";
   import DirectoryEntries from "./DirectoryEntries";
@@ -29,7 +29,7 @@
   let { data } = $props();
   let context = createContext();
 
-  let infoPromise: Promise<DirectoryInfo> | undefined = $state();
+  let infoPromise: Promise<MaybeDirectoryInfo> | undefined = $state();
   let fileInput: HTMLInputElement | undefined = $state();
   let duplicatedFile: File | undefined = $state();
   let resolveForDuplicateFileModal: ((res: boolean) => void) | undefined = $state();
@@ -89,7 +89,7 @@
 <input bind:this={fileInput} onchange={uploadFile} type="file" multiple class="hidden" />
 
 {#await infoPromise then info}
-  {#if info}
+  {#if info?.exists}
     <div class="flex h-full flex-col">
       {#if showTopBar}
         <TopBar title={info.name} class="flex-shrink-0" />

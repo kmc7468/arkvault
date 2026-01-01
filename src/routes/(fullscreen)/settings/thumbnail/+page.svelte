@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { get } from "svelte/store";
   import { goto } from "$app/navigation";
   import { BottomDiv, Button, FullscreenDiv } from "$lib/components/atoms";
   import { IconEntryButton, TopBar } from "$lib/components/molecules";
@@ -15,12 +14,13 @@
   } from "./service.svelte";
 
   import IconDelete from "~icons/material-symbols/delete";
+  import { file } from "zod";
 
   let { data } = $props();
 
   const generateAllThumbnails = () => {
     persistentStates.files.forEach(({ info }) => {
-      if (info) {
+      if (info.exists) {
         requestThumbnailGeneration(info);
       }
     });
@@ -58,12 +58,14 @@
           </p>
           <div class="space-y-2">
             {#each persistentStates.files as { info, status }}
-              <File
-                {info}
-                generationStatus={status}
-                onclick={({ id }) => goto(`/file/${id}`)}
-                onGenerateThumbnailClick={requestThumbnailGeneration}
-              />
+              {#if info.exists}
+                <File
+                  {info}
+                  generationStatus={status}
+                  onclick={({ id }) => goto(`/file/${id}`)}
+                  onGenerateThumbnailClick={requestThumbnailGeneration}
+                />
+              {/if}
             {/each}
           </div>
         </div>

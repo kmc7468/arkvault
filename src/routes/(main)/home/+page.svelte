@@ -2,11 +2,11 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { EntryButton, FileThumbnailButton } from "$lib/components/atoms";
-  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
+  import { getFileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import { requestFreshMediaFilesRetrieval } from "./service";
 
-  let mediaFiles: (FileInfo | null)[] = $state([]);
+  let mediaFiles: MaybeFileInfo[] = $state([]);
 
   onMount(async () => {
     const files = await requestFreshMediaFilesRetrieval();
@@ -29,7 +29,7 @@
     {#if mediaFiles.length > 0}
       <div class="grid grid-cols-4 gap-2 p-2">
         {#each mediaFiles as file}
-          {#if file}
+          {#if file.exists}
             <FileThumbnailButton info={file} onclick={({ id }) => goto(`/file/${id}`)} />
           {/if}
         {/each}
