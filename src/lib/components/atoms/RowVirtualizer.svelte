@@ -8,10 +8,11 @@
     count: number;
     item: Snippet<[index: number]>;
     itemHeight: (index: number) => number;
+    itemGap?: number;
     placeholder?: Snippet;
   }
 
-  let { class: className, count, item, itemHeight, placeholder }: Props = $props();
+  let { class: className, count, item, itemHeight, itemGap, placeholder }: Props = $props();
 
   let element: HTMLElement | undefined = $state();
   let scrollMargin = $state(0);
@@ -20,6 +21,7 @@
     createWindowVirtualizer({
       count,
       estimateSize: itemHeight,
+      gap: itemGap,
       scrollMargin,
     }),
   );

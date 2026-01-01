@@ -46,7 +46,7 @@ const isFileUploading = (status: FileUploadState["status"]) =>
 
 export const getUploadingFiles = (parentId?: DirectoryId) => {
   return uploadingFiles.filter(
-    (file): file is LiveFileUploadState =>
+    (file) =>
       (parentId === undefined || file.parentId === parentId) && isFileUploading(file.status),
   );
 };

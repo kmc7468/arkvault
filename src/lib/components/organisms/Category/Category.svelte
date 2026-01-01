@@ -75,19 +75,14 @@
           <p class="font-medium">하위 카테고리의 파일</p>
         </CheckBox>
       </div>
-      <RowVirtualizer
-        count={files.length}
-        itemHeight={(index) => 48 + (index + 1 < files.length ? 4 : 0)}
-      >
+      <RowVirtualizer count={files.length} itemHeight={() => 48} itemGap={4}>
         {#snippet item(index)}
           {@const { details } = files[index]!}
-          <div class={[index + 1 < files.length && "pb-1"]}>
-            <File
-              info={details}
-              onclick={onFileClick}
-              onRemoveClick={!details.isRecursive ? onFileRemoveClick : undefined}
-            />
-          </div>
+          <File
+            info={details}
+            onclick={onFileClick}
+            onRemoveClick={!details.isRecursive ? onFileRemoveClick : undefined}
+          />
         {/snippet}
         {#snippet placeholder()}
           <p class="text-center text-gray-500">이 카테고리에 추가된 파일이 없어요.</p>

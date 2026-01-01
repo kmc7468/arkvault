@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FileDownloadState } from "$lib/modules/file";
-  import type { FileInfo } from "$lib/modules/filesystem";
+  import type { SummarizedFileInfo } from "$lib/modules/filesystem";
   import { formatNetworkSpeed } from "$lib/utils";
 
   import IconCloud from "~icons/material-symbols/cloud";
@@ -11,7 +11,7 @@
   import IconError from "~icons/material-symbols/error";
 
   interface Props {
-    info: FileInfo;
+    info: SummarizedFileInfo;
     state: FileDownloadState;
   }
 

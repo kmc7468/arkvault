@@ -33,47 +33,38 @@
 
   const toEntry =
     <T extends Exclude<Entry["type"], "parent">>(type: T) =>
-    (details: Extract<Entry, { type: T }>["details"]) => ({
-      type,
-      name: details.name,
-      details,
-    });
+    (details: Extract<Entry, { type: T }>["details"]) => ({ type, name: details.name, details });
 
   let entries = $derived([
     ...(showParentEntry ? ([{ type: "parent" }] as const) : []),
     ...sortEntries(info.subDirectories.map(toEntry("directory"))),
     ...sortEntries([
       ...info.files.map(toEntry("file")),
-      ...getUploadingFiles(info.id).map(toEntry("uploading-file")),
+      ...(getUploadingFiles(info.id) as LiveFileUploadState[]).map(toEntry("uploading-file")),
     ]),
   ]);
 </script>
 
 {#if entries.length > 0}
   <div class="pb-[4.5rem]">
-    <RowVirtualizer
-      count={entries.length}
-      itemHeight={(index) => 56 + (index + 1 < entries.length ? 4 : 0)}
-    >
+    <RowVirtualizer count={entries.length} itemHeight={() => 56} itemGap={4}>
       {#snippet item(index)}
         {@const entry = entries[index]!}
-        <div class={index + 1 < entries.length ? "pb-1" : ""}>
-          {#if entry.type === "parent"}
-            <ActionEntryButton class="h-14" onclick={onParentClick}>
-              <DirectoryEntryLabel type="parent-directory" name=".." />
-            </ActionEntryButton>
-          {:else if entry.type === "directory"}
-            <SubDirectory
-              info={entry.details}
-              onclick={onEntryClick}
-              onOpenMenuClick={onEntryMenuClick}
-            />
-          {:else if entry.type === "file"}
-            <File info={entry.details} onclick={onEntryClick} onOpenMenuClick={onEntryMenuClick} />
-          {:else}
-            <UploadingFile state={entry.details} />
-          {/if}
-        </div>
+        {#if entry.type === "parent"}
+          <ActionEntryButton class="h-14" onclick={onParentClick}>
+            <DirectoryEntryLabel type="parent-directory" name=".." />
+          </ActionEntryButton>
+        {:else if entry.type === "directory"}
+          <SubDirectory
+            info={entry.details}
+            onclick={onEntryClick}
+            onOpenMenuClick={onEntryMenuClick}
+          />
+        {:else if entry.type === "file"}
+          <File info={entry.details} onclick={onEntryClick} onOpenMenuClick={onEntryMenuClick} />
+        {:else}
+          <UploadingFile state={entry.details} />
+        {/if}
       {/snippet}
     </RowVirtualizer>
   </div>
