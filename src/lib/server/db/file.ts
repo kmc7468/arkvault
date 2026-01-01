@@ -1,4 +1,5 @@
 import { sql } from "kysely";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
 import pg from "pg";
 import { IntegrityError } from "./error";
 import db from "./kysely";
@@ -35,6 +36,14 @@ interface File {
 }
 
 export type NewFile = Omit<File, "id">;
+
+interface FileCategory {
+  id: number;
+  mekVersion: number;
+  encDek: string;
+  dekVersion: Date;
+  encName: Ciphertext;
+}
 
 export const registerDirectory = async (params: NewDirectory) => {
   await db.transaction().execute(async (trx) => {
@@ -400,6 +409,51 @@ export const getFile = async (userId: number, fileId: number) => {
     : null;
 };
 
+export const getFilesWithCategories = async (userId: number, fileIds: number[]) => {
+  const files = await db
+    .selectFrom("file")
+    .selectAll()
+    .select((eb) =>
+      jsonArrayFrom(
+        eb
+          .selectFrom("file_category")
+          .innerJoin("category", "file_category.category_id", "category.id")
+          .where("file_category.file_id", "=", eb.ref("file.id"))
+          .selectAll("category"),
+      ).as("categories"),
+    )
+    .where("id", "=", (eb) => eb.fn.any(eb.val(fileIds)))
+    .where("user_id", "=", userId)
+    .execute();
+  return files.map(
+    (file) =>
+      ({
+        id: file.id,
+        parentId: file.parent_id ?? "root",
+        userId: file.user_id,
+        path: file.path,
+        mekVersion: file.master_encryption_key_version,
+        encDek: file.encrypted_data_encryption_key,
+        dekVersion: file.data_encryption_key_version,
+        hskVersion: file.hmac_secret_key_version,
+        contentHmac: file.content_hmac,
+        contentType: file.content_type,
+        encContentIv: file.encrypted_content_iv,
+        encContentHash: file.encrypted_content_hash,
+        encName: file.encrypted_name,
+        encCreatedAt: file.encrypted_created_at,
+        encLastModifiedAt: file.encrypted_last_modified_at,
+        categories: file.categories.map((category) => ({
+          id: category.id,
+          mekVersion: category.master_encryption_key_version,
+          encDek: category.encrypted_data_encryption_key,
+          dekVersion: new Date(category.data_encryption_key_version),
+          encName: category.encrypted_name,
+        })),
+      }) satisfies File & { categories: FileCategory[] },
+  );
+};
+
 export const setFileEncName = async (
   userId: number,
   fileId: number,
@@ -490,13 +544,16 @@ export const getAllFileCategories = async (fileId: number) => {
     .selectAll("category")
     .where("file_id", "=", fileId)
     .execute();
-  return categories.map((category) => ({
-    id: category.id,
-    mekVersion: category.master_encryption_key_version,
-    encDek: category.encrypted_data_encryption_key,
-    dekVersion: category.data_encryption_key_version,
-    encName: category.encrypted_name,
-  }));
+  return categories.map(
+    (category) =>
+      ({
+        id: category.id,
+        mekVersion: category.master_encryption_key_version,
+        encDek: category.encrypted_data_encryption_key,
+        dekVersion: category.data_encryption_key_version,
+        encName: category.encrypted_name,
+      }) satisfies FileCategory,
+  );
 };
 
 export const removeFileFromCategory = async (fileId: number, categoryId: number) => {

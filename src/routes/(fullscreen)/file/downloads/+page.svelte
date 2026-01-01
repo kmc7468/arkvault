@@ -2,13 +2,16 @@
   import { FullscreenDiv } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
   import { getDownloadingFiles, clearDownloadedFiles } from "$lib/modules/file";
-  import { getFileInfo } from "$lib/modules/filesystem";
+  import { bulkGetFileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import File from "./File.svelte";
 
   const downloadingFiles = getDownloadingFiles();
   const filesPromise = $derived(
-    Promise.all(downloadingFiles.map(({ id }) => getFileInfo(id, $masterKeyStore?.get(1)?.key!))),
+    bulkGetFileInfo(
+      downloadingFiles.map(({ id }) => id),
+      $masterKeyStore?.get(1)?.key!,
+    ),
   );
 
   $effect(() => clearDownloadedFiles);
@@ -22,9 +25,10 @@
 <FullscreenDiv>
   {#await filesPromise then files}
     <div class="space-y-2 pb-4">
-      {#each files as file, index}
-        {#if file.exists}
-          <File state={downloadingFiles[index]!} info={file} />
+      {#each downloadingFiles as state}
+        {@const info = files.get(state.id)!}
+        {#if info.exists}
+          <File {state} {info} />
         {/if}
       {/each}
     </div>

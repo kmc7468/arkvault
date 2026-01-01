@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { EntryButton, FileThumbnailButton } from "$lib/components/atoms";
-  import { getFileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
+  import { bulkGetFileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import { requestFreshMediaFilesRetrieval } from "./service";
 
@@ -10,8 +10,13 @@
 
   onMount(async () => {
     const files = await requestFreshMediaFilesRetrieval();
-    mediaFiles = await Promise.all(
-      files.map(({ id }) => getFileInfo(id, $masterKeyStore?.get(1)?.key!)),
+    mediaFiles = Array.from(
+      (
+        await bulkGetFileInfo(
+          files.map(({ id }) => id),
+          $masterKeyStore?.get(1)?.key!,
+        )
+      ).values(),
     );
   });
 </script>

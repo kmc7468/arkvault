@@ -4,7 +4,7 @@
   import { TopBar } from "$lib/components/molecules";
   import type { FileCacheIndex } from "$lib/indexedDB";
   import { getFileCacheIndex, deleteFileCache as doDeleteFileCache } from "$lib/modules/file";
-  import { getFileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
+  import { bulkGetFileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import { formatFileSize } from "$lib/utils";
   import File from "./File.svelte";
@@ -23,13 +23,17 @@
   };
 
   onMount(async () => {
-    fileCache = await Promise.all(
-      getFileCacheIndex().map(async (index) => ({
-        index,
-        info: await getFileInfo(index.fileId, $masterKeyStore?.get(1)?.key!),
-      })),
+    const indexes = getFileCacheIndex();
+    const infos = await bulkGetFileInfo(
+      indexes.map(({ fileId }) => fileId),
+      $masterKeyStore?.get(1)?.key!,
     );
-    fileCache.sort((a, b) => a.index.lastRetrievedAt.getTime() - b.index.lastRetrievedAt.getTime());
+    fileCache = indexes
+      .map((index, i) => ({
+        index,
+        info: infos.get(index.fileId)!,
+      }))
+      .sort((a, b) => a.index.lastRetrievedAt.getTime() - b.index.lastRetrievedAt.getTime());
   });
 
   $effect(() => {

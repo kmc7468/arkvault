@@ -4,7 +4,7 @@
   import { BottomDiv, Button, FullscreenDiv } from "$lib/components/atoms";
   import { IconEntryButton, TopBar } from "$lib/components/molecules";
   import { deleteAllFileThumbnailCaches } from "$lib/modules/file";
-  import { getFileInfo } from "$lib/modules/filesystem";
+  import { bulkGetFileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import File from "./File.svelte";
   import {
@@ -14,7 +14,6 @@
   } from "./service.svelte";
 
   import IconDelete from "~icons/material-symbols/delete";
-  import { file } from "zod";
 
   let { data } = $props();
 
@@ -27,13 +26,12 @@
   };
 
   onMount(async () => {
-    persistentStates.files = await Promise.all(
-      data.files.map(async (fileId) => ({
-        id: fileId,
-        info: await getFileInfo(fileId, $masterKeyStore?.get(1)?.key!),
-        status: getGenerationStatus(fileId),
-      })),
-    );
+    const fileInfos = await bulkGetFileInfo(data.files, $masterKeyStore?.get(1)?.key!);
+    persistentStates.files = persistentStates.files.map(({ id, status }) => ({
+      id,
+      info: fileInfos.get(id)!,
+      status,
+    }));
   });
 </script>
 

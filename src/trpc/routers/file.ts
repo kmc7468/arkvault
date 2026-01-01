@@ -42,6 +42,39 @@ const fileRouter = router({
       };
     }),
 
+  bulkGet: roleProcedure["activeClient"]
+    .input(
+      z.object({
+        ids: z.number().positive().array(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const files = await FileRepo.getFilesWithCategories(ctx.session.userId, input.ids);
+      return files.map((file) => ({
+        id: file.id,
+        parent: file.parentId,
+        mekVersion: file.mekVersion,
+        dek: file.encDek,
+        dekVersion: file.dekVersion,
+        contentType: file.contentType,
+        contentIv: file.encContentIv,
+        name: file.encName.ciphertext,
+        nameIv: file.encName.iv,
+        createdAt: file.encCreatedAt?.ciphertext,
+        createdAtIv: file.encCreatedAt?.iv,
+        lastModifiedAt: file.encLastModifiedAt.ciphertext,
+        lastModifiedAtIv: file.encLastModifiedAt.iv,
+        categories: file.categories.map((category) => ({
+          id: category.id,
+          mekVersion: category.mekVersion,
+          dek: category.encDek,
+          dekVersion: category.dekVersion,
+          name: category.encName.ciphertext,
+          nameIv: category.encName.iv,
+        })),
+      }));
+    }),
+
   list: roleProcedure["activeClient"].query(async ({ ctx }) => {
     return await FileRepo.getAllFileIds(ctx.session.userId);
   }),

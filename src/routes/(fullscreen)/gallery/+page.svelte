@@ -4,7 +4,7 @@
   import { FullscreenDiv } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
   import { Gallery } from "$lib/components/organisms";
-  import { getFileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
+  import { bulkGetFileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
 
   let { data } = $props();
@@ -12,9 +12,7 @@
   let files: MaybeFileInfo[] = $state([]);
 
   onMount(async () => {
-    files = await Promise.all(
-      data.files.map((file) => getFileInfo(file, $masterKeyStore?.get(1)?.key!)),
-    );
+    files = Array.from((await bulkGetFileInfo(data.files, $masterKeyStore?.get(1)?.key!)).values());
   });
 </script>
 

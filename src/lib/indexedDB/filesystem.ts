@@ -74,6 +74,10 @@ export const getFileInfo = async (id: number) => {
   return await filesystem.file.get(id);
 };
 
+export const bulkGetFileInfos = async (ids: number[]) => {
+  return await filesystem.file.bulkGet(ids);
+};
+
 export const storeFileInfo = async (fileInfo: FileInfo) => {
   await filesystem.file.put(fileInfo);
 };

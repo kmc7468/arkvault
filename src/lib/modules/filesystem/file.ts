@@ -31,6 +31,38 @@ const fetchFromIndexedDB = async (id: number) => {
   }
 };
 
+const bulkFetchFromIndexedDB = async (ids: number[]) => {
+  const files = await IndexedDB.bulkGetFileInfos(ids);
+  const categories = await Promise.all(
+    files.map(async (file) =>
+      file
+        ? await Promise.all(
+            file.categoryIds.map(async (categoryId) => {
+              const category = await IndexedDB.getCategoryInfo(categoryId);
+              return category ? { id: category.id, name: category.name } : undefined;
+            }),
+          )
+        : undefined,
+    ),
+  );
+  return new Map(
+    files
+      .map((file, index) =>
+        file
+          ? ([
+              file.id,
+              {
+                ...file,
+                exists: true,
+                categories: categories[index]!.filter((category) => !!category),
+              },
+            ] as const)
+          : undefined,
+      )
+      .filter((file) => !!file),
+  );
+};
+
 const fetchFromServer = async (id: number, masterKey: CryptoKey) => {
   try {
     const { categories: categoriesRaw, ...metadata } = await trpc().file.get.query({ id });
@@ -61,10 +93,58 @@ const fetchFromServer = async (id: number, masterKey: CryptoKey) => {
   }
 };
 
+const bulkFetchFromServer = async (ids: number[], masterKey: CryptoKey) => {
+  const filesRaw = await trpc().file.bulkGet.query({ ids });
+  const files = await Promise.all(
+    filesRaw.map(async (file) => {
+      const categories = await Promise.all(
+        file.categories.map(async (category) => ({
+          id: category.id,
+          ...(await decryptCategoryMetadata(category, masterKey)),
+        })),
+      );
+      return {
+        id: file.id,
+        exists: true as const,
+        parentId: file.parent,
+        contentType: file.contentType,
+        contentIv: file.contentIv,
+        categories,
+        ...(await decryptFileMetadata(file, masterKey)),
+      };
+    }),
+  );
+
+  const existingIds = new Set(filesRaw.map(({ id }) => id));
+  return new Map<number, MaybeFileInfo>([
+    ...files.map((file) => [file.id, file] as const),
+    ...ids.filter((id) => !existingIds.has(id)).map((id) => [id, { id, exists: false }] as const),
+  ]);
+};
+
 export const getFileInfo = async (id: number, masterKey: CryptoKey) => {
   return await cache.get(id, (isInitial, resolve) =>
     monotonicResolve(
       [isInitial && fetchFromIndexedDB(id), fetchFromServer(id, masterKey)],
+      resolve,
+    ),
+  );
+};
+
+export const bulkGetFileInfo = async (ids: number[], masterKey: CryptoKey) => {
+  return await cache.bulkGet(new Set(ids), (keys, resolve) =>
+    monotonicResolve(
+      [
+        bulkFetchFromIndexedDB(
+          Array.from(
+            keys
+              .entries()
+              .filter(([, isInitial]) => isInitial)
+              .map(([key]) => key),
+          ),
+        ),
+        bulkFetchFromServer(Array.from(keys.keys()), masterKey),
+      ],
       resolve,
     ),
   );
