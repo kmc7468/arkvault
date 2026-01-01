@@ -39,21 +39,51 @@ const fetchFromServer = async (id: DirectoryId, masterKey: CryptoKey) => {
       subDirectories: subDirectoriesRaw,
       files: filesRaw,
     } = await trpc().directory.get.query({ id });
-    const [subDirectories, files] = await Promise.all([
+    const existingFiles = await IndexedDB.bulkGetFileInfos(filesRaw.map((file) => file.id));
+    const [subDirectories, files, decryptedMetadata] = await Promise.all([
       Promise.all(
-        subDirectoriesRaw.map(async (directory) => ({
-          id: directory.id,
-          ...(await decryptDirectoryMetadata(directory, masterKey)),
-        })),
+        subDirectoriesRaw.map(async (directory) => {
+          const decrypted = await decryptDirectoryMetadata(directory, masterKey);
+          await IndexedDB.storeDirectoryInfo({
+            id: directory.id,
+            parentId: id,
+            name: decrypted.name,
+          });
+          return {
+            id: directory.id,
+            ...decrypted,
+          };
+        }),
       ),
       Promise.all(
-        filesRaw.map(async (file) => ({
-          id: file.id,
-          contentType: file.contentType,
-          ...(await decryptFileMetadata(file, masterKey)),
-        })),
+        filesRaw.map(async (file, index) => {
+          const decrypted = await decryptFileMetadata(file, masterKey);
+          await IndexedDB.storeFileInfo({
+            id: file.id,
+            parentId: id,
+            contentType: file.contentType,
+            name: decrypted.name,
+            createdAt: decrypted.createdAt,
+            lastModifiedAt: decrypted.lastModifiedAt,
+            categoryIds: existingFiles[index]?.categoryIds ?? [],
+          });
+          return {
+            id: file.id,
+            contentType: file.contentType,
+            ...decrypted,
+          };
+        }),
       ),
+      metadata ? decryptDirectoryMetadata(metadata, masterKey) : undefined,
     ]);
+
+    if (id !== "root" && metadata && decryptedMetadata) {
+      await IndexedDB.storeDirectoryInfo({
+        id,
+        parentId: metadata.parent,
+        name: decryptedMetadata.name,
+      });
+    }
 
     if (id === "root") {
       return {
@@ -69,7 +99,7 @@ const fetchFromServer = async (id: DirectoryId, masterKey: CryptoKey) => {
         parentId: metadata!.parent,
         subDirectories,
         files,
-        ...(await decryptDirectoryMetadata(metadata!, masterKey)),
+        ...decryptedMetadata!,
       };
     }
   } catch (e) {

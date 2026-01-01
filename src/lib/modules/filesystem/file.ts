@@ -66,14 +66,25 @@ const bulkFetchFromIndexedDB = async (ids: number[]) => {
 const fetchFromServer = async (id: number, masterKey: CryptoKey) => {
   try {
     const { categories: categoriesRaw, ...metadata } = await trpc().file.get.query({ id });
-    const [categories] = await Promise.all([
+    const [categories, decryptedMetadata] = await Promise.all([
       Promise.all(
         categoriesRaw.map(async (category) => ({
           id: category.id,
           ...(await decryptCategoryMetadata(category, masterKey)),
         })),
       ),
+      decryptFileMetadata(metadata, masterKey),
     ]);
+
+    await IndexedDB.storeFileInfo({
+      id,
+      parentId: metadata.parent,
+      contentType: metadata.contentType,
+      name: decryptedMetadata.name,
+      createdAt: decryptedMetadata.createdAt,
+      lastModifiedAt: decryptedMetadata.lastModifiedAt,
+      categoryIds: categories.map((category) => category.id),
+    });
 
     return {
       id,
@@ -82,7 +93,7 @@ const fetchFromServer = async (id: number, masterKey: CryptoKey) => {
       contentType: metadata.contentType,
       contentIv: metadata.contentIv,
       categories,
-      ...(await decryptFileMetadata(metadata, masterKey)),
+      ...decryptedMetadata,
     };
   } catch (e) {
     if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
@@ -97,12 +108,25 @@ const bulkFetchFromServer = async (ids: number[], masterKey: CryptoKey) => {
   const filesRaw = await trpc().file.bulkGet.query({ ids });
   const files = await Promise.all(
     filesRaw.map(async (file) => {
-      const categories = await Promise.all(
-        file.categories.map(async (category) => ({
-          id: category.id,
-          ...(await decryptCategoryMetadata(category, masterKey)),
-        })),
-      );
+      const [categories, decryptedMetadata] = await Promise.all([
+        Promise.all(
+          file.categories.map(async (category) => ({
+            id: category.id,
+            ...(await decryptCategoryMetadata(category, masterKey)),
+          })),
+        ),
+        decryptFileMetadata(file, masterKey),
+      ]);
+
+      await IndexedDB.storeFileInfo({
+        id: file.id,
+        parentId: file.parent,
+        contentType: file.contentType,
+        name: decryptedMetadata.name,
+        createdAt: decryptedMetadata.createdAt,
+        lastModifiedAt: decryptedMetadata.lastModifiedAt,
+        categoryIds: categories.map((category) => category.id),
+      });
       return {
         id: file.id,
         exists: true as const,
@@ -110,7 +134,7 @@ const bulkFetchFromServer = async (ids: number[], masterKey: CryptoKey) => {
         contentType: file.contentType,
         contentIv: file.contentIv,
         categories,
-        ...(await decryptFileMetadata(file, masterKey)),
+        ...decryptedMetadata,
       };
     }),
   );

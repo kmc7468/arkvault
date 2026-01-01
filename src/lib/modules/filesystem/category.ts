@@ -52,25 +52,76 @@ const fetchFromServer = async (id: CategoryId, masterKey: CryptoKey) => {
       metadata,
       subCategories: subCategoriesRaw,
       files: filesRaw,
-    } = await trpc().category.get.query({ id });
-    const [subCategories, files] = await Promise.all([
-      Promise.all(
-        subCategoriesRaw.map(async (category) => ({
+    } = await trpc().category.get.query({ id, recurse: true });
+    const subCategories = await Promise.all(
+      subCategoriesRaw.map(async (category) => {
+        const decrypted = await decryptCategoryMetadata(category, masterKey);
+        const existing = await IndexedDB.getCategoryInfo(category.id);
+        await IndexedDB.storeCategoryInfo({
           id: category.id,
-          ...(await decryptCategoryMetadata(category, masterKey)),
-        })),
-      ),
-      filesRaw
-        ? Promise.all(
-            filesRaw.map(async (file) => ({
+          parentId: id,
+          name: decrypted.name,
+          files: existing?.files ?? [],
+          isFileRecursive: existing?.isFileRecursive ?? false,
+        });
+        return {
+          id: category.id,
+          ...decrypted,
+        };
+      }),
+    );
+
+    const existingFiles = filesRaw
+      ? await IndexedDB.bulkGetFileInfos(filesRaw.map((file) => file.id))
+      : [];
+    const files = filesRaw
+      ? await Promise.all(
+          filesRaw.map(async (file, index) => {
+            const decrypted = await decryptFileMetadata(file, masterKey);
+            const existing = existingFiles[index];
+            if (existing) {
+              const categoryIds = file.isRecursive
+                ? existing.categoryIds
+                : Array.from(new Set([...existing.categoryIds, id as number]));
+              await IndexedDB.storeFileInfo({
+                id: file.id,
+                parentId: existing.parentId,
+                contentType: file.contentType,
+                name: decrypted.name,
+                createdAt: decrypted.createdAt,
+                lastModifiedAt: decrypted.lastModifiedAt,
+                categoryIds,
+              });
+            }
+            return {
               id: file.id,
               contentType: file.contentType,
               isRecursive: file.isRecursive,
-              ...(await decryptFileMetadata(file, masterKey)),
-            })),
-          )
-        : undefined,
-    ]);
+              ...decrypted,
+            };
+          }),
+        )
+      : undefined;
+
+    const decryptedMetadata = metadata
+      ? await decryptCategoryMetadata(metadata, masterKey)
+      : undefined;
+    if (id !== "root" && metadata && decryptedMetadata) {
+      const existingCategory = await IndexedDB.getCategoryInfo(id);
+      await IndexedDB.storeCategoryInfo({
+        id: id as number,
+        parentId: metadata.parent,
+        name: decryptedMetadata.name,
+        files:
+          files?.map((file) => ({
+            id: file.id,
+            isRecursive: file.isRecursive,
+          })) ??
+          existingCategory?.files ??
+          [],
+        isFileRecursive: existingCategory?.isFileRecursive ?? false,
+      });
+    }
 
     if (id === "root") {
       return {
@@ -84,7 +135,7 @@ const fetchFromServer = async (id: CategoryId, masterKey: CryptoKey) => {
         exists: true as const,
         subCategories,
         files,
-        ...(await decryptCategoryMetadata(metadata!, masterKey)),
+        ...decryptedMetadata!,
       };
     }
   } catch (e) {

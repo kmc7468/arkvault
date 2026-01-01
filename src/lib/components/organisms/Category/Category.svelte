@@ -1,6 +1,7 @@
 <script lang="ts">
   import { CheckBox, RowVirtualizer } from "$lib/components/atoms";
   import { SubCategories, type SelectedCategory } from "$lib/components/molecules";
+  import { updateCategoryInfo } from "$lib/indexedDB";
   import type { CategoryInfo } from "$lib/modules/filesystem";
   import { sortEntries } from "$lib/utils";
   import File from "./File.svelte";
@@ -28,6 +29,9 @@
     isFileRecursive = $bindable(),
   }: Props = $props();
 
+  let lastCategoryId = $state<CategoryInfo["id"] | undefined>();
+  let lastIsFileRecursive = $state<boolean | undefined>();
+
   let files = $derived(
     sortEntries(
       info.files
@@ -35,6 +39,19 @@
         .filter(({ details }) => isFileRecursive || !details.isRecursive) ?? [],
     ),
   );
+
+  $effect(() => {
+    if (info.id === "root" || isFileRecursive === undefined) return;
+    if (lastCategoryId !== info.id) {
+      lastCategoryId = info.id;
+      lastIsFileRecursive = isFileRecursive;
+      return;
+    }
+    if (lastIsFileRecursive === isFileRecursive) return;
+
+    lastIsFileRecursive = isFileRecursive;
+    void updateCategoryInfo(info.id, { isFileRecursive });
+  });
 </script>
 
 <div class="space-y-4">
