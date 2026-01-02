@@ -15,7 +15,9 @@
   }
 
   let fileCache: FileCache[] | undefined = $state();
-  let fileCacheTotalSize = $state(0);
+  let fileCacheTotalSize = $derived(
+    fileCache?.reduce((acc, { index }) => acc + index.size, 0) ?? 0,
+  );
 
   const deleteFileCache = async (fileId: number) => {
     await doDeleteFileCache(fileId);
@@ -29,17 +31,8 @@
       $masterKeyStore?.get(1)?.key!,
     );
     fileCache = indexes
-      .map((index, i) => ({
-        index,
-        info: infos.get(index.fileId)!,
-      }))
+      .map((index) => ({ index, info: infos.get(index.fileId)! }))
       .sort((a, b) => a.index.lastRetrievedAt.getTime() - b.index.lastRetrievedAt.getTime());
-  });
-
-  $effect(() => {
-    if (fileCache) {
-      fileCacheTotalSize = fileCache.reduce((acc, { index }) => acc + index.size, 0);
-    }
   });
 </script>
 
@@ -59,7 +52,7 @@
         <p>캐시를 삭제하더라도 원본 파일은 삭제되지 않아요.</p>
       </div>
       <div class="space-y-2">
-        {#each fileCache as { index, info }}
+        {#each fileCache as { index, info } (info.id)}
           <File {index} {info} onDeleteClick={deleteFileCache} />
         {/each}
       </div>

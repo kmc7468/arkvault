@@ -7,11 +7,7 @@
   import { bulkGetFileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import File from "./File.svelte";
-  import {
-    persistentStates,
-    getGenerationStatus,
-    requestThumbnailGeneration,
-  } from "./service.svelte";
+  import { persistentStates, requestThumbnailGeneration } from "./service.svelte";
 
   import IconDelete from "~icons/material-symbols/delete";
 
@@ -55,7 +51,7 @@
             {persistentStates.files.length}개 파일의 썸네일이 존재하지 않아요.
           </p>
           <div class="space-y-2">
-            {#each persistentStates.files as { info, status }}
+            {#each persistentStates.files as { info, status } (info.id)}
               {#if info.exists}
                 <File
                   {info}

@@ -62,7 +62,7 @@
       <p class="pb-2 text-sm font-medium">{row.label}</p>
     {:else}
       <div class={["grid grid-cols-4 gap-x-1", row.isLast ? "pb-4" : "pb-1"]}>
-        {#each row.files as file}
+        {#each row.files as file (file.id)}
           <FileThumbnailButton info={file} onclick={onFileClick} />
         {/each}
       </div>

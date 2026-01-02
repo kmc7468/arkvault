@@ -33,7 +33,7 @@
     </EntryButton>
     {#if mediaFiles.length > 0}
       <div class="grid grid-cols-4 gap-2 p-2">
-        {#each mediaFiles as file}
+        {#each mediaFiles as file (file.id)}
           {#if file.exists}
             <FileThumbnailButton info={file} onclick={({ id }) => goto(`/file/${id}`)} />
           {/if}

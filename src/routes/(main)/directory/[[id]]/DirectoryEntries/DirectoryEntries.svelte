@@ -46,28 +46,26 @@
 </script>
 
 {#if entries.length > 0}
-  <div class="pb-[4.5rem]">
-    <RowVirtualizer count={entries.length} itemHeight={() => 56} itemGap={4}>
-      {#snippet item(index)}
-        {@const entry = entries[index]!}
-        {#if entry.type === "parent"}
-          <ActionEntryButton class="h-14" onclick={onParentClick}>
-            <DirectoryEntryLabel type="parent-directory" name=".." />
-          </ActionEntryButton>
-        {:else if entry.type === "directory"}
-          <SubDirectory
-            info={entry.details}
-            onclick={onEntryClick}
-            onOpenMenuClick={onEntryMenuClick}
-          />
-        {:else if entry.type === "file"}
-          <File info={entry.details} onclick={onEntryClick} onOpenMenuClick={onEntryMenuClick} />
-        {:else}
-          <UploadingFile state={entry.details} />
-        {/if}
-      {/snippet}
-    </RowVirtualizer>
-  </div>
+  <RowVirtualizer count={entries.length} itemHeight={() => 56} itemGap={4} class="pb-[4.5rem]">
+    {#snippet item(index)}
+      {@const entry = entries[index]!}
+      {#if entry.type === "parent"}
+        <ActionEntryButton class="h-14" onclick={onParentClick}>
+          <DirectoryEntryLabel type="parent-directory" name=".." />
+        </ActionEntryButton>
+      {:else if entry.type === "directory"}
+        <SubDirectory
+          info={entry.details}
+          onclick={onEntryClick}
+          onOpenMenuClick={onEntryMenuClick}
+        />
+      {:else if entry.type === "file"}
+        <File info={entry.details} onclick={onEntryClick} onOpenMenuClick={onEntryMenuClick} />
+      {:else}
+        <UploadingFile state={entry.details} />
+      {/if}
+    {/snippet}
+  </RowVirtualizer>
 {:else}
   <div class="flex flex-grow items-center justify-center">
     <p class="text-gray-500">폴더가 비어 있어요.</p>
