@@ -34,27 +34,30 @@
     if (!element) return;
 
     const observer = new ResizeObserver(() => {
-      scrollMargin = element!.getBoundingClientRect().top + window.scrollY;
+      scrollMargin = Math.round(element!.getBoundingClientRect().top + window.scrollY);
     });
     observer.observe(element.parentElement!);
     return () => observer.disconnect();
   });
 </script>
 
-<div bind:this={element} class={["relative", className]}>
-  <div style:height="{$virtualizer.getTotalSize()}px">
-    {#each $virtualizer.getVirtualItems() as virtualItem (virtualItem.key)}
-      <div
-        class="absolute left-0 top-0 w-full"
-        style:transform="translateY({virtualItem.start - scrollMargin}px)"
-        data-index={virtualItem.index}
-        use:measureItem
-      >
-        {@render item(virtualItem.index)}
-      </div>
-    {/each}
-  </div>
-  {#if placeholder && $virtualizer.getVirtualItems().length === 0}
-    {@render placeholder()}
-  {/if}
+<div
+  bind:this={element}
+  class={["relative", className]}
+  style:height="{$virtualizer.getTotalSize()}px"
+>
+  {#each $virtualizer.getVirtualItems() as virtualItem (virtualItem.key)}
+    <div
+      class="absolute left-0 top-0 w-full"
+      style:transform="translateY({virtualItem.start - scrollMargin}px)"
+      data-index={virtualItem.index}
+      use:measureItem
+    >
+      {@render item(virtualItem.index)}
+    </div>
+  {/each}
 </div>
+
+{#if placeholder && $virtualizer.getVirtualItems().length === 0}
+  {@render placeholder()}
+{/if}

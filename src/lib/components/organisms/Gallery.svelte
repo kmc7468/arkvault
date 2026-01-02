@@ -49,11 +49,7 @@
 <RowVirtualizer
   count={rows.length}
   itemHeight={(index) =>
-    rows[index]!.type === "header"
-      ? 28
-      : Math.ceil(rows[index]!.files.length / 4) * 181 +
-        (Math.ceil(rows[index]!.files.length / 4) - 1) * 4 +
-        16}
+    rows[index]!.type === "header" ? 28 : 181 + (rows[index]!.isLast ? 16 : 4)}
   class="flex flex-grow flex-col"
 >
   {#snippet item(index)}
