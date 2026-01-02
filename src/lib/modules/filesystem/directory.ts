@@ -39,6 +39,10 @@ const fetchFromServer = async (id: DirectoryId, masterKey: CryptoKey) => {
       subDirectories: subDirectoriesRaw,
       files: filesRaw,
     } = await trpc().directory.get.query({ id });
+
+    void IndexedDB.deleteDanglingDirectoryInfos(id, new Set(subDirectoriesRaw.map(({ id }) => id)));
+    void IndexedDB.deleteDanglingFileInfos(id, new Set(filesRaw.map(({ id }) => id)));
+
     const existingFiles = await IndexedDB.bulkGetFileInfos(filesRaw.map((file) => file.id));
     const [subDirectories, files, decryptedMetadata] = await Promise.all([
       Promise.all(

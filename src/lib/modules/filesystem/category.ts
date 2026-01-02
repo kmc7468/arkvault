@@ -53,6 +53,9 @@ const fetchFromServer = async (id: CategoryId, masterKey: CryptoKey) => {
       subCategories: subCategoriesRaw,
       files: filesRaw,
     } = await trpc().category.get.query({ id, recurse: true });
+
+    void IndexedDB.deleteDanglingCategoryInfos(id, new Set(subCategoriesRaw.map(({ id }) => id)));
+
     const subCategories = await Promise.all(
       subCategoriesRaw.map(async (category) => {
         const decrypted = await decryptCategoryMetadata(category, masterKey);

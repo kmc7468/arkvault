@@ -62,6 +62,16 @@ export const deleteDirectoryInfo = async (id: number) => {
   await filesystem.directory.delete(id);
 };
 
+export const deleteDanglingDirectoryInfos = async (
+  parentId: DirectoryId,
+  validIds: Set<number>,
+) => {
+  await filesystem.directory
+    .where({ parentId })
+    .and((directory) => !validIds.has(directory.id))
+    .delete();
+};
+
 export const getAllFileInfos = async () => {
   return await filesystem.file.toArray();
 };
@@ -86,6 +96,13 @@ export const deleteFileInfo = async (id: number) => {
   await filesystem.file.delete(id);
 };
 
+export const deleteDanglingFileInfos = async (parentId: DirectoryId, validIds: Set<number>) => {
+  await filesystem.file
+    .where({ parentId })
+    .and((file) => !validIds.has(file.id))
+    .delete();
+};
+
 export const getCategoryInfos = async (parentId: CategoryId) => {
   return await filesystem.category.where({ parentId }).toArray();
 };
@@ -104,6 +121,13 @@ export const updateCategoryInfo = async (id: number, changes: { isFileRecursive?
 
 export const deleteCategoryInfo = async (id: number) => {
   await filesystem.category.delete(id);
+};
+
+export const deleteDanglingCategoryInfos = async (parentId: CategoryId, validIds: Set<number>) => {
+  await filesystem.category
+    .where({ parentId })
+    .and((category) => !validIds.has(category.id))
+    .delete();
 };
 
 export const cleanupDanglingInfos = async () => {
