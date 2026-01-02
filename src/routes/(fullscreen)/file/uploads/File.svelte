@@ -18,7 +18,7 @@
 
 <div class="flex h-14 items-center gap-x-4 p-2">
   <div class="flex-shrink-0 text-lg text-gray-600">
-    {#if state.status === "encryption-pending"}
+    {#if state.status === "queued" || state.status === "encryption-pending"}
       <IconPending />
     {:else if state.status === "encrypting"}
       <IconLockClock />
@@ -37,7 +37,9 @@
       {state.name}
     </p>
     <p class="text-xs text-gray-800">
-      {#if state.status === "encryption-pending"}
+      {#if state.status === "queued"}
+        대기 중
+      {:else if state.status === "encryption-pending"}
         준비 중
       {:else if state.status === "encrypting"}
         암호화하는 중

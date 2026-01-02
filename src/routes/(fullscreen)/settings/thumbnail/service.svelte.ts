@@ -1,8 +1,9 @@
 import { limitFunction } from "p-limit";
-import { get, writable, type Writable } from "svelte/store";
+import { SvelteMap } from "svelte/reactivity";
 import { encryptData } from "$lib/modules/crypto";
 import { storeFileThumbnailCache } from "$lib/modules/file";
-import type { FileInfo, MaybeFileInfo } from "$lib/modules/filesystem";
+import type { FileInfo } from "$lib/modules/filesystem";
+import { Scheduler } from "$lib/modules/scheduler";
 import { generateThumbnail as doGenerateThumbnail } from "$lib/modules/thumbnail";
 import { requestFileDownload, requestFileThumbnailUpload } from "$lib/services/file";
 
@@ -15,41 +16,31 @@ export type GenerationStatus =
   | "uploaded"
   | "error";
 
-interface File {
-  id: number;
-  info: MaybeFileInfo;
-  status?: Writable<GenerationStatus>;
-}
+const scheduler = new Scheduler();
+const statuses = new SvelteMap<number, GenerationStatus>();
 
-const workingFiles = new Map<number, Writable<GenerationStatus>>();
+export const getThumbnailGenerationStatus = (fileId: number) => {
+  return statuses.get(fileId);
+};
 
-let queue: (() => void)[] = [];
-let memoryUsage = 0;
-const memoryLimit = 100 * 1024 * 1024; // 100 MiB
-
-export const persistentStates = $state({
-  files: [] as File[],
-});
-
-export const getGenerationStatus = (fileId: number) => {
-  return workingFiles.get(fileId);
+export const clearThumbnailGenerationStatuses = () => {
+  for (const [id, status] of statuses) {
+    if (status === "uploaded" || status === "error") {
+      statuses.delete(id);
+    }
+  }
 };
 
 const generateThumbnail = limitFunction(
-  async (
-    status: Writable<GenerationStatus>,
-    fileBuffer: ArrayBuffer,
-    fileType: string,
-    dataKey: CryptoKey,
-  ) => {
-    status.set("generating");
+  async (fileId: number, fileBuffer: ArrayBuffer, fileType: string, dataKey: CryptoKey) => {
+    statuses.set(fileId, "generating");
 
     const thumbnail = await doGenerateThumbnail(fileBuffer, fileType);
     if (!thumbnail) return null;
 
     const thumbnailBuffer = await thumbnail.arrayBuffer();
     const thumbnailEncrypted = await encryptData(thumbnailBuffer, dataKey);
-    status.set("upload-pending");
+    statuses.set(fileId, "upload-pending");
     return { plaintext: thumbnailBuffer, ...thumbnailEncrypted };
   },
   { concurrency: 4 },
@@ -57,106 +48,55 @@ const generateThumbnail = limitFunction(
 
 const requestThumbnailUpload = limitFunction(
   async (
-    status: Writable<GenerationStatus>,
     fileId: number,
     dataKeyVersion: Date,
     thumbnail: { plaintext: ArrayBuffer; ciphertext: ArrayBuffer; iv: string },
   ) => {
-    status.set("uploading");
+    statuses.set(fileId, "uploading");
 
     const res = await requestFileThumbnailUpload(fileId, dataKeyVersion, thumbnail);
     if (!res.ok) return false;
-
-    status.set("uploaded");
-    workingFiles.delete(fileId);
-    persistentStates.files = persistentStates.files.filter(({ id }) => id != fileId);
-
+    statuses.set(fileId, "uploaded");
     storeFileThumbnailCache(fileId, thumbnail.plaintext); // Intended
     return true;
   },
   { concurrency: 4 },
 );
 
-const enqueue = async (
-  status: Writable<GenerationStatus> | undefined,
-  fileInfo: FileInfo,
-  priority = false,
-) => {
-  if (status) {
-    status.set("queued");
-  } else {
-    status = writable("queued");
-    workingFiles.set(fileInfo.id, status);
-    persistentStates.files = persistentStates.files.map((file) =>
-      file.id === fileInfo.id ? { ...file, status } : file,
-    );
-  }
-
-  let resolver;
-  const promise = new Promise((resolve) => {
-    resolver = resolve;
-  });
-
-  if (priority) {
-    queue = [resolver!, ...queue];
-  } else {
-    queue.push(resolver!);
-  }
-
-  await promise;
-};
-
 export const requestThumbnailGeneration = async (fileInfo: FileInfo) => {
-  let status = workingFiles.get(fileInfo.id);
-  if (status && get(status) !== "error") return;
-
-  if (workingFiles.values().some((status) => get(status) !== "error")) {
-    await enqueue(status, fileInfo);
-  }
-  while (memoryUsage >= memoryLimit) {
-    await enqueue(status, fileInfo, true);
-  }
-
+  const status = statuses.get(fileInfo.id);
   if (status) {
-    status.set("generation-pending");
+    if (status !== "error") return;
   } else {
-    status = writable("generation-pending");
-    workingFiles.set(fileInfo.id, status);
-    persistentStates.files = persistentStates.files.map((file) =>
-      file.id === fileInfo.id ? { ...file, status } : file,
-    );
+    statuses.set(fileInfo.id, "queued");
   }
 
-  let fileSize = 0;
   try {
-    const file = await requestFileDownload(
-      fileInfo.id,
-      fileInfo.contentIv!,
-      fileInfo.dataKey?.key!,
-    );
-    fileSize = file.byteLength;
+    let file: ArrayBuffer | undefined;
 
-    memoryUsage += fileSize;
-    if (memoryUsage < memoryLimit) {
-      queue.shift()?.();
-    }
-
-    const thumbnail = await generateThumbnail(
-      status,
-      file,
-      fileInfo.contentType,
-      fileInfo.dataKey?.key!,
+    await scheduler.schedule(
+      async () => {
+        statuses.set(fileInfo.id, "generation-pending");
+        file = await requestFileDownload(fileInfo.id, fileInfo.contentIv!, fileInfo.dataKey?.key!);
+        return file.byteLength;
+      },
+      async () => {
+        const thumbnail = await generateThumbnail(
+          fileInfo.id,
+          file!,
+          fileInfo.contentType,
+          fileInfo.dataKey?.key!,
+        );
+        if (
+          !thumbnail ||
+          !(await requestThumbnailUpload(fileInfo.id, fileInfo.dataKey?.version!, thumbnail))
+        ) {
+          statuses.set(fileInfo.id, "error");
+        }
+      },
     );
-    if (
-      !thumbnail ||
-      !(await requestThumbnailUpload(status, fileInfo.id, fileInfo.dataKey?.version!, thumbnail))
-    ) {
-      status.set("error");
-    }
-  } catch {
-    status.set("error");
-  } finally {
-    memoryUsage -= fileSize;
-    queue.shift()?.();
+  } catch (e) {
+    statuses.set(fileInfo.id, "error");
+    throw e;
   }
 };

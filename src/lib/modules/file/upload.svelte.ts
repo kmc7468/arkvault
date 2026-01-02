@@ -10,6 +10,7 @@ import {
   digestMessage,
   signMessageHmac,
 } from "$lib/modules/crypto";
+import { Scheduler } from "$lib/modules/scheduler";
 import { generateThumbnail } from "$lib/modules/thumbnail";
 import type {
   FileThumbnailUploadRequest,
@@ -23,6 +24,7 @@ export interface FileUploadState {
   name: string;
   parentId: DirectoryId;
   status:
+    | "queued"
     | "encryption-pending"
     | "encrypting"
     | "upload-pending"
@@ -36,13 +38,16 @@ export interface FileUploadState {
 }
 
 export type LiveFileUploadState = FileUploadState & {
-  status: "encryption-pending" | "encrypting" | "upload-pending" | "uploading";
+  status: "queued" | "encryption-pending" | "encrypting" | "upload-pending" | "uploading";
 };
 
+const scheduler = new Scheduler<
+  { fileId: number; fileBuffer: ArrayBuffer; thumbnailBuffer?: ArrayBuffer } | undefined
+>();
 let uploadingFiles: FileUploadState[] = $state([]);
 
 const isFileUploading = (status: FileUploadState["status"]) =>
-  ["encryption-pending", "encrypting", "upload-pending", "uploading"].includes(status);
+  ["queued", "encryption-pending", "encrypting", "upload-pending", "uploading"].includes(status);
 
 export const getUploadingFiles = (parentId?: DirectoryId) => {
   return uploadingFiles.filter(
@@ -183,80 +188,85 @@ export const uploadFile = async (
   hmacSecret: HmacSecret,
   masterKey: MasterKey,
   onDuplicate: () => Promise<boolean>,
-): Promise<
-  { fileId: number; fileBuffer: ArrayBuffer; thumbnailBuffer?: ArrayBuffer } | undefined
-> => {
+) => {
   uploadingFiles.push({
     name: file.name,
     parentId,
-    status: "encryption-pending",
+    status: "queued",
   });
   const state = uploadingFiles.at(-1)!;
 
-  try {
-    const { fileBuffer, fileSigned } = await requestDuplicateFileScan(
-      file,
-      hmacSecret,
-      onDuplicate,
-    );
-    if (!fileBuffer || !fileSigned) {
-      state.status = "canceled";
-      uploadingFiles = uploadingFiles.filter((file) => file !== state);
-      return undefined;
-    }
+  return await scheduler.schedule(
+    async () => file.size,
+    async () => {
+      state.status = "encryption-pending";
 
-    const {
-      dataKeyWrapped,
-      dataKeyVersion,
-      fileType,
-      fileEncrypted,
-      fileEncryptedHash,
-      nameEncrypted,
-      createdAtEncrypted,
-      lastModifiedAtEncrypted,
-      thumbnail,
-    } = await encryptFile(state, file, fileBuffer, masterKey);
+      try {
+        const { fileBuffer, fileSigned } = await requestDuplicateFileScan(
+          file,
+          hmacSecret,
+          onDuplicate,
+        );
+        if (!fileBuffer || !fileSigned) {
+          state.status = "canceled";
+          uploadingFiles = uploadingFiles.filter((file) => file !== state);
+          return undefined;
+        }
 
-    const form = new FormData();
-    form.set(
-      "metadata",
-      JSON.stringify({
-        parent: parentId,
-        mekVersion: masterKey.version,
-        dek: dataKeyWrapped,
-        dekVersion: dataKeyVersion.toISOString(),
-        hskVersion: hmacSecret.version,
-        contentHmac: fileSigned,
-        contentType: fileType,
-        contentIv: fileEncrypted.iv,
-        name: nameEncrypted.ciphertext,
-        nameIv: nameEncrypted.iv,
-        createdAt: createdAtEncrypted?.ciphertext,
-        createdAtIv: createdAtEncrypted?.iv,
-        lastModifiedAt: lastModifiedAtEncrypted.ciphertext,
-        lastModifiedAtIv: lastModifiedAtEncrypted.iv,
-      } satisfies FileUploadRequest),
-    );
-    form.set("content", new Blob([fileEncrypted.ciphertext]));
-    form.set("checksum", fileEncryptedHash);
+        const {
+          dataKeyWrapped,
+          dataKeyVersion,
+          fileType,
+          fileEncrypted,
+          fileEncryptedHash,
+          nameEncrypted,
+          createdAtEncrypted,
+          lastModifiedAtEncrypted,
+          thumbnail,
+        } = await encryptFile(state, file, fileBuffer, masterKey);
 
-    let thumbnailForm = null;
-    if (thumbnail) {
-      thumbnailForm = new FormData();
-      thumbnailForm.set(
-        "metadata",
-        JSON.stringify({
-          dekVersion: dataKeyVersion.toISOString(),
-          contentIv: thumbnail.iv,
-        } satisfies FileThumbnailUploadRequest),
-      );
-      thumbnailForm.set("content", new Blob([thumbnail.ciphertext]));
-    }
+        const form = new FormData();
+        form.set(
+          "metadata",
+          JSON.stringify({
+            parent: parentId,
+            mekVersion: masterKey.version,
+            dek: dataKeyWrapped,
+            dekVersion: dataKeyVersion.toISOString(),
+            hskVersion: hmacSecret.version,
+            contentHmac: fileSigned,
+            contentType: fileType,
+            contentIv: fileEncrypted.iv,
+            name: nameEncrypted.ciphertext,
+            nameIv: nameEncrypted.iv,
+            createdAt: createdAtEncrypted?.ciphertext,
+            createdAtIv: createdAtEncrypted?.iv,
+            lastModifiedAt: lastModifiedAtEncrypted.ciphertext,
+            lastModifiedAtIv: lastModifiedAtEncrypted.iv,
+          } satisfies FileUploadRequest),
+        );
+        form.set("content", new Blob([fileEncrypted.ciphertext]));
+        form.set("checksum", fileEncryptedHash);
 
-    const { fileId } = await requestFileUpload(state, form, thumbnailForm);
-    return { fileId, fileBuffer, thumbnailBuffer: thumbnail?.plaintext };
-  } catch (e) {
-    state.status = "error";
-    throw e;
-  }
+        let thumbnailForm = null;
+        if (thumbnail) {
+          thumbnailForm = new FormData();
+          thumbnailForm.set(
+            "metadata",
+            JSON.stringify({
+              dekVersion: dataKeyVersion.toISOString(),
+              contentIv: thumbnail.iv,
+            } satisfies FileThumbnailUploadRequest),
+          );
+          thumbnailForm.set("content", new Blob([thumbnail.ciphertext]));
+        }
+
+        const { fileId } = await requestFileUpload(state, form, thumbnailForm);
+        return { fileId, fileBuffer, thumbnailBuffer: thumbnail?.plaintext };
+      } catch (e) {
+        state.status = "error";
+        throw e;
+      }
+    },
+  );
 };

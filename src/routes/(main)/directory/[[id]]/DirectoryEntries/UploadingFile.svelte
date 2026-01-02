@@ -20,7 +20,9 @@
       {state.name}
     </p>
     <p class="text-xs">
-      {#if state.status === "encryption-pending"}
+      {#if state.status === "queued"}
+        대기 중
+      {:else if state.status === "encryption-pending"}
         준비 중
       {:else if state.status === "encrypting"}
         암호화하는 중

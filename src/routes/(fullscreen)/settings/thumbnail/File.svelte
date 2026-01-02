@@ -10,7 +10,6 @@
 </script>
 
 <script lang="ts">
-  import type { Writable } from "svelte/store";
   import { ActionEntryButton } from "$lib/components/atoms";
   import { DirectoryEntryLabel } from "$lib/components/molecules";
   import type { FileInfo } from "$lib/modules/filesystem";
@@ -23,22 +22,21 @@
     info: FileInfo;
     onclick: (file: FileInfo) => void;
     onGenerateThumbnailClick: (file: FileInfo) => void;
-    generationStatus?: Writable<GenerationStatus>;
+    status: Exclude<GenerationStatus, "uploaded"> | undefined;
   }
 
-  let { info, onclick, onGenerateThumbnailClick, generationStatus }: Props = $props();
+  let { info, onclick, onGenerateThumbnailClick, status }: Props = $props();
 </script>
 
 <ActionEntryButton
   class="h-14"
   onclick={() => onclick(info)}
-  actionButtonIcon={!$generationStatus || $generationStatus === "error" ? IconCamera : undefined}
+  actionButtonIcon={!status || status === "error" ? IconCamera : undefined}
   onActionButtonClick={() => onGenerateThumbnailClick(info)}
   actionButtonClass="text-gray-800"
 >
-  {@const subtext =
-    $generationStatus && $generationStatus !== "uploaded"
-      ? subtexts[$generationStatus]
-      : formatDateTime(info.createdAt ?? info.lastModifiedAt)}
+  {@const subtext = status
+    ? subtexts[status]
+    : formatDateTime(info.createdAt ?? info.lastModifiedAt)}
   <DirectoryEntryLabel type="file" name={info.name} {subtext} />
 </ActionEntryButton>
