@@ -2,7 +2,7 @@ import { limitFunction } from "p-limit";
 import { get, writable, type Writable } from "svelte/store";
 import { encryptData } from "$lib/modules/crypto";
 import { storeFileThumbnailCache } from "$lib/modules/file";
-import type { FileInfo } from "$lib/modules/filesystem";
+import type { FileInfo, MaybeFileInfo } from "$lib/modules/filesystem";
 import { generateThumbnail as doGenerateThumbnail } from "$lib/modules/thumbnail";
 import { requestFileDownload, requestFileThumbnailUpload } from "$lib/services/file";
 
@@ -17,7 +17,7 @@ export type GenerationStatus =
 
 interface File {
   id: number;
-  info: Writable<FileInfo | null>;
+  info: MaybeFileInfo;
   status?: Writable<GenerationStatus>;
 }
 
@@ -129,7 +129,11 @@ export const requestThumbnailGeneration = async (fileInfo: FileInfo) => {
 
   let fileSize = 0;
   try {
-    const file = await requestFileDownload(fileInfo.id, fileInfo.contentIv!, fileInfo.dataKey!);
+    const file = await requestFileDownload(
+      fileInfo.id,
+      fileInfo.contentIv!,
+      fileInfo.dataKey?.key!,
+    );
     fileSize = file.byteLength;
 
     memoryUsage += fileSize;
@@ -141,11 +145,11 @@ export const requestThumbnailGeneration = async (fileInfo: FileInfo) => {
       status,
       file,
       fileInfo.contentType,
-      fileInfo.dataKey!,
+      fileInfo.dataKey?.key!,
     );
     if (
       !thumbnail ||
-      !(await requestThumbnailUpload(status, fileInfo.id, fileInfo.dataKeyVersion!, thumbnail))
+      !(await requestThumbnailUpload(status, fileInfo.id, fileInfo.dataKey?.version!, thumbnail))
     ) {
       status.set("error");
     }

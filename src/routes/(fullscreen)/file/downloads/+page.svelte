@@ -1,19 +1,31 @@
 <script lang="ts">
-  import { get } from "svelte/store";
+  import { onMount } from "svelte";
   import { FullscreenDiv } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
-  import { fileDownloadStatusStore, isFileDownloading } from "$lib/stores";
+  import {
+    getDownloadingFiles,
+    clearDownloadedFiles,
+    type FileDownloadState,
+  } from "$lib/modules/file";
+  import { bulkGetFileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
+  import { masterKeyStore } from "$lib/stores";
   import File from "./File.svelte";
 
-  let downloadingFiles = $derived(
-    $fileDownloadStatusStore.filter((status) => isFileDownloading(get(status).status)),
-  );
+  let downloadingFiles: { info: MaybeFileInfo; state: FileDownloadState }[] = $state([]);
 
-  $effect(() => () => {
-    $fileDownloadStatusStore = $fileDownloadStatusStore.filter((status) =>
-      isFileDownloading(get(status).status),
+  onMount(async () => {
+    const states = getDownloadingFiles();
+    const infos = await bulkGetFileInfo(
+      states.map(({ id }) => id),
+      $masterKeyStore?.get(1)?.key!,
     );
+    downloadingFiles = states.map((state) => ({
+      info: infos.get(state.id)!,
+      state,
+    }));
   });
+
+  $effect(() => clearDownloadedFiles);
 </script>
 
 <svelte:head>
@@ -23,8 +35,10 @@
 <TopBar />
 <FullscreenDiv>
   <div class="space-y-2 pb-4">
-    {#each downloadingFiles as status}
-      <File {status} />
+    {#each downloadingFiles as { info, state } (info.id)}
+      {#if info.exists}
+        <File {info} {state} />
+      {/if}
     {/each}
   </div>
 </FullscreenDiv>

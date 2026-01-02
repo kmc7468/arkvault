@@ -1,10 +1,9 @@
-import { sql, type NotNull } from "kysely";
+import { sql } from "kysely";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
 import pg from "pg";
 import { IntegrityError } from "./error";
 import db from "./kysely";
 import type { Ciphertext } from "./schema";
-
-export type DirectoryId = "root" | number;
 
 interface Directory {
   id: number;
@@ -37,6 +36,14 @@ interface File {
 }
 
 export type NewFile = Omit<File, "id">;
+
+interface FileCategory {
+  id: number;
+  mekVersion: number;
+  encDek: string;
+  dekVersion: Date;
+  encName: Ciphertext;
+}
 
 export const registerDirectory = async (params: NewDirectory) => {
   await db.transaction().execute(async (trx) => {
@@ -306,39 +313,51 @@ export const getAllFilesByCategory = async (
   recurse: boolean,
 ) => {
   const files = await db
-    .withRecursive("cte", (db) =>
+    .withRecursive("category_tree", (db) =>
       db
         .selectFrom("category")
-        .leftJoin("file_category", "category.id", "file_category.category_id")
-        .select(["id", "parent_id", "user_id", "file_category.file_id"])
-        .select(sql<number>`0`.as("depth"))
+        .select(["id", sql<number>`0`.as("depth")])
         .where("id", "=", categoryId)
+        .where("user_id", "=", userId)
         .$if(recurse, (qb) =>
           qb.unionAll((db) =>
             db
               .selectFrom("category")
-              .leftJoin("file_category", "category.id", "file_category.category_id")
-              .innerJoin("cte", "category.parent_id", "cte.id")
-              .select([
-                "category.id",
-                "category.parent_id",
-                "category.user_id",
-                "file_category.file_id",
-              ])
-              .select(sql<number>`cte.depth + 1`.as("depth")),
+              .innerJoin("category_tree", "category.parent_id", "category_tree.id")
+              .select(["category.id", sql<number>`depth + 1`.as("depth")]),
           ),
         ),
     )
-    .selectFrom("cte")
+    .selectFrom("category_tree")
+    .innerJoin("file_category", "category_tree.id", "file_category.category_id")
+    .innerJoin("file", "file_category.file_id", "file.id")
     .select(["file_id", "depth"])
+    .selectAll("file")
     .distinctOn("file_id")
-    .where("user_id", "=", userId)
-    .where("file_id", "is not", null)
-    .$narrowType<{ file_id: NotNull }>()
     .orderBy("file_id")
     .orderBy("depth")
     .execute();
-  return files.map(({ file_id, depth }) => ({ id: file_id, isRecursive: depth > 0 }));
+  return files.map(
+    (file) =>
+      ({
+        id: file.file_id,
+        parentId: file.parent_id ?? "root",
+        userId: file.user_id,
+        path: file.path,
+        mekVersion: file.master_encryption_key_version,
+        encDek: file.encrypted_data_encryption_key,
+        dekVersion: file.data_encryption_key_version,
+        hskVersion: file.hmac_secret_key_version,
+        contentHmac: file.content_hmac,
+        contentType: file.content_type,
+        encContentIv: file.encrypted_content_iv,
+        encContentHash: file.encrypted_content_hash,
+        encName: file.encrypted_name,
+        encCreatedAt: file.encrypted_created_at,
+        encLastModifiedAt: file.encrypted_last_modified_at,
+        isRecursive: file.depth > 0,
+      }) satisfies File & { isRecursive: boolean },
+  );
 };
 
 export const getAllFileIds = async (userId: number) => {
@@ -388,6 +407,51 @@ export const getFile = async (userId: number, fileId: number) => {
         encLastModifiedAt: file.encrypted_last_modified_at,
       } satisfies File)
     : null;
+};
+
+export const getFilesWithCategories = async (userId: number, fileIds: number[]) => {
+  const files = await db
+    .selectFrom("file")
+    .selectAll()
+    .select((eb) =>
+      jsonArrayFrom(
+        eb
+          .selectFrom("file_category")
+          .innerJoin("category", "file_category.category_id", "category.id")
+          .where("file_category.file_id", "=", eb.ref("file.id"))
+          .selectAll("category"),
+      ).as("categories"),
+    )
+    .where("id", "=", (eb) => eb.fn.any(eb.val(fileIds)))
+    .where("user_id", "=", userId)
+    .execute();
+  return files.map(
+    (file) =>
+      ({
+        id: file.id,
+        parentId: file.parent_id ?? "root",
+        userId: file.user_id,
+        path: file.path,
+        mekVersion: file.master_encryption_key_version,
+        encDek: file.encrypted_data_encryption_key,
+        dekVersion: file.data_encryption_key_version,
+        hskVersion: file.hmac_secret_key_version,
+        contentHmac: file.content_hmac,
+        contentType: file.content_type,
+        encContentIv: file.encrypted_content_iv,
+        encContentHash: file.encrypted_content_hash,
+        encName: file.encrypted_name,
+        encCreatedAt: file.encrypted_created_at,
+        encLastModifiedAt: file.encrypted_last_modified_at,
+        categories: file.categories.map((category) => ({
+          id: category.id,
+          mekVersion: category.master_encryption_key_version,
+          encDek: category.encrypted_data_encryption_key,
+          dekVersion: new Date(category.data_encryption_key_version),
+          encName: category.encrypted_name,
+        })),
+      }) satisfies File & { categories: FileCategory[] },
+  );
 };
 
 export const setFileEncName = async (
@@ -476,10 +540,20 @@ export const addFileToCategory = async (fileId: number, categoryId: number) => {
 export const getAllFileCategories = async (fileId: number) => {
   const categories = await db
     .selectFrom("file_category")
-    .select("category_id")
+    .innerJoin("category", "file_category.category_id", "category.id")
+    .selectAll("category")
     .where("file_id", "=", fileId)
     .execute();
-  return categories.map(({ category_id }) => ({ id: category_id }));
+  return categories.map(
+    (category) =>
+      ({
+        id: category.id,
+        mekVersion: category.master_encryption_key_version,
+        encDek: category.encrypted_data_encryption_key,
+        dekVersion: category.data_encryption_key_version,
+        encName: category.encrypted_name,
+      }) satisfies FileCategory,
+  );
 };
 
 export const removeFileFromCategory = async (fileId: number, categoryId: number) => {

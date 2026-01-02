@@ -20,27 +20,25 @@
   import IconCamera from "~icons/material-symbols/camera";
 
   interface Props {
-    info: Writable<FileInfo | null>;
-    onclick: (selectedFile: FileInfo) => void;
-    onGenerateThumbnailClick: (selectedFile: FileInfo) => void;
+    info: FileInfo;
+    onclick: (file: FileInfo) => void;
+    onGenerateThumbnailClick: (file: FileInfo) => void;
     generationStatus?: Writable<GenerationStatus>;
   }
 
   let { info, onclick, onGenerateThumbnailClick, generationStatus }: Props = $props();
 </script>
 
-{#if $info}
-  <ActionEntryButton
-    class="h-14"
-    onclick={() => onclick($info)}
-    actionButtonIcon={!$generationStatus || $generationStatus === "error" ? IconCamera : undefined}
-    onActionButtonClick={() => onGenerateThumbnailClick($info)}
-    actionButtonClass="text-gray-800"
-  >
-    {@const subtext =
-      $generationStatus && $generationStatus !== "uploaded"
-        ? subtexts[$generationStatus]
-        : formatDateTime($info.createdAt ?? $info.lastModifiedAt)}
-    <DirectoryEntryLabel type="file" name={$info.name} {subtext} />
-  </ActionEntryButton>
-{/if}
+<ActionEntryButton
+  class="h-14"
+  onclick={() => onclick(info)}
+  actionButtonIcon={!$generationStatus || $generationStatus === "error" ? IconCamera : undefined}
+  onActionButtonClick={() => onGenerateThumbnailClick(info)}
+  actionButtonClass="text-gray-800"
+>
+  {@const subtext =
+    $generationStatus && $generationStatus !== "uploaded"
+      ? subtexts[$generationStatus]
+      : formatDateTime(info.createdAt ?? info.lastModifiedAt)}
+  <DirectoryEntryLabel type="file" name={info.name} {subtext} />
+</ActionEntryButton>

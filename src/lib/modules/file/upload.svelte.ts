@@ -1,7 +1,6 @@
 import axios from "axios";
 import ExifReader from "exifreader";
 import { limitFunction } from "p-limit";
-import { writable, type Writable } from "svelte/store";
 import {
   encodeToBase64,
   generateDataKey,
@@ -17,13 +16,44 @@ import type {
   FileUploadRequest,
   FileUploadResponse,
 } from "$lib/server/schemas";
-import {
-  fileUploadStatusStore,
-  type MasterKey,
-  type HmacSecret,
-  type FileUploadStatus,
-} from "$lib/stores";
+import type { MasterKey, HmacSecret } from "$lib/stores";
 import { trpc } from "$trpc/client";
+
+export interface FileUploadState {
+  name: string;
+  parentId: DirectoryId;
+  status:
+    | "encryption-pending"
+    | "encrypting"
+    | "upload-pending"
+    | "uploading"
+    | "uploaded"
+    | "canceled"
+    | "error";
+  progress?: number;
+  rate?: number;
+  estimated?: number;
+}
+
+export type LiveFileUploadState = FileUploadState & {
+  status: "encryption-pending" | "encrypting" | "upload-pending" | "uploading";
+};
+
+let uploadingFiles: FileUploadState[] = $state([]);
+
+const isFileUploading = (status: FileUploadState["status"]) =>
+  ["encryption-pending", "encrypting", "upload-pending", "uploading"].includes(status);
+
+export const getUploadingFiles = (parentId?: DirectoryId) => {
+  return uploadingFiles.filter(
+    (file) =>
+      (parentId === undefined || file.parentId === parentId) && isFileUploading(file.status),
+  );
+};
+
+export const clearUploadedFiles = () => {
+  uploadingFiles = uploadingFiles.filter((file) => isFileUploading(file.status));
+};
 
 const requestDuplicateFileScan = limitFunction(
   async (file: File, hmacSecret: HmacSecret, onDuplicate: () => Promise<boolean>) => {
@@ -76,16 +106,8 @@ const extractExifDateTime = (fileBuffer: ArrayBuffer) => {
 };
 
 const encryptFile = limitFunction(
-  async (
-    status: Writable<FileUploadStatus>,
-    file: File,
-    fileBuffer: ArrayBuffer,
-    masterKey: MasterKey,
-  ) => {
-    status.update((value) => {
-      value.status = "encrypting";
-      return value;
-    });
+  async (state: FileUploadState, file: File, fileBuffer: ArrayBuffer, masterKey: MasterKey) => {
+    state.status = "encrypting";
 
     const fileType = getFileType(file);
 
@@ -109,10 +131,7 @@ const encryptFile = limitFunction(
     const thumbnailBuffer = await thumbnail?.arrayBuffer();
     const thumbnailEncrypted = thumbnailBuffer && (await encryptData(thumbnailBuffer, dataKey));
 
-    status.update((value) => {
-      value.status = "upload-pending";
-      return value;
-    });
+    state.status = "upload-pending";
 
     return {
       dataKeyWrapped,
@@ -130,20 +149,14 @@ const encryptFile = limitFunction(
 );
 
 const requestFileUpload = limitFunction(
-  async (status: Writable<FileUploadStatus>, form: FormData, thumbnailForm: FormData | null) => {
-    status.update((value) => {
-      value.status = "uploading";
-      return value;
-    });
+  async (state: FileUploadState, form: FormData, thumbnailForm: FormData | null) => {
+    state.status = "uploading";
 
     const res = await axios.post("/api/file/upload", form, {
       onUploadProgress: ({ progress, rate, estimated }) => {
-        status.update((value) => {
-          value.progress = progress;
-          value.rate = rate;
-          value.estimated = estimated;
-          return value;
-        });
+        state.progress = progress;
+        state.rate = rate;
+        state.estimated = estimated;
       },
     });
     const { file }: FileUploadResponse = res.data;
@@ -157,10 +170,7 @@ const requestFileUpload = limitFunction(
       }
     }
 
-    status.update((value) => {
-      value.status = "uploaded";
-      return value;
-    });
+    state.status = "uploaded";
 
     return { fileId: file };
   },
@@ -176,15 +186,12 @@ export const uploadFile = async (
 ): Promise<
   { fileId: number; fileBuffer: ArrayBuffer; thumbnailBuffer?: ArrayBuffer } | undefined
 > => {
-  const status = writable<FileUploadStatus>({
+  uploadingFiles.push({
     name: file.name,
     parentId,
     status: "encryption-pending",
   });
-  fileUploadStatusStore.update((value) => {
-    value.push(status);
-    return value;
-  });
+  const state = uploadingFiles.at(-1)!;
 
   try {
     const { fileBuffer, fileSigned } = await requestDuplicateFileScan(
@@ -193,14 +200,8 @@ export const uploadFile = async (
       onDuplicate,
     );
     if (!fileBuffer || !fileSigned) {
-      status.update((value) => {
-        value.status = "canceled";
-        return value;
-      });
-      fileUploadStatusStore.update((value) => {
-        value = value.filter((v) => v !== status);
-        return value;
-      });
+      state.status = "canceled";
+      uploadingFiles = uploadingFiles.filter((file) => file !== state);
       return undefined;
     }
 
@@ -214,7 +215,7 @@ export const uploadFile = async (
       createdAtEncrypted,
       lastModifiedAtEncrypted,
       thumbnail,
-    } = await encryptFile(status, file, fileBuffer, masterKey);
+    } = await encryptFile(state, file, fileBuffer, masterKey);
 
     const form = new FormData();
     form.set(
@@ -252,13 +253,10 @@ export const uploadFile = async (
       thumbnailForm.set("content", new Blob([thumbnail.ciphertext]));
     }
 
-    const { fileId } = await requestFileUpload(status, form, thumbnailForm);
+    const { fileId } = await requestFileUpload(state, form, thumbnailForm);
     return { fileId, fileBuffer, thumbnailBuffer: thumbnail?.plaintext };
   } catch (e) {
-    status.update((value) => {
-      value.status = "error";
-      return value;
-    });
+    state.status = "error";
     throw e;
   }
 };

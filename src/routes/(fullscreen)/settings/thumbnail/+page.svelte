@@ -1,18 +1,13 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { get } from "svelte/store";
   import { goto } from "$app/navigation";
   import { BottomDiv, Button, FullscreenDiv } from "$lib/components/atoms";
   import { IconEntryButton, TopBar } from "$lib/components/molecules";
   import { deleteAllFileThumbnailCaches } from "$lib/modules/file";
-  import { getFileInfo } from "$lib/modules/filesystem";
+  import { bulkGetFileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import File from "./File.svelte";
-  import {
-    persistentStates,
-    getGenerationStatus,
-    requestThumbnailGeneration,
-  } from "./service.svelte";
+  import { persistentStates, requestThumbnailGeneration } from "./service.svelte";
 
   import IconDelete from "~icons/material-symbols/delete";
 
@@ -20,18 +15,18 @@
 
   const generateAllThumbnails = () => {
     persistentStates.files.forEach(({ info }) => {
-      const fileInfo = get(info);
-      if (fileInfo) {
-        requestThumbnailGeneration(fileInfo);
+      if (info.exists) {
+        requestThumbnailGeneration(info);
       }
     });
   };
 
-  onMount(() => {
-    persistentStates.files = data.files.map((fileId) => ({
-      id: fileId,
-      info: getFileInfo(fileId, $masterKeyStore?.get(1)?.key!),
-      status: getGenerationStatus(fileId),
+  onMount(async () => {
+    const fileInfos = await bulkGetFileInfo(data.files, $masterKeyStore?.get(1)?.key!);
+    persistentStates.files = persistentStates.files.map(({ id, status }) => ({
+      id,
+      info: fileInfos.get(id)!,
+      status,
     }));
   });
 </script>
@@ -56,13 +51,15 @@
             {persistentStates.files.length}개 파일의 썸네일이 존재하지 않아요.
           </p>
           <div class="space-y-2">
-            {#each persistentStates.files as { info, status }}
-              <File
-                {info}
-                generationStatus={status}
-                onclick={({ id }) => goto(`/file/${id}`)}
-                onGenerateThumbnailClick={requestThumbnailGeneration}
-              />
+            {#each persistentStates.files as { info, status } (info.id)}
+              {#if info.exists}
+                <File
+                  {info}
+                  generationStatus={status}
+                  onclick={({ id }) => goto(`/file/${id}`)}
+                  onGenerateThumbnailClick={requestThumbnailGeneration}
+                />
+              {/if}
             {/each}
           </div>
         </div>

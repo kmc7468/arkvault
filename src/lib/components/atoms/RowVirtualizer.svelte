@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createWindowVirtualizer } from "@tanstack/svelte-virtual";
-  import { untrack, type Snippet } from "svelte";
+  import type { Snippet } from "svelte";
   import type { ClassValue } from "svelte/elements";
 
   interface Props {
@@ -8,15 +8,21 @@
     count: number;
     item: Snippet<[index: number]>;
     itemHeight: (index: number) => number;
+    itemGap?: number;
     placeholder?: Snippet;
   }
 
-  let { class: className, count, item, itemHeight, placeholder }: Props = $props();
+  let { class: className, count, item, itemHeight, itemGap, placeholder }: Props = $props();
 
-  const virtualizer = $derived(
+  let element: HTMLElement | undefined = $state();
+  let scrollMargin = $state(0);
+
+  let virtualizer = $derived(
     createWindowVirtualizer({
-      count: untrack(() => count),
+      count,
       estimateSize: itemHeight,
+      gap: itemGap,
+      scrollMargin,
     }),
   );
 
@@ -24,15 +30,23 @@
     $effect(() => $virtualizer.measureElement(node));
   };
 
-  $effect(() => $virtualizer.setOptions({ count }));
+  $effect(() => {
+    if (!element) return;
+
+    const observer = new ResizeObserver(() => {
+      scrollMargin = element!.getBoundingClientRect().top + window.scrollY;
+    });
+    observer.observe(element.parentElement!);
+    return () => observer.disconnect();
+  });
 </script>
 
-<div class={["relative", className]}>
+<div bind:this={element} class={["relative", className]}>
   <div style:height="{$virtualizer.getTotalSize()}px">
     {#each $virtualizer.getVirtualItems() as virtualItem (virtualItem.key)}
       <div
         class="absolute left-0 top-0 w-full"
-        style:transform="translateY({virtualItem.start}px)"
+        style:transform="translateY({virtualItem.start - scrollMargin}px)"
         data-index={virtualItem.index}
         use:measureItem
       >

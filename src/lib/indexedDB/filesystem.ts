@@ -1,7 +1,5 @@
 import { Dexie, type EntityTable } from "dexie";
 
-export type DirectoryId = "root" | number;
-
 interface DirectoryInfo {
   id: number;
   parentId: DirectoryId;
@@ -17,8 +15,6 @@ interface FileInfo {
   lastModifiedAt: Date;
   categoryIds: number[];
 }
-
-export type CategoryId = "root" | number;
 
 interface CategoryInfo {
   id: number;
@@ -76,6 +72,10 @@ export const getFileInfos = async (parentId: DirectoryId) => {
 
 export const getFileInfo = async (id: number) => {
   return await filesystem.file.get(id);
+};
+
+export const bulkGetFileInfos = async (ids: number[]) => {
+  return await filesystem.file.bulkGet(ids);
 };
 
 export const storeFileInfo = async (fileInfo: FileInfo) => {
