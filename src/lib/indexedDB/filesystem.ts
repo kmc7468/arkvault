@@ -1,7 +1,5 @@
 import { Dexie, type EntityTable } from "dexie";
 
-export type DirectoryId = "root" | number;
-
 interface DirectoryInfo {
   id: number;
   parentId: DirectoryId;
@@ -17,8 +15,6 @@ interface FileInfo {
   lastModifiedAt: Date;
   categoryIds: number[];
 }
-
-export type CategoryId = "root" | number;
 
 interface CategoryInfo {
   id: number;
@@ -66,6 +62,16 @@ export const deleteDirectoryInfo = async (id: number) => {
   await filesystem.directory.delete(id);
 };
 
+export const deleteDanglingDirectoryInfos = async (
+  parentId: DirectoryId,
+  validIds: Set<number>,
+) => {
+  await filesystem.directory
+    .where({ parentId })
+    .and((directory) => !validIds.has(directory.id))
+    .delete();
+};
+
 export const getAllFileInfos = async () => {
   return await filesystem.file.toArray();
 };
@@ -78,12 +84,23 @@ export const getFileInfo = async (id: number) => {
   return await filesystem.file.get(id);
 };
 
+export const bulkGetFileInfos = async (ids: number[]) => {
+  return await filesystem.file.bulkGet(ids);
+};
+
 export const storeFileInfo = async (fileInfo: FileInfo) => {
   await filesystem.file.put(fileInfo);
 };
 
 export const deleteFileInfo = async (id: number) => {
   await filesystem.file.delete(id);
+};
+
+export const deleteDanglingFileInfos = async (parentId: DirectoryId, validIds: Set<number>) => {
+  await filesystem.file
+    .where({ parentId })
+    .and((file) => !validIds.has(file.id))
+    .delete();
 };
 
 export const getCategoryInfos = async (parentId: CategoryId) => {
@@ -104,6 +121,13 @@ export const updateCategoryInfo = async (id: number, changes: { isFileRecursive?
 
 export const deleteCategoryInfo = async (id: number) => {
   await filesystem.category.delete(id);
+};
+
+export const deleteDanglingCategoryInfos = async (parentId: CategoryId, validIds: Set<number>) => {
+  await filesystem.category
+    .where({ parentId })
+    .and((category) => !validIds.has(category.id))
+    .delete();
 };
 
 export const cleanupDanglingInfos = async () => {

@@ -1,44 +1,29 @@
 <script lang="ts">
-  import type { Writable } from "svelte/store";
   import { ActionEntryButton } from "$lib/components/atoms";
   import { DirectoryEntryLabel } from "$lib/components/molecules";
-  import type { DirectoryInfo } from "$lib/modules/filesystem";
+  import type { SubDirectoryInfo } from "$lib/modules/filesystem";
   import type { SelectedEntry } from "../service.svelte";
 
   import IconMoreVert from "~icons/material-symbols/more-vert";
 
-  type SubDirectoryInfo = DirectoryInfo & { id: number };
-
   interface Props {
-    info: Writable<DirectoryInfo | null>;
-    onclick: (selectedEntry: SelectedEntry) => void;
-    onOpenMenuClick: (selectedEntry: SelectedEntry) => void;
+    info: SubDirectoryInfo;
+    onclick: (entry: SelectedEntry) => void;
+    onOpenMenuClick: (entry: SelectedEntry) => void;
   }
 
   let { info, onclick, onOpenMenuClick }: Props = $props();
 
-  const openDirectory = () => {
-    const { id, dataKey, dataKeyVersion, name } = $info as SubDirectoryInfo;
-    if (!dataKey || !dataKeyVersion) return; // TODO: Error handling
-
-    onclick({ type: "directory", id, dataKey, dataKeyVersion, name });
-  };
-
-  const openMenu = () => {
-    const { id, dataKey, dataKeyVersion, name } = $info as SubDirectoryInfo;
-    if (!dataKey || !dataKeyVersion) return; // TODO: Error handling
-
-    onOpenMenuClick({ type: "directory", id, dataKey, dataKeyVersion, name });
+  const action = (callback: typeof onclick) => {
+    callback({ type: "directory", id: info.id, dataKey: info.dataKey, name: info.name });
   };
 </script>
 
-{#if $info}
-  <ActionEntryButton
-    class="h-14"
-    onclick={openDirectory}
-    actionButtonIcon={IconMoreVert}
-    onActionButtonClick={openMenu}
-  >
-    <DirectoryEntryLabel type="directory" name={$info.name!} />
-  </ActionEntryButton>
-{/if}
+<ActionEntryButton
+  class="h-14"
+  onclick={() => action(onclick)}
+  actionButtonIcon={IconMoreVert}
+  onActionButtonClick={() => action(onOpenMenuClick)}
+>
+  <DirectoryEntryLabel type="directory" name={info.name} />
+</ActionEntryButton>

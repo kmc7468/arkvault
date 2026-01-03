@@ -1,32 +1,31 @@
 <script lang="ts">
-  import type { Writable } from "svelte/store";
-  import { isFileDownloading, type FileDownloadStatus } from "$lib/stores";
+  import { isFileDownloading, type FileDownloadState } from "$lib/modules/file";
   import { formatNetworkSpeed } from "$lib/utils";
 
   interface Props {
-    status?: Writable<FileDownloadStatus>;
+    state: FileDownloadState;
   }
 
-  let { status }: Props = $props();
+  let { state }: Props = $props();
 </script>
 
-{#if $status && isFileDownloading($status.status)}
+{#if isFileDownloading(state.status)}
   <div class="w-full rounded-xl bg-gray-100 p-3">
     <p class="font-medium">
-      {#if $status.status === "download-pending"}
+      {#if state.status === "download-pending"}
         다운로드를 기다리는 중
-      {:else if $status.status === "downloading"}
+      {:else if state.status === "downloading"}
         다운로드하는 중
-      {:else if $status.status === "decryption-pending"}
+      {:else if state.status === "decryption-pending"}
         복호화를 기다리는 중
-      {:else if $status.status === "decrypting"}
+      {:else if state.status === "decrypting"}
         복호화하는 중
       {/if}
     </p>
     <p class="text-xs">
-      {#if $status.status === "downloading"}
+      {#if state.status === "downloading"}
         전송됨
-        {Math.floor(($status.progress ?? 0) * 100)}% · {formatNetworkSpeed(($status.rate ?? 0) * 8)}
+        {Math.floor((state.progress ?? 0) * 100)}% · {formatNetworkSpeed((state.rate ?? 0) * 8)}
       {/if}
     </p>
   </div>
