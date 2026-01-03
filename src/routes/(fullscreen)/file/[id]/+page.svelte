@@ -164,7 +164,6 @@
           {:else if viewerType === "video"}
             {#if fileBlobUrl}
               <div class="flex flex-col space-y-2">
-                <!-- svelte-ignore a11y_media_has_caption -->
                 <video bind:this={videoElement} src={fileBlobUrl} controls muted></video>
                 <IconEntryButton
                   icon={IconCamera}

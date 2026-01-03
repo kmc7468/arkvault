@@ -48,9 +48,10 @@ export const sortEntries = <T extends SortEntry>(entries: T[], sortBy = SortBy.N
     case SortBy.DATE_DESC:
       sortFunc = sortByDateDesc;
       break;
-    default:
+    default: {
       const exhaustive: never = sortBy;
       sortFunc = exhaustive;
+    }
   }
 
   entries.sort(sortFunc);

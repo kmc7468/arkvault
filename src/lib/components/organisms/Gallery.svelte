@@ -23,7 +23,7 @@
     );
     return Array.from(groups.entries())
       .sort(([dateA], [dateB]) => dateB.localeCompare(dateA))
-      .flatMap(([_, entries]) => {
+      .flatMap(([, entries]) => {
         const sortedEntries = [...entries];
         sortEntries(sortedEntries, SortBy.DATE_DESC);
 

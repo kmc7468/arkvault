@@ -14,7 +14,7 @@
   import { DirectoryEntryLabel } from "$lib/components/molecules";
   import type { FileInfo } from "$lib/modules/filesystem";
   import { formatDateTime } from "$lib/utils";
-  import type { GenerationStatus } from "./service.svelte";
+  import type { GenerationStatus } from "./service";
 
   import IconCamera from "~icons/material-symbols/camera";
 

@@ -13,7 +13,7 @@
     clearThumbnailGenerationStatuses,
     requestThumbnailGeneration,
     type GenerationStatus,
-  } from "./service.svelte";
+  } from "./service";
 
   import IconDelete from "~icons/material-symbols/delete";
 
