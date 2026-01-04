@@ -25,7 +25,7 @@
 
   let { categories, categoryMenuIcon, onCategoryClick, onCategoryMenuClick }: Props = $props();
 
-  let categoriesWithName = $derived(sortEntries($state.snapshot(categories)));
+  let categoriesWithName = $derived(sortEntries([...categories]));
 </script>
 
 {#if categoriesWithName.length > 0}

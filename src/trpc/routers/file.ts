@@ -33,6 +33,7 @@ const fileRouter = router({
         lastModifiedAtIv: file.encLastModifiedAt.iv,
         categories: categories.map((category) => ({
           id: category.id,
+          parent: category.parentId,
           mekVersion: category.mekVersion,
           dek: category.encDek,
           dekVersion: category.dekVersion,
@@ -66,6 +67,7 @@ const fileRouter = router({
         lastModifiedAtIv: file.encLastModifiedAt.iv,
         categories: file.categories.map((category) => ({
           id: category.id,
+          parent: category.parentId,
           mekVersion: category.mekVersion,
           dek: category.encDek,
           dekVersion: category.dekVersion,

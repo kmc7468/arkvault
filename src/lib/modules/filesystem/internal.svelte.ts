@@ -1,82 +1,120 @@
+import { untrack } from "svelte";
 import { unwrapDataKey, decryptString } from "$lib/modules/crypto";
 
-export class FilesystemCache<K, V extends RV, RV = V> {
-  private map = new Map<K, V | Promise<V>>();
+interface FilesystemCacheOptions<K, V> {
+  fetchFromIndexedDB: (key: K) => Promise<V | undefined>;
+  fetchFromServer: (key: K, cachedValue: V | undefined, masterKey: CryptoKey) => Promise<V>;
+  bulkFetchFromIndexedDB?: (keys: Set<K>) => Promise<Map<K, V>>;
+  bulkFetchFromServer?: (
+    keys: Map<K, { cachedValue: V | undefined }>,
+    masterKey: CryptoKey,
+  ) => Promise<Map<K, V>>;
+}
 
-  get(key: K, loader: (isInitial: boolean, resolve: (value: RV | undefined) => void) => void) {
-    const info = this.map.get(key);
-    if (info instanceof Promise) {
-      return info;
-    }
+export class FilesystemCache<K, V extends object> {
+  private map = new Map<K, { value?: V; promise?: Promise<V> }>();
 
-    const { promise, resolve } = Promise.withResolvers<V>();
-    if (!info) {
-      this.map.set(key, promise);
-    }
+  constructor(private readonly options: FilesystemCacheOptions<K, V>) {}
 
-    loader(!info, (loadedInfo) => {
-      if (!loadedInfo) return;
+  get(key: K, masterKey: CryptoKey) {
+    return untrack(() => {
+      let state = this.map.get(key);
+      if (state?.promise) return state.value ?? state.promise;
 
-      const info = this.map.get(key)!;
-      if (info instanceof Promise) {
-        const state = $state(loadedInfo);
-        this.map.set(key, state as V);
-        resolve(state as V);
-      } else {
-        Object.assign(info, loadedInfo);
-        resolve(info);
+      const { promise: newPromise, resolve } = Promise.withResolvers<V>();
+
+      if (!state) {
+        const newState = $state({});
+        state = newState;
+        this.map.set(key, newState);
       }
-    });
 
-    return info ?? promise;
+      state.promise = newPromise;
+
+      (state.value
+        ? Promise.resolve(state.value)
+        : this.options.fetchFromIndexedDB(key).then((loadedInfo) => {
+            if (loadedInfo) {
+              state.value = loadedInfo;
+              resolve(state.value);
+            }
+            return loadedInfo;
+          })
+      )
+        .then((cachedInfo) => this.options.fetchFromServer(key, cachedInfo, masterKey))
+        .then((loadedInfo) => {
+          if (state.value) {
+            Object.assign(state.value, loadedInfo);
+          } else {
+            state.value = loadedInfo;
+          }
+          resolve(state.value);
+        })
+        .finally(() => {
+          state.promise = undefined;
+        });
+
+      return newPromise;
+    });
   }
 
-  async bulkGet(
-    keys: Set<K>,
-    loader: (keys: Map<K, boolean>, resolve: (values: Map<K, RV>) => void) => void,
-  ) {
-    const states = new Map<K, V>();
-    const promises = new Map<K, Promise<V>>();
-    const resolvers = new Map<K, (value: V) => void>();
+  bulkGet(keys: Set<K>, masterKey: CryptoKey) {
+    return untrack(() => {
+      const newPromises = new Map(
+        keys
+          .keys()
+          .filter((key) => this.map.get(key)?.promise === undefined)
+          .map((key) => [key, Promise.withResolvers<V>()]),
+      );
+      newPromises.forEach(({ promise }, key) => {
+        const state = this.map.get(key);
+        if (state) {
+          state.promise = promise;
+        } else {
+          const newState = $state({ promise });
+          this.map.set(key, newState);
+        }
+      });
 
-    keys.forEach((key) => {
-      const info = this.map.get(key);
-      if (info instanceof Promise) {
-        promises.set(key, info);
-      } else if (info) {
-        states.set(key, info);
-      } else {
-        const { promise, resolve } = Promise.withResolvers<V>();
-        this.map.set(key, promise);
-        promises.set(key, promise);
-        resolvers.set(key, resolve);
-      }
-    });
-
-    loader(
-      new Map([
-        ...states.keys().map((key) => [key, false] as const),
-        ...resolvers.keys().map((key) => [key, true] as const),
-      ]),
-      (loadedInfos) =>
+      const resolve = (loadedInfos: Map<K, V>) => {
         loadedInfos.forEach((loadedInfo, key) => {
-          const info = this.map.get(key)!;
-          const resolve = resolvers.get(key);
-          if (info instanceof Promise) {
-            const state = $state(loadedInfo);
-            this.map.set(key, state as V);
-            resolve?.(state as V);
+          const state = this.map.get(key)!;
+          if (state.value) {
+            Object.assign(state.value, loadedInfo);
           } else {
-            Object.assign(info, loadedInfo);
-            resolve?.(info);
+            state.value = loadedInfo;
           }
-        }),
-    );
+          newPromises.get(key)!.resolve(state.value);
+        });
+        return loadedInfos;
+      };
 
-    const newStates = await Promise.all(
-      promises.entries().map(async ([key, promise]) => [key, await promise] as const),
-    );
-    return new Map([...states, ...newStates]);
+      this.options.bulkFetchFromIndexedDB!(
+        new Set(newPromises.keys().filter((key) => this.map.get(key)!.value === undefined)),
+      )
+        .then(resolve)
+        .then(() =>
+          this.options.bulkFetchFromServer!(
+            new Map(
+              newPromises.keys().map((key) => [key, { cachedValue: this.map.get(key)!.value }]),
+            ),
+            masterKey,
+          ),
+        )
+        .then(resolve)
+        .finally(() => {
+          newPromises.forEach((_, key) => {
+            this.map.get(key)!.promise = undefined;
+          });
+        });
+
+      return Promise.all(
+        keys
+          .keys()
+          .filter((key) => this.map.get(key)!.value === undefined)
+          .map((key) => this.map.get(key)!.promise!),
+      ).then(() => new Map(keys.keys().map((key) => [key, this.map.get(key)!.value!] as const)));
+    });
   }
 }
 

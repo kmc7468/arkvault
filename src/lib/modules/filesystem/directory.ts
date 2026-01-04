@@ -1,125 +1,102 @@
 import * as IndexedDB from "$lib/indexedDB";
-import { monotonicResolve } from "$lib/utils";
 import { trpc, isTRPCClientError } from "$trpc/client";
 import { FilesystemCache, decryptDirectoryMetadata, decryptFileMetadata } from "./internal.svelte";
-import type { MaybeDirectoryInfo } from "./types";
+import type { DirectoryInfo, MaybeDirectoryInfo } from "./types";
 
-const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>();
-
-const fetchFromIndexedDB = async (id: DirectoryId) => {
-  const [directory, subDirectories, files] = await Promise.all([
-    id !== "root" ? IndexedDB.getDirectoryInfo(id) : undefined,
-    IndexedDB.getDirectoryInfos(id),
-    IndexedDB.getFileInfos(id),
-  ]);
-
-  if (id === "root") {
-    return {
-      id,
-      exists: true as const,
-      subDirectories,
-      files,
-    };
-  } else if (directory) {
-    return {
-      id,
-      exists: true as const,
-      parentId: directory.parentId,
-      name: directory.name,
-      subDirectories,
-      files,
-    };
-  }
-};
-
-const fetchFromServer = async (id: DirectoryId, masterKey: CryptoKey) => {
-  try {
-    const {
-      metadata,
-      subDirectories: subDirectoriesRaw,
-      files: filesRaw,
-    } = await trpc().directory.get.query({ id });
-
-    void IndexedDB.deleteDanglingDirectoryInfos(id, new Set(subDirectoriesRaw.map(({ id }) => id)));
-    void IndexedDB.deleteDanglingFileInfos(id, new Set(filesRaw.map(({ id }) => id)));
-
-    const existingFiles = await IndexedDB.bulkGetFileInfos(filesRaw.map((file) => file.id));
-    const [subDirectories, files, decryptedMetadata] = await Promise.all([
-      Promise.all(
-        subDirectoriesRaw.map(async (directory) => {
-          const decrypted = await decryptDirectoryMetadata(directory, masterKey);
-          await IndexedDB.storeDirectoryInfo({
-            id: directory.id,
-            parentId: id,
-            name: decrypted.name,
-          });
-          return {
-            id: directory.id,
-            ...decrypted,
-          };
-        }),
-      ),
-      Promise.all(
-        filesRaw.map(async (file, index) => {
-          const decrypted = await decryptFileMetadata(file, masterKey);
-          await IndexedDB.storeFileInfo({
-            id: file.id,
-            parentId: id,
-            contentType: file.contentType,
-            name: decrypted.name,
-            createdAt: decrypted.createdAt,
-            lastModifiedAt: decrypted.lastModifiedAt,
-            categoryIds: existingFiles[index]?.categoryIds ?? [],
-          });
-          return {
-            id: file.id,
-            contentType: file.contentType,
-            ...decrypted,
-          };
-        }),
-      ),
-      metadata ? decryptDirectoryMetadata(metadata, masterKey) : undefined,
+const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>({
+  async fetchFromIndexedDB(id) {
+    const [directory, subDirectories, files] = await Promise.all([
+      id !== "root" ? IndexedDB.getDirectoryInfo(id) : undefined,
+      IndexedDB.getDirectoryInfos(id),
+      IndexedDB.getFileInfos(id),
     ]);
-
-    if (id !== "root" && metadata && decryptedMetadata) {
-      await IndexedDB.storeDirectoryInfo({
-        id,
-        parentId: metadata.parent,
-        name: decryptedMetadata.name,
-      });
-    }
 
     if (id === "root") {
       return {
         id,
-        exists: true as const,
+        exists: true,
         subDirectories,
         files,
       };
-    } else {
+    } else if (directory) {
       return {
         id,
-        exists: true as const,
-        parentId: metadata!.parent,
+        exists: true,
+        parentId: directory.parentId,
+        name: directory.name,
         subDirectories,
         files,
-        ...decryptedMetadata!,
       };
     }
-  } catch (e) {
-    if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
-      await IndexedDB.deleteDirectoryInfo(id as number);
-      return { id, exists: false as const };
+  },
+
+  async fetchFromServer(id, _cachedInfo, masterKey) {
+    try {
+      const directory = await trpc().directory.get.query({ id });
+      const [subDirectories, files, metadata] = await Promise.all([
+        Promise.all(
+          directory.subDirectories.map(async (directory) => ({
+            id: directory.id,
+            parentId: id,
+            ...(await decryptDirectoryMetadata(directory, masterKey)),
+          })),
+        ),
+        Promise.all(
+          directory.files.map(async (file) => ({
+            id: file.id,
+            parentId: id,
+            contentType: file.contentType,
+            ...(await decryptFileMetadata(file, masterKey)),
+          })),
+        ),
+        directory.metadata && decryptDirectoryMetadata(directory.metadata, masterKey),
+      ]);
+
+      return storeToIndexedDB(
+        id !== "root"
+          ? {
+              id,
+              parentId: directory.metadata!.parent,
+              subDirectories,
+              files,
+              ...metadata!,
+            }
+          : { id, subDirectories, files },
+      );
+    } catch (e) {
+      if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
+        await IndexedDB.deleteDirectoryInfo(id as number);
+        return { id, exists: false as const };
+      }
+      throw e;
     }
-    throw e;
+  },
+});
+
+const storeToIndexedDB = (info: DirectoryInfo) => {
+  if (info.id !== "root") {
+    void IndexedDB.storeDirectoryInfo(info);
   }
+
+  // TODO: Bulk Upsert
+  info.subDirectories.forEach((subDirectory) => {
+    void IndexedDB.storeDirectoryInfo(subDirectory);
+  });
+
+  // TODO: Bulk Upsert
+  info.files.forEach((file) => {
+    void IndexedDB.storeFileInfo(file);
+  });
+
+  void IndexedDB.deleteDanglingDirectoryInfos(
+    info.id,
+    new Set(info.subDirectories.map(({ id }) => id)),
+  );
+  void IndexedDB.deleteDanglingFileInfos(info.id, new Set(info.files.map(({ id }) => id)));
+
+  return { ...info, exists: true as const };
 };
 
 export const getDirectoryInfo = async (id: DirectoryId, masterKey: CryptoKey) => {
-  return await cache.get(id, (isInitial, resolve) =>
-    monotonicResolve(
-      [isInitial && fetchFromIndexedDB(id), fetchFromServer(id, masterKey)],
-      resolve,
-    ),
-  );
+  return await cache.get(id, masterKey);
 };

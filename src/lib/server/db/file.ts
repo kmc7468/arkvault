@@ -39,6 +39,7 @@ export type NewFile = Omit<File, "id">;
 
 interface FileCategory {
   id: number;
+  parentId: CategoryId;
   mekVersion: number;
   encDek: string;
   dekVersion: Date;
@@ -445,6 +446,7 @@ export const getFilesWithCategories = async (userId: number, fileIds: number[]) 
         encLastModifiedAt: file.encrypted_last_modified_at,
         categories: file.categories.map((category) => ({
           id: category.id,
+          parentId: category.parent_id ?? "root",
           mekVersion: category.master_encryption_key_version,
           encDek: category.encrypted_data_encryption_key,
           dekVersion: new Date(category.data_encryption_key_version),
@@ -548,6 +550,7 @@ export const getAllFileCategories = async (fileId: number) => {
     (category) =>
       ({
         id: category.id,
+        parentId: category.parent_id ?? "root",
         mekVersion: category.master_encryption_key_version,
         encDek: category.encrypted_data_encryption_key,
         dekVersion: category.data_encryption_key_version,

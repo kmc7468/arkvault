@@ -46,6 +46,7 @@ const categoryRouter = router({
         })),
         files: files?.map((file) => ({
           id: file.id,
+          parent: file.parentId,
           mekVersion: file.mekVersion,
           dek: file.encDek,
           dekVersion: file.dekVersion,

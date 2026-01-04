@@ -13,15 +13,15 @@ interface FileInfo {
   contentType: string;
   createdAt?: Date;
   lastModifiedAt: Date;
-  categoryIds: number[];
+  categoryIds?: number[];
 }
 
 interface CategoryInfo {
   id: number;
   parentId: CategoryId;
   name: string;
-  files: { id: number; isRecursive: boolean }[];
-  isFileRecursive: boolean;
+  files?: { id: number; isRecursive: boolean }[];
+  isFileRecursive?: boolean;
 }
 
 const filesystem = new Dexie("filesystem") as Dexie & {
@@ -55,7 +55,7 @@ export const getDirectoryInfo = async (id: number) => {
 };
 
 export const storeDirectoryInfo = async (directoryInfo: DirectoryInfo) => {
-  await filesystem.directory.put(directoryInfo);
+  await filesystem.directory.upsert(directoryInfo.id, { ...directoryInfo });
 };
 
 export const deleteDirectoryInfo = async (id: number) => {
@@ -89,7 +89,7 @@ export const bulkGetFileInfos = async (ids: number[]) => {
 };
 
 export const storeFileInfo = async (fileInfo: FileInfo) => {
-  await filesystem.file.put(fileInfo);
+  await filesystem.file.upsert(fileInfo.id, { ...fileInfo });
 };
 
 export const deleteFileInfo = async (id: number) => {
@@ -112,7 +112,7 @@ export const getCategoryInfo = async (id: number) => {
 };
 
 export const storeCategoryInfo = async (categoryInfo: CategoryInfo) => {
-  await filesystem.category.put(categoryInfo);
+  await filesystem.category.upsert(categoryInfo.id, { ...categoryInfo });
 };
 
 export const updateCategoryInfo = async (id: number, changes: { isFileRecursive?: boolean }) => {

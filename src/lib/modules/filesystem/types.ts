@@ -20,10 +20,11 @@ interface RootDirectoryInfo {
 }
 
 export type DirectoryInfo = LocalDirectoryInfo | RootDirectoryInfo;
-export type SubDirectoryInfo = Omit<LocalDirectoryInfo, "parentId" | "subDirectories" | "files">;
 export type MaybeDirectoryInfo =
   | (DirectoryInfo & { exists: true })
   | ({ id: DirectoryId; exists: false } & AllUndefined<Omit<DirectoryInfo, "id">>);
+
+export type SubDirectoryInfo = Omit<LocalDirectoryInfo, "subDirectories" | "files">;
 
 export interface FileInfo {
   id: number;
@@ -34,17 +35,19 @@ export interface FileInfo {
   name: string;
   createdAt?: Date;
   lastModifiedAt: Date;
-  categories: { id: number; name: string }[];
+  categories: FileCategoryInfo[];
 }
 
-export type SummarizedFileInfo = Omit<FileInfo, "parentId" | "contentIv" | "categories">;
-export type CategoryFileInfo = SummarizedFileInfo & { isRecursive: boolean };
 export type MaybeFileInfo =
   | (FileInfo & { exists: true })
   | ({ id: number; exists: false } & AllUndefined<Omit<FileInfo, "id">>);
 
+export type SummarizedFileInfo = Omit<FileInfo, "contentIv" | "categories">;
+export type CategoryFileInfo = SummarizedFileInfo & { isRecursive: boolean };
+
 interface LocalCategoryInfo {
   id: number;
+  parentId: DirectoryId;
   dataKey?: DataKey;
   name: string;
   subCategories: SubCategoryInfo[];
@@ -54,6 +57,7 @@ interface LocalCategoryInfo {
 
 interface RootCategoryInfo {
   id: "root";
+  parentId?: undefined;
   dataKey?: undefined;
   name?: undefined;
   subCategories: SubCategoryInfo[];
@@ -62,10 +66,12 @@ interface RootCategoryInfo {
 }
 
 export type CategoryInfo = LocalCategoryInfo | RootCategoryInfo;
+export type MaybeCategoryInfo =
+  | (CategoryInfo & { exists: true })
+  | ({ id: CategoryId; exists: false } & AllUndefined<Omit<CategoryInfo, "id">>);
+
 export type SubCategoryInfo = Omit<
   LocalCategoryInfo,
   "subCategories" | "files" | "isFileRecursive"
 >;
-export type MaybeCategoryInfo =
-  | (CategoryInfo & { exists: true })
-  | ({ id: CategoryId; exists: false } & AllUndefined<Omit<CategoryInfo, "id">>);
+export type FileCategoryInfo = Omit<SubCategoryInfo, "dataKey">;

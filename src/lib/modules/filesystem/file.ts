@@ -1,175 +1,177 @@
 import * as IndexedDB from "$lib/indexedDB";
-import { monotonicResolve } from "$lib/utils";
 import { trpc, isTRPCClientError } from "$trpc/client";
 import { FilesystemCache, decryptFileMetadata, decryptCategoryMetadata } from "./internal.svelte";
-import type { MaybeFileInfo } from "./types";
+import type { FileInfo, MaybeFileInfo } from "./types";
 
-const cache = new FilesystemCache<number, MaybeFileInfo>();
+const cache = new FilesystemCache<number, MaybeFileInfo>({
+  async fetchFromIndexedDB(id) {
+    const file = await IndexedDB.getFileInfo(id);
+    const categories = file?.categoryIds
+      ? await Promise.all(
+          file.categoryIds.map(async (categoryId) => {
+            const category = await IndexedDB.getCategoryInfo(categoryId);
+            return category
+              ? { id: category.id, parentId: category.parentId, name: category.name }
+              : undefined;
+          }),
+        )
+      : undefined;
 
-const fetchFromIndexedDB = async (id: number) => {
-  const file = await IndexedDB.getFileInfo(id);
-  const categories = file
-    ? await Promise.all(
-        file.categoryIds.map(async (categoryId) => {
-          const category = await IndexedDB.getCategoryInfo(categoryId);
-          return category ? { id: category.id, name: category.name } : undefined;
-        }),
-      )
-    : undefined;
-
-  if (file) {
-    return {
-      id,
-      exists: true as const,
-      parentId: file.parentId,
-      contentType: file.contentType,
-      name: file.name,
-      createdAt: file.createdAt,
-      lastModifiedAt: file.lastModifiedAt,
-      categories: categories!.filter((category) => !!category),
-    };
-  }
-};
-
-const bulkFetchFromIndexedDB = async (ids: number[]) => {
-  const files = await IndexedDB.bulkGetFileInfos(ids);
-  const categories = await Promise.all(
-    files.map(async (file) =>
-      file
-        ? await Promise.all(
-            file.categoryIds.map(async (categoryId) => {
-              const category = await IndexedDB.getCategoryInfo(categoryId);
-              return category ? { id: category.id, name: category.name } : undefined;
-            }),
-          )
-        : undefined,
-    ),
-  );
-  return new Map(
-    files
-      .map((file, index) =>
-        file
-          ? ([
-              file.id,
-              {
-                ...file,
-                exists: true,
-                categories: categories[index]!.filter((category) => !!category),
-              },
-            ] as const)
-          : undefined,
-      )
-      .filter((file) => !!file),
-  );
-};
-
-const fetchFromServer = async (id: number, masterKey: CryptoKey) => {
-  try {
-    const { categories: categoriesRaw, ...metadata } = await trpc().file.get.query({ id });
-    const [categories, decryptedMetadata] = await Promise.all([
-      Promise.all(
-        categoriesRaw.map(async (category) => ({
-          id: category.id,
-          ...(await decryptCategoryMetadata(category, masterKey)),
-        })),
-      ),
-      decryptFileMetadata(metadata, masterKey),
-    ]);
-
-    await IndexedDB.storeFileInfo({
-      id,
-      parentId: metadata.parent,
-      contentType: metadata.contentType,
-      name: decryptedMetadata.name,
-      createdAt: decryptedMetadata.createdAt,
-      lastModifiedAt: decryptedMetadata.lastModifiedAt,
-      categoryIds: categories.map((category) => category.id),
-    });
-
-    return {
-      id,
-      exists: true as const,
-      parentId: metadata.parent,
-      contentType: metadata.contentType,
-      contentIv: metadata.contentIv,
-      categories,
-      ...decryptedMetadata,
-    };
-  } catch (e) {
-    if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
-      await IndexedDB.deleteFileInfo(id);
-      return { id, exists: false as const };
+    if (file) {
+      return {
+        id,
+        exists: true,
+        parentId: file.parentId,
+        contentType: file.contentType,
+        name: file.name,
+        createdAt: file.createdAt,
+        lastModifiedAt: file.lastModifiedAt,
+        categories: categories?.filter((category) => !!category) ?? [],
+      };
     }
-    throw e;
-  }
-};
+  },
 
-const bulkFetchFromServer = async (ids: number[], masterKey: CryptoKey) => {
-  const filesRaw = await trpc().file.bulkGet.query({ ids });
-  const files = await Promise.all(
-    filesRaw.map(async (file) => {
-      const [categories, decryptedMetadata] = await Promise.all([
+  async fetchFromServer(id, _cachedInfo, masterKey) {
+    try {
+      const file = await trpc().file.get.query({ id });
+      const [categories, metadata] = await Promise.all([
         Promise.all(
           file.categories.map(async (category) => ({
             id: category.id,
+            parentId: category.parent,
             ...(await decryptCategoryMetadata(category, masterKey)),
           })),
         ),
         decryptFileMetadata(file, masterKey),
       ]);
 
-      await IndexedDB.storeFileInfo({
-        id: file.id,
+      return storeToIndexedDB({
+        id,
         parentId: file.parent,
-        contentType: file.contentType,
-        name: decryptedMetadata.name,
-        createdAt: decryptedMetadata.createdAt,
-        lastModifiedAt: decryptedMetadata.lastModifiedAt,
-        categoryIds: categories.map((category) => category.id),
-      });
-      return {
-        id: file.id,
-        exists: true as const,
-        parentId: file.parent,
+        dataKey: metadata.dataKey,
         contentType: file.contentType,
         contentIv: file.contentIv,
+        name: metadata.name,
+        createdAt: metadata.createdAt,
+        lastModifiedAt: metadata.lastModifiedAt,
         categories,
-        ...decryptedMetadata,
-      };
-    }),
-  );
+      });
+    } catch (e) {
+      if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
+        await IndexedDB.deleteFileInfo(id);
+        return { id, exists: false as const };
+      }
+      throw e;
+    }
+  },
 
-  const existingIds = new Set(filesRaw.map(({ id }) => id));
-  return new Map<number, MaybeFileInfo>([
-    ...files.map((file) => [file.id, file] as const),
-    ...ids.filter((id) => !existingIds.has(id)).map((id) => [id, { id, exists: false }] as const),
-  ]);
+  async bulkFetchFromIndexedDB(ids) {
+    const files = await IndexedDB.bulkGetFileInfos([...ids]);
+    const categories = await Promise.all(
+      files.map(async (file) =>
+        file?.categoryIds
+          ? await Promise.all(
+              file.categoryIds.map(async (categoryId) => {
+                const category = await IndexedDB.getCategoryInfo(categoryId);
+                return category
+                  ? { id: category.id, parentId: category.parentId, name: category.name }
+                  : undefined;
+              }),
+            )
+          : undefined,
+      ),
+    );
+
+    return new Map(
+      files
+        .filter((file) => !!file)
+        .map((file, index) => [
+          file.id,
+          {
+            ...file,
+            exists: true,
+            categories: categories[index]?.filter((category) => !!category) ?? [],
+          },
+        ]),
+    );
+  },
+
+  async bulkFetchFromServer(ids, masterKey) {
+    const idsArray = [...ids.keys()];
+
+    const filesRaw = await trpc().file.bulkGet.query({ ids: idsArray });
+    const files = await Promise.all(
+      filesRaw.map(async ({ id, categories: categoriesRaw, ...metadataRaw }) => {
+        const [categories, metadata] = await Promise.all([
+          Promise.all(
+            categoriesRaw.map(async (category) => ({
+              id: category.id,
+              parentId: category.parent,
+              ...(await decryptCategoryMetadata(category, masterKey)),
+            })),
+          ),
+          decryptFileMetadata(metadataRaw, masterKey),
+        ]);
+
+        return {
+          id,
+          exists: true as const,
+          parentId: metadataRaw.parent,
+          contentType: metadataRaw.contentType,
+          contentIv: metadataRaw.contentIv,
+          categories,
+          ...metadata,
+        };
+      }),
+    );
+
+    const existingIds = new Set(filesRaw.map(({ id }) => id));
+
+    return new Map<number, MaybeFileInfo>([
+      ...bulkStoreToIndexedDB(files),
+      ...idsArray
+        .filter((id) => !existingIds.has(id))
+        .map((id) => [id, { id, exists: false }] as const),
+    ]);
+  },
+});
+
+const storeToIndexedDB = (info: FileInfo) => {
+  void IndexedDB.storeFileInfo({
+    ...info,
+    categoryIds: info.categories.map(({ id }) => id),
+  });
+
+  info.categories.forEach((category) => {
+    void IndexedDB.storeCategoryInfo(category);
+  });
+
+  return { ...info, exists: true as const };
+};
+
+const bulkStoreToIndexedDB = (infos: FileInfo[]) => {
+  // TODO: Bulk Upsert
+  infos.forEach((info) => {
+    void IndexedDB.storeFileInfo({
+      ...info,
+      categoryIds: info.categories.map(({ id }) => id),
+    });
+  });
+
+  // TODO: Bulk Upsert
+  new Map(
+    infos.flatMap(({ categories }) => categories).map((category) => [category.id, category]),
+  ).forEach((category) => {
+    void IndexedDB.storeCategoryInfo(category);
+  });
+
+  return infos.map((info) => [info.id, { ...info, exists: true }] as const);
 };
 
 export const getFileInfo = async (id: number, masterKey: CryptoKey) => {
-  return await cache.get(id, (isInitial, resolve) =>
-    monotonicResolve(
-      [isInitial && fetchFromIndexedDB(id), fetchFromServer(id, masterKey)],
-      resolve,
-    ),
-  );
+  return await cache.get(id, masterKey);
 };
 
 export const bulkGetFileInfo = async (ids: number[], masterKey: CryptoKey) => {
-  return await cache.bulkGet(new Set(ids), (keys, resolve) =>
-    monotonicResolve(
-      [
-        bulkFetchFromIndexedDB(
-          Array.from(
-            keys
-              .entries()
-              .filter(([, isInitial]) => isInitial)
-              .map(([key]) => key),
-          ),
-        ),
-        bulkFetchFromServer(Array.from(keys.keys()), masterKey),
-      ],
-      resolve,
-    ),
-  );
+  return await cache.bulkGet(new Set(ids), masterKey);
 };
