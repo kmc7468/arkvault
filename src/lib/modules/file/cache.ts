@@ -1,15 +1,12 @@
-import { LRUCache } from "lru-cache";
 import {
   getFileCacheIndex as getFileCacheIndexFromIndexedDB,
   storeFileCacheIndex,
   deleteFileCacheIndex,
   type FileCacheIndex,
 } from "$lib/indexedDB";
-import { readFile, writeFile, deleteFile, deleteDirectory } from "$lib/modules/opfs";
-import { getThumbnailUrl } from "$lib/modules/thumbnail";
+import { readFile, writeFile, deleteFile } from "$lib/modules/opfs";
 
 const fileCacheIndex = new Map<number, FileCacheIndex>();
-const loadedThumbnails = new LRUCache<number, string>({ max: 100 });
 
 export const prepareFileCache = async () => {
   for (const cache of await getFileCacheIndexFromIndexedDB()) {
@@ -50,31 +47,4 @@ export const deleteFileCache = async (fileId: number) => {
   fileCacheIndex.delete(fileId);
   await deleteFile(`/cache/${fileId}`);
   await deleteFileCacheIndex(fileId);
-};
-
-export const getFileThumbnailCache = async (fileId: number) => {
-  const thumbnail = loadedThumbnails.get(fileId);
-  if (thumbnail) return thumbnail;
-
-  const thumbnailBuffer = await readFile(`/thumbnail/file/${fileId}`);
-  if (!thumbnailBuffer) return null;
-
-  const thumbnailUrl = getThumbnailUrl(thumbnailBuffer);
-  loadedThumbnails.set(fileId, thumbnailUrl);
-  return thumbnailUrl;
-};
-
-export const storeFileThumbnailCache = async (fileId: number, thumbnailBuffer: ArrayBuffer) => {
-  await writeFile(`/thumbnail/file/${fileId}`, thumbnailBuffer);
-  loadedThumbnails.set(fileId, getThumbnailUrl(thumbnailBuffer));
-};
-
-export const deleteFileThumbnailCache = async (fileId: number) => {
-  loadedThumbnails.delete(fileId);
-  await deleteFile(`/thumbnail/file/${fileId}`);
-};
-
-export const deleteAllFileThumbnailCaches = async () => {
-  loadedThumbnails.clear();
-  await deleteDirectory("/thumbnail/file");
 };

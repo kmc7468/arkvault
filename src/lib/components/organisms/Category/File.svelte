@@ -1,9 +1,8 @@
 <script lang="ts">
-  import { browser } from "$app/environment";
   import { ActionEntryButton } from "$lib/components/atoms";
   import { DirectoryEntryLabel } from "$lib/components/molecules";
+  import { getFileThumbnail } from "$lib/modules/file";
   import type { CategoryFileInfo } from "$lib/modules/filesystem";
-  import { requestFileThumbnailDownload } from "$lib/services/file";
   import type { SelectedFile } from "./service";
 
   import IconClose from "~icons/material-symbols/close";
@@ -16,12 +15,7 @@
 
   let { info, onclick, onRemoveClick }: Props = $props();
 
-  let showThumbnail = $derived(
-    browser && (info.contentType.startsWith("image/") || info.contentType.startsWith("video/")),
-  );
-  let thumbnailPromise = $derived(
-    showThumbnail ? requestFileThumbnailDownload(info.id, info.dataKey?.key) : null,
-  );
+  let thumbnail = $derived(getFileThumbnail(info));
 </script>
 
 <ActionEntryButton
@@ -30,9 +24,5 @@
   actionButtonIcon={onRemoveClick && IconClose}
   onActionButtonClick={() => onRemoveClick?.(info)}
 >
-  {#await thumbnailPromise}
-    <DirectoryEntryLabel type="file" name={info.name} />
-  {:then thumbnail}
-    <DirectoryEntryLabel type="file" thumbnail={thumbnail ?? undefined} name={info.name} />
-  {/await}
+  <DirectoryEntryLabel type="file" thumbnail={$thumbnail} name={info.name} />
 </ActionEntryButton>

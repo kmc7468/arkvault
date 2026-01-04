@@ -1,9 +1,8 @@
 <script lang="ts">
-  import { browser } from "$app/environment";
   import { ActionEntryButton } from "$lib/components/atoms";
   import { DirectoryEntryLabel } from "$lib/components/molecules";
+  import { getFileThumbnail } from "$lib/modules/file";
   import type { SummarizedFileInfo } from "$lib/modules/filesystem";
-  import { requestFileThumbnailDownload } from "$lib/services/file";
   import { formatDateTime } from "$lib/utils";
   import type { SelectedEntry } from "../service.svelte";
 
@@ -17,12 +16,7 @@
 
   let { info, onclick, onOpenMenuClick }: Props = $props();
 
-  let showThumbnail = $derived(
-    browser && (info.contentType.startsWith("image/") || info.contentType.startsWith("video/")),
-  );
-  let thumbnailPromise = $derived(
-    showThumbnail ? requestFileThumbnailDownload(info.id, info.dataKey?.key) : null,
-  );
+  let thumbnail = $derived(getFileThumbnail(info));
 
   const action = (callback: typeof onclick) => {
     callback({ type: "file", id: info.id, dataKey: info.dataKey, name: info.name });
@@ -35,18 +29,10 @@
   actionButtonIcon={IconMoreVert}
   onActionButtonClick={() => action(onOpenMenuClick)}
 >
-  {#await thumbnailPromise}
-    <DirectoryEntryLabel
-      type="file"
-      name={info.name}
-      subtext={formatDateTime(info.createdAt ?? info.lastModifiedAt)}
-    />
-  {:then thumbnail}
-    <DirectoryEntryLabel
-      type="file"
-      thumbnail={thumbnail ?? undefined}
-      name={info.name}
-      subtext={formatDateTime(info.createdAt ?? info.lastModifiedAt)}
-    />
-  {/await}
+  <DirectoryEntryLabel
+    type="file"
+    thumbnail={$thumbnail}
+    name={info.name}
+    subtext={formatDateTime(info.createdAt ?? info.lastModifiedAt)}
+  />
 </ActionEntryButton>
