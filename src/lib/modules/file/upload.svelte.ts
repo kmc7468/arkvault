@@ -196,77 +196,74 @@ export const uploadFile = async (
   });
   const state = uploadingFiles.at(-1)!;
 
-  return await scheduler.schedule(
-    async () => file.size,
-    async () => {
-      state.status = "encryption-pending";
+  return await scheduler.schedule(file.size, async () => {
+    state.status = "encryption-pending";
 
-      try {
-        const { fileBuffer, fileSigned } = await requestDuplicateFileScan(
-          file,
-          hmacSecret,
-          onDuplicate,
-        );
-        if (!fileBuffer || !fileSigned) {
-          state.status = "canceled";
-          uploadingFiles = uploadingFiles.filter((file) => file !== state);
-          return undefined;
-        }
+    try {
+      const { fileBuffer, fileSigned } = await requestDuplicateFileScan(
+        file,
+        hmacSecret,
+        onDuplicate,
+      );
+      if (!fileBuffer || !fileSigned) {
+        state.status = "canceled";
+        uploadingFiles = uploadingFiles.filter((file) => file !== state);
+        return undefined;
+      }
 
-        const {
-          dataKeyWrapped,
-          dataKeyVersion,
-          fileType,
-          fileEncrypted,
-          fileEncryptedHash,
-          nameEncrypted,
-          createdAtEncrypted,
-          lastModifiedAtEncrypted,
-          thumbnail,
-        } = await encryptFile(state, file, fileBuffer, masterKey);
+      const {
+        dataKeyWrapped,
+        dataKeyVersion,
+        fileType,
+        fileEncrypted,
+        fileEncryptedHash,
+        nameEncrypted,
+        createdAtEncrypted,
+        lastModifiedAtEncrypted,
+        thumbnail,
+      } = await encryptFile(state, file, fileBuffer, masterKey);
 
-        const form = new FormData();
-        form.set(
+      const form = new FormData();
+      form.set(
+        "metadata",
+        JSON.stringify({
+          parent: parentId,
+          mekVersion: masterKey.version,
+          dek: dataKeyWrapped,
+          dekVersion: dataKeyVersion.toISOString(),
+          hskVersion: hmacSecret.version,
+          contentHmac: fileSigned,
+          contentType: fileType,
+          contentIv: fileEncrypted.iv,
+          name: nameEncrypted.ciphertext,
+          nameIv: nameEncrypted.iv,
+          createdAt: createdAtEncrypted?.ciphertext,
+          createdAtIv: createdAtEncrypted?.iv,
+          lastModifiedAt: lastModifiedAtEncrypted.ciphertext,
+          lastModifiedAtIv: lastModifiedAtEncrypted.iv,
+        } satisfies FileUploadRequest),
+      );
+      form.set("content", new Blob([fileEncrypted.ciphertext]));
+      form.set("checksum", fileEncryptedHash);
+
+      let thumbnailForm = null;
+      if (thumbnail) {
+        thumbnailForm = new FormData();
+        thumbnailForm.set(
           "metadata",
           JSON.stringify({
-            parent: parentId,
-            mekVersion: masterKey.version,
-            dek: dataKeyWrapped,
             dekVersion: dataKeyVersion.toISOString(),
-            hskVersion: hmacSecret.version,
-            contentHmac: fileSigned,
-            contentType: fileType,
-            contentIv: fileEncrypted.iv,
-            name: nameEncrypted.ciphertext,
-            nameIv: nameEncrypted.iv,
-            createdAt: createdAtEncrypted?.ciphertext,
-            createdAtIv: createdAtEncrypted?.iv,
-            lastModifiedAt: lastModifiedAtEncrypted.ciphertext,
-            lastModifiedAtIv: lastModifiedAtEncrypted.iv,
-          } satisfies FileUploadRequest),
+            contentIv: thumbnail.iv,
+          } satisfies FileThumbnailUploadRequest),
         );
-        form.set("content", new Blob([fileEncrypted.ciphertext]));
-        form.set("checksum", fileEncryptedHash);
-
-        let thumbnailForm = null;
-        if (thumbnail) {
-          thumbnailForm = new FormData();
-          thumbnailForm.set(
-            "metadata",
-            JSON.stringify({
-              dekVersion: dataKeyVersion.toISOString(),
-              contentIv: thumbnail.iv,
-            } satisfies FileThumbnailUploadRequest),
-          );
-          thumbnailForm.set("content", new Blob([thumbnail.ciphertext]));
-        }
-
-        const { fileId } = await requestFileUpload(state, form, thumbnailForm);
-        return { fileId, fileBuffer, thumbnailBuffer: thumbnail?.plaintext };
-      } catch (e) {
-        state.status = "error";
-        throw e;
+        thumbnailForm.set("content", new Blob([thumbnail.ciphertext]));
       }
-    },
-  );
+
+      const { fileId } = await requestFileUpload(state, form, thumbnailForm);
+      return { fileId, fileBuffer, thumbnailBuffer: thumbnail?.plaintext };
+    } catch (e) {
+      state.status = "error";
+      throw e;
+    }
+  });
 };

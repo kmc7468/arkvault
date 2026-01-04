@@ -1,39 +1,46 @@
 export class Scheduler<T = void> {
-  private tasks = 0;
+  private isEstimating = false;
   private memoryUsage = 0;
   private queue: (() => void)[] = [];
 
-  constructor(public memoryLimit = 100 * 1024 * 1024 /* 100 MiB */) {}
+  constructor(public readonly memoryLimit = 100 * 1024 * 1024 /* 100 MiB */) {}
 
   private next() {
-    if (this.memoryUsage < this.memoryLimit) {
-      this.queue.shift()?.();
+    if (!this.isEstimating && this.memoryUsage < this.memoryLimit) {
+      const resolve = this.queue.shift();
+      if (resolve) {
+        this.isEstimating = true;
+        resolve();
+      }
     }
   }
 
-  async schedule(estimateMemoryUsage: () => Promise<number>, task: () => Promise<T>) {
-    if (this.tasks++ > 0) {
+  async schedule(
+    estimateMemoryUsage: number | (() => number | Promise<number>),
+    task: () => Promise<T>,
+  ) {
+    if (this.isEstimating || this.memoryUsage >= this.memoryLimit) {
       await new Promise<void>((resolve) => {
         this.queue.push(resolve);
       });
-    }
-
-    while (this.memoryUsage >= this.memoryLimit) {
-      await new Promise<void>((resolve) => {
-        this.queue.unshift(resolve);
-      });
+    } else {
+      this.isEstimating = true;
     }
 
     let taskMemoryUsage = 0;
 
     try {
-      taskMemoryUsage = await estimateMemoryUsage();
+      taskMemoryUsage =
+        typeof estimateMemoryUsage === "number" ? estimateMemoryUsage : await estimateMemoryUsage();
       this.memoryUsage += taskMemoryUsage;
+    } finally {
+      this.isEstimating = false;
       this.next();
+    }
 
+    try {
       return await task();
     } finally {
-      this.tasks--;
       this.memoryUsage -= taskMemoryUsage;
       this.next();
     }
