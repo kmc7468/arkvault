@@ -29,8 +29,6 @@ export class FilesystemCache<K, V extends object> {
         this.map.set(key, newState);
       }
 
-      state.promise = newPromise;
-
       (state.value
         ? Promise.resolve(state.value)
         : this.options.fetchFromIndexedDB(key).then((loadedInfo) => {
@@ -54,7 +52,8 @@ export class FilesystemCache<K, V extends object> {
           state.promise = undefined;
         });
 
-      return newPromise;
+      state.promise = newPromise;
+      return state.value ?? newPromise;
     });
   }
 
@@ -108,12 +107,17 @@ export class FilesystemCache<K, V extends object> {
           });
         });
 
-      return Promise.all(
+      const bottleneckPromises = Array.from(
         keys
           .keys()
           .filter((key) => this.map.get(key)!.value === undefined)
           .map((key) => this.map.get(key)!.promise!),
-      ).then(() => new Map(keys.keys().map((key) => [key, this.map.get(key)!.value!] as const)));
+      );
+      const makeResult = () =>
+        new Map(keys.keys().map((key) => [key, this.map.get(key)!.value!] as const));
+      return bottleneckPromises.length > 0
+        ? Promise.all(bottleneckPromises).then(makeResult)
+        : makeResult();
     });
   }
 }

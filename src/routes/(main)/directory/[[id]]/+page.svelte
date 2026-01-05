@@ -6,6 +6,7 @@
   import { TopBar } from "$lib/components/molecules";
   import { getDirectoryInfo, type MaybeDirectoryInfo } from "$lib/modules/filesystem";
   import { masterKeyStore, hmacSecretStore } from "$lib/stores";
+  import { HybridPromise } from "$lib/utils";
   import DirectoryCreateModal from "./DirectoryCreateModal.svelte";
   import DirectoryEntries from "./DirectoryEntries";
   import DownloadStatusCard from "./DownloadStatusCard.svelte";
@@ -29,7 +30,7 @@
   let { data } = $props();
   let context = createContext();
 
-  let infoPromise: Promise<MaybeDirectoryInfo> | undefined = $state();
+  let info: MaybeDirectoryInfo | undefined = $state();
   let fileInput: HTMLInputElement | undefined = $state();
   let duplicatedFile: File | undefined = $state();
   let resolveForDuplicateFileModal: ((res: boolean) => void) | undefined = $state();
@@ -60,7 +61,7 @@
         .then((res) => {
           if (!res) return;
           // TODO: FIXME
-          infoPromise = getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!);
+          void getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!);
         })
         .catch((e: Error) => {
           // TODO: FIXME
@@ -78,7 +79,13 @@
   });
 
   $effect(() => {
-    infoPromise = getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!);
+    HybridPromise.resolve(getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!)).then(
+      (result) => {
+        if (data.id === result.id) {
+          info = result;
+        }
+      },
+    );
   });
 </script>
 
@@ -88,17 +95,17 @@
 
 <input bind:this={fileInput} onchange={uploadFile} type="file" multiple class="hidden" />
 
-{#await infoPromise then info}
-  {#if info?.exists}
-    <div class="flex h-full flex-col">
-      {#if showTopBar}
-        <TopBar title={info.name} class="flex-shrink-0" />
-      {/if}
-      <div class={["flex flex-grow flex-col px-4 pb-4", !showTopBar && "pt-4"]}>
-        <div class="flex gap-x-2">
-          <UploadStatusCard onclick={() => goto("/file/uploads")} />
-          <DownloadStatusCard onclick={() => goto("/file/downloads")} />
-        </div>
+{#if info?.exists}
+  <div class="flex h-full flex-col">
+    {#if showTopBar}
+      <TopBar title={info.name} class="flex-shrink-0" />
+    {/if}
+    <div class={["flex flex-grow flex-col px-4 pb-4", !showTopBar && "pt-4"]}>
+      <div class="flex gap-x-2">
+        <UploadStatusCard onclick={() => goto("/file/uploads")} />
+        <DownloadStatusCard onclick={() => goto("/file/downloads")} />
+      </div>
+      {#key info.id}
         <DirectoryEntries
           {info}
           onEntryClick={({ type, id }) => goto(`/${type}/${id}`)}
@@ -109,85 +116,85 @@
           showParentEntry={isFromFilePage && info.parentId !== undefined}
           onParentClick={() =>
             goto(
-              info.parentId === "root"
+              info!.parentId === "root"
                 ? "/directory?from=file"
-                : `/directory/${info.parentId}?from=file`,
+                : `/directory/${info!.parentId}?from=file`,
             )}
         />
-      </div>
+      {/key}
     </div>
+  </div>
+{/if}
 
-    <FloatingButton
-      icon={IconAdd}
-      onclick={() => {
-        isEntryCreateBottomSheetOpen = true;
-      }}
-      class="bottom-24 right-4"
-    />
-    <EntryCreateBottomSheet
-      bind:isOpen={isEntryCreateBottomSheetOpen}
-      onDirectoryCreateClick={() => {
-        isEntryCreateBottomSheetOpen = false;
-        isDirectoryCreateModalOpen = true;
-      }}
-      onFileUploadClick={() => {
-        isEntryCreateBottomSheetOpen = false;
-        fileInput?.click();
-      }}
-    />
-    <DirectoryCreateModal
-      bind:isOpen={isDirectoryCreateModalOpen}
-      onCreateClick={async (name) => {
-        if (await requestDirectoryCreation(name, data.id, $masterKeyStore?.get(1)!)) {
-          infoPromise = getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
-          return true;
-        }
-        return false;
-      }}
-    />
-    <DuplicateFileModal
-      bind:isOpen={isDuplicateFileModalOpen}
-      file={duplicatedFile}
-      onbeforeclose={() => {
-        resolveForDuplicateFileModal?.(false);
-        isDuplicateFileModalOpen = false;
-      }}
-      onUploadClick={() => {
-        resolveForDuplicateFileModal?.(true);
-        isDuplicateFileModalOpen = false;
-      }}
-    />
+<FloatingButton
+  icon={IconAdd}
+  onclick={() => {
+    isEntryCreateBottomSheetOpen = true;
+  }}
+  class="bottom-24 right-4"
+/>
+<EntryCreateBottomSheet
+  bind:isOpen={isEntryCreateBottomSheetOpen}
+  onDirectoryCreateClick={() => {
+    isEntryCreateBottomSheetOpen = false;
+    isDirectoryCreateModalOpen = true;
+  }}
+  onFileUploadClick={() => {
+    isEntryCreateBottomSheetOpen = false;
+    fileInput?.click();
+  }}
+/>
+<DirectoryCreateModal
+  bind:isOpen={isDirectoryCreateModalOpen}
+  onCreateClick={async (name) => {
+    if (await requestDirectoryCreation(name, data.id, $masterKeyStore?.get(1)!)) {
+      void getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+      return true;
+    }
+    return false;
+  }}
+/>
+<DuplicateFileModal
+  bind:isOpen={isDuplicateFileModalOpen}
+  file={duplicatedFile}
+  onbeforeclose={() => {
+    resolveForDuplicateFileModal?.(false);
+    isDuplicateFileModalOpen = false;
+  }}
+  onUploadClick={() => {
+    resolveForDuplicateFileModal?.(true);
+    isDuplicateFileModalOpen = false;
+  }}
+/>
 
-    <EntryMenuBottomSheet
-      bind:isOpen={isEntryMenuBottomSheetOpen}
-      onRenameClick={() => {
-        isEntryMenuBottomSheetOpen = false;
-        isEntryRenameModalOpen = true;
-      }}
-      onDeleteClick={() => {
-        isEntryMenuBottomSheetOpen = false;
-        isEntryDeleteModalOpen = true;
-      }}
-    />
-    <EntryRenameModal
-      bind:isOpen={isEntryRenameModalOpen}
-      onRenameClick={async (newName: string) => {
-        if (await requestEntryRename(context.selectedEntry!, newName)) {
-          infoPromise = getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
-          return true;
-        }
-        return false;
-      }}
-    />
-    <EntryDeleteModal
-      bind:isOpen={isEntryDeleteModalOpen}
-      onDeleteClick={async () => {
-        if (await requestEntryDeletion(context.selectedEntry!)) {
-          infoPromise = getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
-          return true;
-        }
-        return false;
-      }}
-    />
-  {/if}
-{/await}
+<EntryMenuBottomSheet
+  bind:isOpen={isEntryMenuBottomSheetOpen}
+  onRenameClick={() => {
+    isEntryMenuBottomSheetOpen = false;
+    isEntryRenameModalOpen = true;
+  }}
+  onDeleteClick={() => {
+    isEntryMenuBottomSheetOpen = false;
+    isEntryDeleteModalOpen = true;
+  }}
+/>
+<EntryRenameModal
+  bind:isOpen={isEntryRenameModalOpen}
+  onRenameClick={async (newName: string) => {
+    if (await requestEntryRename(context.selectedEntry!, newName)) {
+      void getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+      return true;
+    }
+    return false;
+  }}
+/>
+<EntryDeleteModal
+  bind:isOpen={isEntryDeleteModalOpen}
+  onDeleteClick={async () => {
+    if (await requestEntryDeletion(context.selectedEntry!)) {
+      void getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+      return true;
+    }
+    return false;
+  }}
+/>

@@ -97,6 +97,6 @@ const storeToIndexedDB = (info: DirectoryInfo) => {
   return { ...info, exists: true as const };
 };
 
-export const getDirectoryInfo = async (id: DirectoryId, masterKey: CryptoKey) => {
-  return await cache.get(id, masterKey);
+export const getDirectoryInfo = (id: DirectoryId, masterKey: CryptoKey) => {
+  return cache.get(id, masterKey);
 };

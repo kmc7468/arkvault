@@ -116,6 +116,6 @@ const storeToIndexedDB = (info: CategoryInfo) => {
   return { ...info, exists: true as const };
 };
 
-export const getCategoryInfo = async (id: CategoryId, masterKey: CryptoKey) => {
-  return await cache.get(id, masterKey);
+export const getCategoryInfo = (id: CategoryId, masterKey: CryptoKey) => {
+  return cache.get(id, masterKey);
 };

@@ -168,10 +168,10 @@ const bulkStoreToIndexedDB = (infos: FileInfo[]) => {
   return infos.map((info) => [info.id, { ...info, exists: true }] as const);
 };
 
-export const getFileInfo = async (id: number, masterKey: CryptoKey) => {
-  return await cache.get(id, masterKey);
+export const getFileInfo = (id: number, masterKey: CryptoKey) => {
+  return cache.get(id, masterKey);
 };
 
-export const bulkGetFileInfo = async (ids: number[], masterKey: CryptoKey) => {
-  return await cache.bulkGet(new Set(ids), masterKey);
+export const bulkGetFileInfo = (ids: number[], masterKey: CryptoKey) => {
+  return cache.bulkGet(new Set(ids), masterKey);
 };

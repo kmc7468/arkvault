@@ -9,6 +9,7 @@
   import { captureVideoThumbnail } from "$lib/modules/thumbnail";
   import { getFileDownloadState } from "$lib/modules/file";
   import { masterKeyStore } from "$lib/stores";
+  import { HybridPromise } from "$lib/utils";
   import AddToCategoryBottomSheet from "./AddToCategoryBottomSheet.svelte";
   import DownloadStatus from "./DownloadStatus.svelte";
   import {
@@ -26,8 +27,7 @@
 
   let { data } = $props();
 
-  let infoPromise: Promise<MaybeFileInfo> | undefined = $state();
-  let info: FileInfo | null = $state(null);
+  let info: MaybeFileInfo | undefined = $state();
   let downloadState = $derived(getFileDownloadState(data.id));
 
   let isMenuOpen = $state(false);
@@ -65,22 +65,20 @@
   const addToCategory = async (categoryId: number) => {
     await requestFileAdditionToCategory(data.id, categoryId);
     isAddToCategoryBottomSheetOpen = false;
-    infoPromise = getFileInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+    void getFileInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
   };
 
   const removeFromCategory = async (categoryId: number) => {
     await requestFileRemovalFromCategory(data.id, categoryId);
-    infoPromise = getFileInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+    void getFileInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
   };
 
   $effect(() => {
-    infoPromise = getFileInfo(data.id, $masterKeyStore?.get(1)?.key!).then((fileInfo) => {
-      if (fileInfo.exists) {
-        info = fileInfo;
+    HybridPromise.resolve(getFileInfo(data.id, $masterKeyStore?.get(1)?.key!)).then((result) => {
+      if (data.id === result.id) {
+        info = result;
       }
-      return fileInfo;
     });
-    info = null;
     isDownloadRequested = false;
     viewerType = undefined;
   });
@@ -111,8 +109,8 @@
   });
 
   $effect(() => {
-    if (info && downloadState?.status === "decrypted") {
-      untrack(() => !isDownloadRequested && updateViewer(downloadState.result!, info!.contentType));
+    if (info?.exists && downloadState?.status === "decrypted") {
+      untrack(() => !isDownloadRequested && updateViewer(downloadState.result!, info!.contentIv!));
     }
   });
 
@@ -123,87 +121,85 @@
   <title>파일</title>
 </svelte:head>
 
-{#if info}
-  <TopBar title={info.name}>
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div onclick={(e) => e.stopPropagation()}>
-      <button
-        onclick={() => (isMenuOpen = !isMenuOpen)}
-        class="w-[2.3rem] flex-shrink-0 rounded-full p-1 active:bg-black active:bg-opacity-[0.04]"
-      >
-        <IconMoreVert class="text-2xl" />
-      </button>
-      <TopBarMenu
-        bind:isOpen={isMenuOpen}
-        directoryId={["category", "gallery"].includes(page.url.searchParams.get("from") ?? "")
-          ? info.parentId
-          : undefined}
-        {fileBlob}
-        filename={info.name}
-      />
-    </div>
-  </TopBar>
-  <FullscreenDiv>
-    <div class="space-y-4 pb-4">
-      {#if downloadState}
-        <DownloadStatus state={downloadState} />
-      {/if}
-      {#if viewerType}
-        <div class="flex w-full justify-center">
-          {#snippet viewerLoading(message: string)}
-            <p class="text-gray-500">{message}</p>
-          {/snippet}
+<TopBar title={info?.name}>
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div onclick={(e) => e.stopPropagation()}>
+    <button
+      onclick={() => (isMenuOpen = !isMenuOpen)}
+      class="w-[2.3rem] flex-shrink-0 rounded-full p-1 active:bg-black active:bg-opacity-[0.04]"
+    >
+      <IconMoreVert class="text-2xl" />
+    </button>
+    <TopBarMenu
+      bind:isOpen={isMenuOpen}
+      directoryId={["category", "gallery"].includes(page.url.searchParams.get("from") ?? "")
+        ? info?.parentId
+        : undefined}
+      {fileBlob}
+      filename={info?.name}
+    />
+  </div>
+</TopBar>
+<FullscreenDiv>
+  <div class="space-y-4 pb-4">
+    {#if downloadState}
+      <DownloadStatus state={downloadState} />
+    {/if}
+    {#if info && viewerType}
+      <div class="flex w-full justify-center">
+        {#snippet viewerLoading(message: string)}
+          <p class="text-gray-500">{message}</p>
+        {/snippet}
 
-          {#if viewerType === "image"}
-            {#if fileBlobUrl}
-              <img src={fileBlobUrl} alt={info.name} onerror={convertHeicToJpeg} />
-            {:else}
-              {@render viewerLoading("이미지를 불러오고 있어요.")}
-            {/if}
-          {:else if viewerType === "video"}
-            {#if fileBlobUrl}
-              <div class="flex flex-col space-y-2">
-                <video bind:this={videoElement} src={fileBlobUrl} controls muted></video>
-                <IconEntryButton
-                  icon={IconCamera}
-                  onclick={() => updateThumbnail(info?.dataKey?.key!, info?.dataKey?.version!)}
-                  class="w-full"
-                >
-                  이 장면을 썸네일로 설정하기
-                </IconEntryButton>
-              </div>
-            {:else}
-              {@render viewerLoading("비디오를 불러오고 있어요.")}
-            {/if}
+        {#if viewerType === "image"}
+          {#if fileBlobUrl}
+            <img src={fileBlobUrl} alt={info.name} onerror={convertHeicToJpeg} />
+          {:else}
+            {@render viewerLoading("이미지를 불러오고 있어요.")}
           {/if}
-        </div>
-      {/if}
-      <div class="space-y-2">
-        <p class="text-lg font-bold">카테고리</p>
-        <div class="space-y-1">
-          <Categories
-            categories={info.categories}
-            categoryMenuIcon={IconClose}
-            onCategoryClick={({ id }) => goto(`/category/${id}`)}
-            onCategoryMenuClick={({ id }) => removeFromCategory(id)}
-          />
-          <IconEntryButton
-            icon={IconAddCircle}
-            onclick={() => (isAddToCategoryBottomSheetOpen = true)}
-            class="h-12 w-full"
-            iconClass="text-gray-600"
-            textClass="text-gray-700"
-          >
-            카테고리에 추가하기
-          </IconEntryButton>
-        </div>
+        {:else if viewerType === "video"}
+          {#if fileBlobUrl}
+            <div class="flex flex-col space-y-2">
+              <video bind:this={videoElement} src={fileBlobUrl} controls muted></video>
+              <IconEntryButton
+                icon={IconCamera}
+                onclick={() => updateThumbnail(info?.dataKey?.key!, info?.dataKey?.version!)}
+                class="w-full"
+              >
+                이 장면을 썸네일로 설정하기
+              </IconEntryButton>
+            </div>
+          {:else}
+            {@render viewerLoading("비디오를 불러오고 있어요.")}
+          {/if}
+        {/if}
+      </div>
+    {/if}
+    <div class="space-y-2">
+      <p class="text-lg font-bold">카테고리</p>
+      <div class="space-y-1">
+        <Categories
+          categories={info?.categories ?? []}
+          categoryMenuIcon={IconClose}
+          onCategoryClick={({ id }) => goto(`/category/${id}`)}
+          onCategoryMenuClick={({ id }) => removeFromCategory(id)}
+        />
+        <IconEntryButton
+          icon={IconAddCircle}
+          onclick={() => (isAddToCategoryBottomSheetOpen = true)}
+          class="h-12 w-full"
+          iconClass="text-gray-600"
+          textClass="text-gray-700"
+        >
+          카테고리에 추가하기
+        </IconEntryButton>
       </div>
     </div>
-  </FullscreenDiv>
+  </div>
+</FullscreenDiv>
 
-  <AddToCategoryBottomSheet
-    bind:isOpen={isAddToCategoryBottomSheetOpen}
-    onAddToCategoryClick={addToCategory}
-  />
-{/if}
+<AddToCategoryBottomSheet
+  bind:isOpen={isAddToCategoryBottomSheetOpen}
+  onAddToCategoryClick={addToCategory}
+/>
