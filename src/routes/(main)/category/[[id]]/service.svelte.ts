@@ -5,6 +5,11 @@ import { trpc } from "$trpc/client";
 
 export { requestCategoryCreation, requestFileRemovalFromCategory } from "$lib/services/category";
 
+export interface SelectedFile {
+  id: number;
+  name: string;
+}
+
 export const createContext = () => {
   const context = $state({
     selectedCategory: undefined as SelectedCategory | undefined,

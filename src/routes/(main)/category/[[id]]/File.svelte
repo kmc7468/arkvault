@@ -3,7 +3,7 @@
   import { DirectoryEntryLabel } from "$lib/components/molecules";
   import { getFileThumbnail } from "$lib/modules/file";
   import type { CategoryFileInfo } from "$lib/modules/filesystem";
-  import type { SelectedFile } from "./service";
+  import type { SelectedFile } from "./service.svelte";
 
   import IconClose from "~icons/material-symbols/close";
 

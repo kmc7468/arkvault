@@ -54,7 +54,7 @@
       </div>
     {/each}
   </div>
-  {#if placeholder && $virtualizer.getVirtualItems().length === 0}
+  {#if placeholder && count === 0}
     {@render placeholder()}
   {/if}
 </div>

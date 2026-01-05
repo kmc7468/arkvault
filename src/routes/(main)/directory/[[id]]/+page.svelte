@@ -95,11 +95,11 @@
 
 <input bind:this={fileInput} onchange={uploadFile} type="file" multiple class="hidden" />
 
-{#if info?.exists}
-  <div class="flex h-full flex-col">
-    {#if showTopBar}
-      <TopBar title={info.name} class="flex-shrink-0" />
-    {/if}
+<div class="flex h-full flex-col">
+  {#if showTopBar}
+    <TopBar title={info?.name} class="flex-shrink-0" />
+  {/if}
+  {#if info?.exists}
     <div class={["flex flex-grow flex-col px-4 pb-4", !showTopBar && "pt-4"]}>
       <div class="flex gap-x-2">
         <UploadStatusCard onclick={() => goto("/file/uploads")} />
@@ -123,8 +123,8 @@
         />
       {/key}
     </div>
-  </div>
-{/if}
+  {/if}
+</div>
 
 <FloatingButton
   icon={IconAdd}
