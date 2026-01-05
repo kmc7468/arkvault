@@ -32,7 +32,7 @@ const sortByDateAsc: SortFunc = ({ date: a }, { date: b }) => {
 
 const sortByDateDesc: SortFunc = (a, b) => -sortByDateAsc(a, b);
 
-export const sortEntries = <T extends SortEntry>(entries: T[], sortBy: SortBy) => {
+export const sortEntries = <T extends SortEntry>(entries: T[], sortBy = SortBy.NAME_ASC) => {
   let sortFunc: SortFunc;
 
   switch (sortBy) {
@@ -48,10 +48,12 @@ export const sortEntries = <T extends SortEntry>(entries: T[], sortBy: SortBy) =
     case SortBy.DATE_DESC:
       sortFunc = sortByDateDesc;
       break;
-    default:
+    default: {
       const exhaustive: never = sortBy;
       sortFunc = exhaustive;
+    }
   }
 
   entries.sort(sortFunc);
+  return entries;
 };

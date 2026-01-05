@@ -8,14 +8,14 @@ import {
   deleteFileThumbnailCache,
   uploadFile,
 } from "$lib/modules/file";
+import type { DataKey } from "$lib/modules/filesystem";
 import { hmacSecretStore, type MasterKey, type HmacSecret } from "$lib/stores";
 import { trpc } from "$trpc/client";
 
 export interface SelectedEntry {
   type: "directory" | "file";
   id: number;
-  dataKey: CryptoKey;
-  dataKeyVersion: Date;
+  dataKey: DataKey | undefined;
   name: string;
 }
 
@@ -97,20 +97,25 @@ export const requestFileUpload = async (
 };
 
 export const requestEntryRename = async (entry: SelectedEntry, newName: string) => {
-  const newNameEncrypted = await encryptString(newName, entry.dataKey);
+  if (!entry.dataKey) {
+    // TODO: Error Handling
+    return false;
+  }
+
+  const newNameEncrypted = await encryptString(newName, entry.dataKey.key);
 
   try {
     if (entry.type === "directory") {
       await trpc().directory.rename.mutate({
         id: entry.id,
-        dekVersion: entry.dataKeyVersion,
+        dekVersion: entry.dataKey.version,
         name: newNameEncrypted.ciphertext,
         nameIv: newNameEncrypted.iv,
       });
     } else {
       await trpc().file.rename.mutate({
         id: entry.id,
-        dekVersion: entry.dataKeyVersion,
+        dekVersion: entry.dataKey.version,
         name: newNameEncrypted.ciphertext,
         nameIv: newNameEncrypted.iv,
       });

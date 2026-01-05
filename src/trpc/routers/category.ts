@@ -9,6 +9,7 @@ const categoryRouter = router({
     .input(
       z.object({
         id: categoryIdSchema,
+        recurse: z.boolean().default(false),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -20,7 +21,12 @@ const categoryRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Invalid category id" });
       }
 
-      const categories = await CategoryRepo.getAllCategoriesByParent(ctx.session.userId, input.id);
+      const [categories, files] = await Promise.all([
+        CategoryRepo.getAllCategoriesByParent(ctx.session.userId, input.id),
+        input.id !== "root"
+          ? FileRepo.getAllFilesByCategory(ctx.session.userId, input.id, input.recurse)
+          : undefined,
+      ]);
       return {
         metadata: category && {
           parent: category.parentId,
@@ -30,7 +36,29 @@ const categoryRouter = router({
           name: category.encName.ciphertext,
           nameIv: category.encName.iv,
         },
-        subCategories: categories.map(({ id }) => id),
+        subCategories: categories.map((category) => ({
+          id: category.id,
+          mekVersion: category.mekVersion,
+          dek: category.encDek,
+          dekVersion: category.dekVersion,
+          name: category.encName.ciphertext,
+          nameIv: category.encName.iv,
+        })),
+        files: files?.map((file) => ({
+          id: file.id,
+          parent: file.parentId,
+          mekVersion: file.mekVersion,
+          dek: file.encDek,
+          dekVersion: file.dekVersion,
+          contentType: file.contentType,
+          name: file.encName.ciphertext,
+          nameIv: file.encName.iv,
+          createdAt: file.encCreatedAt?.ciphertext,
+          createdAtIv: file.encCreatedAt?.iv,
+          lastModifiedAt: file.encLastModifiedAt.ciphertext,
+          lastModifiedAtIv: file.encLastModifiedAt.iv,
+          isRecursive: file.isRecursive,
+        })),
       };
     }),
 
@@ -111,27 +139,6 @@ const categoryRouter = router({
         }
         throw e;
       }
-    }),
-
-  files: roleProcedure["activeClient"]
-    .input(
-      z.object({
-        id: z.int().positive(),
-        recurse: z.boolean().default(false),
-      }),
-    )
-    .query(async ({ ctx, input }) => {
-      const category = await CategoryRepo.getCategory(ctx.session.userId, input.id);
-      if (!category) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Invalid category id" });
-      }
-
-      const files = await FileRepo.getAllFilesByCategory(
-        ctx.session.userId,
-        input.id,
-        input.recurse,
-      );
-      return files.map(({ id, isRecursive }) => ({ file: id, isRecursive }));
     }),
 
   addFile: roleProcedure["activeClient"]

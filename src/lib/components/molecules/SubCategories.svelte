@@ -1,10 +1,8 @@
 <script lang="ts">
   import type { Component } from "svelte";
   import type { ClassValue, SvelteHTMLElements } from "svelte/elements";
-  import type { Writable } from "svelte/store";
   import { Categories, IconEntryButton, type SelectedCategory } from "$lib/components/molecules";
-  import { getCategoryInfo, type CategoryInfo } from "$lib/modules/filesystem";
-  import { masterKeyStore } from "$lib/stores";
+  import type { CategoryInfo } from "$lib/modules/filesystem";
 
   import IconAddCircle from "~icons/material-symbols/add-circle";
 
@@ -27,14 +25,6 @@
     subCategoryCreatePosition = "bottom",
     subCategoryMenuIcon,
   }: Props = $props();
-
-  let subCategories: Writable<CategoryInfo | null>[] = $state([]);
-
-  $effect(() => {
-    subCategories = info.subCategoryIds.map((id) =>
-      getCategoryInfo(id, $masterKeyStore?.get(1)?.key!),
-    );
-  });
 </script>
 
 <div class={["space-y-1", className]}>
@@ -53,14 +43,12 @@
   {#if subCategoryCreatePosition === "top"}
     {@render subCategoryCreate()}
   {/if}
-  {#key info}
-    <Categories
-      categories={subCategories}
-      categoryMenuIcon={subCategoryMenuIcon}
-      onCategoryClick={onSubCategoryClick}
-      onCategoryMenuClick={onSubCategoryMenuClick}
-    />
-  {/key}
+  <Categories
+    categories={info.subCategories}
+    categoryMenuIcon={subCategoryMenuIcon}
+    onCategoryClick={onSubCategoryClick}
+    onCategoryMenuClick={onSubCategoryMenuClick}
+  />
   {#if subCategoryCreatePosition === "bottom"}
     {@render subCategoryCreate()}
   {/if}

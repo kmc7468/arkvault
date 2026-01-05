@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import type { Writable } from "svelte/store";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import { FloatingButton } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
-  import { getDirectoryInfo, type DirectoryInfo } from "$lib/modules/filesystem";
+  import { getDirectoryInfo, type MaybeDirectoryInfo } from "$lib/modules/filesystem";
   import { masterKeyStore, hmacSecretStore } from "$lib/stores";
+  import { HybridPromise } from "$lib/utils";
   import DirectoryCreateModal from "./DirectoryCreateModal.svelte";
   import DirectoryEntries from "./DirectoryEntries";
   import DownloadStatusCard from "./DownloadStatusCard.svelte";
@@ -30,7 +30,7 @@
   let { data } = $props();
   let context = createContext();
 
-  let info: Writable<DirectoryInfo | null> | undefined = $state();
+  let info: MaybeDirectoryInfo | undefined = $state();
   let fileInput: HTMLInputElement | undefined = $state();
   let duplicatedFile: File | undefined = $state();
   let resolveForDuplicateFileModal: ((res: boolean) => void) | undefined = $state();
@@ -61,7 +61,7 @@
         .then((res) => {
           if (!res) return;
           // TODO: FIXME
-          info = getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!);
+          void getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!);
         })
         .catch((e: Error) => {
           // TODO: FIXME
@@ -79,7 +79,13 @@
   });
 
   $effect(() => {
-    info = getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!);
+    HybridPromise.resolve(getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!)).then(
+      (result) => {
+        if (data.id === result.id) {
+          info = result;
+        }
+      },
+    );
   });
 </script>
 
@@ -91,28 +97,28 @@
 
 <div class="flex h-full flex-col">
   {#if showTopBar}
-    <TopBar title={$info?.name} class="flex-shrink-0" />
+    <TopBar title={info?.name} class="flex-shrink-0" />
   {/if}
-  {#if $info}
+  {#if info?.exists}
     <div class={["flex flex-grow flex-col px-4 pb-4", !showTopBar && "pt-4"]}>
       <div class="flex gap-x-2">
         <UploadStatusCard onclick={() => goto("/file/uploads")} />
         <DownloadStatusCard onclick={() => goto("/file/downloads")} />
       </div>
-      {#key $info}
+      {#key info.id}
         <DirectoryEntries
-          info={$info}
+          {info}
           onEntryClick={({ type, id }) => goto(`/${type}/${id}`)}
           onEntryMenuClick={(entry) => {
             context.selectedEntry = entry;
             isEntryMenuBottomSheetOpen = true;
           }}
-          showParentEntry={isFromFilePage && $info.parentId !== undefined}
+          showParentEntry={isFromFilePage && info.parentId !== undefined}
           onParentClick={() =>
             goto(
-              $info.parentId === "root"
+              info!.parentId === "root"
                 ? "/directory?from=file"
-                : `/directory/${$info.parentId}?from=file`,
+                : `/directory/${info!.parentId}?from=file`,
             )}
         />
       {/key}
@@ -142,7 +148,7 @@
   bind:isOpen={isDirectoryCreateModalOpen}
   onCreateClick={async (name) => {
     if (await requestDirectoryCreation(name, data.id, $masterKeyStore?.get(1)!)) {
-      info = getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+      void getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
       return true;
     }
     return false;
@@ -176,7 +182,7 @@
   bind:isOpen={isEntryRenameModalOpen}
   onRenameClick={async (newName: string) => {
     if (await requestEntryRename(context.selectedEntry!, newName)) {
-      info = getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+      void getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
       return true;
     }
     return false;
@@ -186,7 +192,7 @@
   bind:isOpen={isEntryDeleteModalOpen}
   onDeleteClick={async () => {
     if (await requestEntryDeletion(context.selectedEntry!)) {
-      info = getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+      void getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
       return true;
     }
     return false;

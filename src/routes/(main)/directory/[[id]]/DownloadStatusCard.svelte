@@ -1,7 +1,5 @@
 <script lang="ts">
-  import { untrack } from "svelte";
-  import { get, type Writable } from "svelte/store";
-  import { fileDownloadStatusStore, isFileDownloading, type FileDownloadStatus } from "$lib/stores";
+  import { getDownloadingFiles } from "$lib/modules/file";
 
   interface Props {
     onclick: () => void;
@@ -9,23 +7,7 @@
 
   let { onclick }: Props = $props();
 
-  let downloadingFiles: Writable<FileDownloadStatus>[] = $state([]);
-
-  $effect(() => {
-    downloadingFiles = $fileDownloadStatusStore.filter((status) =>
-      isFileDownloading(get(status).status),
-    );
-    return untrack(() => {
-      const unsubscribes = downloadingFiles.map((downloadingFile) =>
-        downloadingFile.subscribe(({ status }) => {
-          if (!isFileDownloading(status)) {
-            downloadingFiles = downloadingFiles.filter((file) => file !== downloadingFile);
-          }
-        }),
-      );
-      return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
-    });
-  });
+  let downloadingFiles = $derived(getDownloadingFiles());
 </script>
 
 {#if downloadingFiles.length > 0}

@@ -1,4 +1,3 @@
-import { TRPCClientError } from "@trpc/client";
 import { storeMasterKeys } from "$lib/indexedDB";
 import {
   encodeToBase64,
@@ -11,7 +10,7 @@ import {
 } from "$lib/modules/crypto";
 import { requestSessionUpgrade } from "$lib/services/auth";
 import { masterKeyStore, type ClientKeys } from "$lib/stores";
-import { trpc } from "$trpc/client";
+import { trpc, isTRPCClientError } from "$trpc/client";
 
 export const requestClientRegistration = async (
   encryptKeyBase64: string,
@@ -112,10 +111,7 @@ export const requestInitialMasterKeyAndHmacSecretRegistration = async (
       mekSig: await signMasterKeyWrapped(masterKeyWrapped, 1, signKey),
     });
   } catch (e) {
-    if (
-      e instanceof TRPCClientError &&
-      (e.data?.code === "FORBIDDEN" || e.data?.code === "CONFLICT")
-    ) {
+    if (isTRPCClientError(e) && (e.data?.code === "FORBIDDEN" || e.data?.code === "CONFLICT")) {
       return true;
     }
     // TODO: Error Handling

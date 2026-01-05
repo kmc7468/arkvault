@@ -1,21 +1,9 @@
 <script lang="ts">
-  import { untrack } from "svelte";
-  import { get, type Writable } from "svelte/store";
-  import { ActionEntryButton } from "$lib/components/atoms";
+  import { ActionEntryButton, RowVirtualizer } from "$lib/components/atoms";
   import { DirectoryEntryLabel } from "$lib/components/molecules";
-  import {
-    getDirectoryInfo,
-    getFileInfo,
-    type DirectoryInfo,
-    type FileInfo,
-  } from "$lib/modules/filesystem";
-  import {
-    fileUploadStatusStore,
-    isFileUploading,
-    masterKeyStore,
-    type FileUploadStatus,
-  } from "$lib/stores";
-  import { SortBy, sortEntries } from "$lib/utils";
+  import { getUploadingFiles, type LiveFileUploadState } from "$lib/modules/file";
+  import type { DirectoryInfo } from "$lib/modules/filesystem";
+  import { sortEntries } from "$lib/utils";
   import File from "./File.svelte";
   import SubDirectory from "./SubDirectory.svelte";
   import UploadingFile from "./UploadingFile.svelte";
@@ -27,7 +15,6 @@
     onEntryMenuClick: (entry: SelectedEntry) => void;
     onParentClick?: () => void;
     showParentEntry?: boolean;
-    sortBy?: SortBy;
   }
 
   let {
@@ -36,105 +23,49 @@
     onEntryMenuClick,
     onParentClick,
     showParentEntry = false,
-    sortBy = SortBy.NAME_ASC,
   }: Props = $props();
 
-  interface DirectoryEntry {
-    name?: string;
-    info: Writable<DirectoryInfo | null>;
-  }
+  type Entry =
+    | { type: "parent" }
+    | { type: "directory"; name: string; details: (typeof info.subDirectories)[number] }
+    | { type: "file"; name: string; details: (typeof info.files)[number] }
+    | { type: "uploading-file"; name: string; details: LiveFileUploadState };
 
-  type FileEntry =
-    | {
-        type: "file";
-        name?: string;
-        info: Writable<FileInfo | null>;
-      }
-    | {
-        type: "uploading-file";
-        name: string;
-        info: Writable<FileUploadStatus>;
-      };
+  const toEntry =
+    <T extends Exclude<Entry["type"], "parent">>(type: T) =>
+    (details: Extract<Entry, { type: T }>["details"]) => ({ type, name: details.name, details });
 
-  let subDirectories: DirectoryEntry[] = $state([]);
-  let files: FileEntry[] = $state([]);
-
-  $effect(() => {
-    // TODO: Fix duplicated requests
-
-    subDirectories = info.subDirectoryIds.map((id) => {
-      const info = getDirectoryInfo(id, $masterKeyStore?.get(1)?.key!);
-      return { name: get(info)?.name, info };
-    });
-    files = info.fileIds
-      .map((id): FileEntry => {
-        const info = getFileInfo(id, $masterKeyStore?.get(1)?.key!);
-        return {
-          type: "file",
-          name: get(info)?.name,
-          info,
-        };
-      })
-      .concat(
-        $fileUploadStatusStore
-          .filter((statusStore) => {
-            const { parentId, status } = get(statusStore);
-            return parentId === info.id && isFileUploading(status);
-          })
-          .map((status) => ({
-            type: "uploading-file",
-            name: get(status).name,
-            info: status,
-          })),
-      );
-
-    const sort = () => {
-      sortEntries(subDirectories, sortBy);
-      sortEntries(files, sortBy);
-    };
-    return untrack(() => {
-      sort();
-
-      const unsubscribes = subDirectories
-        .map((subDirectory) =>
-          subDirectory.info.subscribe((value) => {
-            if (subDirectory.name === value?.name) return;
-            subDirectory.name = value?.name;
-            sort();
-          }),
-        )
-        .concat(
-          files.map((file) =>
-            file.info.subscribe((value) => {
-              if (file.name === value?.name) return;
-              file.name = value?.name;
-              sort();
-            }),
-          ),
-        );
-      return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
-    });
-  });
+  let entries = $derived([
+    ...(showParentEntry ? ([{ type: "parent" }] as const) : []),
+    ...sortEntries(info.subDirectories.map(toEntry("directory"))),
+    ...sortEntries([
+      ...info.files.map(toEntry("file")),
+      ...(getUploadingFiles(info.id) as LiveFileUploadState[]).map(toEntry("uploading-file")),
+    ]),
+  ]);
 </script>
 
-{#if subDirectories.length + files.length > 0 || showParentEntry}
-  <div class="space-y-1 pb-[4.5rem]">
-    {#if showParentEntry}
-      <ActionEntryButton class="h-14" onclick={onParentClick}>
-        <DirectoryEntryLabel type="parent-directory" name=".." />
-      </ActionEntryButton>
-    {/if}
-    {#each subDirectories as { info }}
-      <SubDirectory {info} onclick={onEntryClick} onOpenMenuClick={onEntryMenuClick} />
-    {/each}
-    {#each files as file}
-      {#if file.type === "file"}
-        <File info={file.info} onclick={onEntryClick} onOpenMenuClick={onEntryMenuClick} />
+{#if entries.length > 0}
+  <RowVirtualizer count={entries.length} itemHeight={() => 56} itemGap={4} class="pb-[4.5rem]">
+    {#snippet item(index)}
+      {@const entry = entries[index]!}
+      {#if entry.type === "parent"}
+        <ActionEntryButton class="h-14" onclick={onParentClick}>
+          <DirectoryEntryLabel type="parent-directory" name=".." />
+        </ActionEntryButton>
+      {:else if entry.type === "directory"}
+        <SubDirectory
+          info={entry.details}
+          onclick={onEntryClick}
+          onOpenMenuClick={onEntryMenuClick}
+        />
+      {:else if entry.type === "file"}
+        <File info={entry.details} onclick={onEntryClick} onOpenMenuClick={onEntryMenuClick} />
       {:else}
-        <UploadingFile status={file.info} />
+        <UploadingFile state={entry.details} />
       {/if}
-    {/each}
-  </div>
+    {/snippet}
+  </RowVirtualizer>
 {:else}
   <div class="flex flex-grow items-center justify-center">
     <p class="text-gray-500">폴더가 비어 있어요.</p>

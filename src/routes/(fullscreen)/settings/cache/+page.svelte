@@ -1,41 +1,38 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import type { Writable } from "svelte/store";
   import { FullscreenDiv } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
   import type { FileCacheIndex } from "$lib/indexedDB";
   import { getFileCacheIndex, deleteFileCache as doDeleteFileCache } from "$lib/modules/file";
-  import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
+  import { bulkGetFileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import { formatFileSize } from "$lib/utils";
   import File from "./File.svelte";
 
   interface FileCache {
     index: FileCacheIndex;
-    fileInfo: Writable<FileInfo | null>;
+    info: MaybeFileInfo;
   }
 
   let fileCache: FileCache[] | undefined = $state();
-  let fileCacheTotalSize = $state(0);
+  let fileCacheTotalSize = $derived(
+    fileCache?.reduce((acc, { index }) => acc + index.size, 0) ?? 0,
+  );
 
   const deleteFileCache = async (fileId: number) => {
     await doDeleteFileCache(fileId);
     fileCache = fileCache?.filter(({ index }) => index.fileId !== fileId);
   };
 
-  onMount(() => {
-    fileCache = getFileCacheIndex()
-      .map((index) => ({
-        index,
-        fileInfo: getFileInfo(index.fileId, $masterKeyStore?.get(1)?.key!),
-      }))
+  onMount(async () => {
+    const indexes = getFileCacheIndex();
+    const infos = await bulkGetFileInfo(
+      indexes.map(({ fileId }) => fileId),
+      $masterKeyStore?.get(1)?.key!,
+    );
+    fileCache = indexes
+      .map((index) => ({ index, info: infos.get(index.fileId)! }))
       .sort((a, b) => a.index.lastRetrievedAt.getTime() - b.index.lastRetrievedAt.getTime());
-  });
-
-  $effect(() => {
-    if (fileCache) {
-      fileCacheTotalSize = fileCache.reduce((acc, { index }) => acc + index.size, 0);
-    }
   });
 </script>
 
@@ -55,8 +52,8 @@
         <p>캐시를 삭제하더라도 원본 파일은 삭제되지 않아요.</p>
       </div>
       <div class="space-y-2">
-        {#each fileCache as { index, fileInfo }}
-          <File {index} info={fileInfo} onDeleteClick={deleteFileCache} />
+        {#each fileCache as { index, info } (info.id)}
+          <File {index} {info} onDeleteClick={deleteFileCache} />
         {/each}
       </div>
     </div>

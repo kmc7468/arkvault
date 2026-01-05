@@ -1,7 +1,5 @@
 import { Dexie, type EntityTable } from "dexie";
 
-export type DirectoryId = "root" | number;
-
 interface DirectoryInfo {
   id: number;
   parentId: DirectoryId;
@@ -15,17 +13,15 @@ interface FileInfo {
   contentType: string;
   createdAt?: Date;
   lastModifiedAt: Date;
-  categoryIds: number[];
+  categoryIds?: number[];
 }
-
-export type CategoryId = "root" | number;
 
 interface CategoryInfo {
   id: number;
   parentId: CategoryId;
   name: string;
-  files: { id: number; isRecursive: boolean }[];
-  isFileRecursive: boolean;
+  files?: { id: number; isRecursive: boolean }[];
+  isFileRecursive?: boolean;
 }
 
 const filesystem = new Dexie("filesystem") as Dexie & {
@@ -59,11 +55,21 @@ export const getDirectoryInfo = async (id: number) => {
 };
 
 export const storeDirectoryInfo = async (directoryInfo: DirectoryInfo) => {
-  await filesystem.directory.put(directoryInfo);
+  await filesystem.directory.upsert(directoryInfo.id, { ...directoryInfo });
 };
 
 export const deleteDirectoryInfo = async (id: number) => {
   await filesystem.directory.delete(id);
+};
+
+export const deleteDanglingDirectoryInfos = async (
+  parentId: DirectoryId,
+  validIds: Set<number>,
+) => {
+  await filesystem.directory
+    .where({ parentId })
+    .and((directory) => !validIds.has(directory.id))
+    .delete();
 };
 
 export const getAllFileInfos = async () => {
@@ -78,12 +84,27 @@ export const getFileInfo = async (id: number) => {
   return await filesystem.file.get(id);
 };
 
+export const bulkGetFileInfos = async (ids: number[]) => {
+  return await filesystem.file.bulkGet(ids);
+};
+
 export const storeFileInfo = async (fileInfo: FileInfo) => {
-  await filesystem.file.put(fileInfo);
+  await filesystem.file.upsert(fileInfo.id, { ...fileInfo });
 };
 
 export const deleteFileInfo = async (id: number) => {
   await filesystem.file.delete(id);
+};
+
+export const bulkDeleteFileInfos = async (ids: number[]) => {
+  await filesystem.file.bulkDelete(ids);
+};
+
+export const deleteDanglingFileInfos = async (parentId: DirectoryId, validIds: Set<number>) => {
+  await filesystem.file
+    .where({ parentId })
+    .and((file) => !validIds.has(file.id))
+    .delete();
 };
 
 export const getCategoryInfos = async (parentId: CategoryId) => {
@@ -95,7 +116,7 @@ export const getCategoryInfo = async (id: number) => {
 };
 
 export const storeCategoryInfo = async (categoryInfo: CategoryInfo) => {
-  await filesystem.category.put(categoryInfo);
+  await filesystem.category.upsert(categoryInfo.id, { ...categoryInfo });
 };
 
 export const updateCategoryInfo = async (id: number, changes: { isFileRecursive?: boolean }) => {
@@ -104,6 +125,13 @@ export const updateCategoryInfo = async (id: number, changes: { isFileRecursive?
 
 export const deleteCategoryInfo = async (id: number) => {
   await filesystem.category.delete(id);
+};
+
+export const deleteDanglingCategoryInfos = async (parentId: CategoryId, validIds: Set<number>) => {
+  await filesystem.category
+    .where({ parentId })
+    .and((category) => !validIds.has(category.id))
+    .delete();
 };
 
 export const cleanupDanglingInfos = async () => {

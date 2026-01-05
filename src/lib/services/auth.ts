@@ -1,6 +1,5 @@
-import { TRPCClientError } from "@trpc/client";
 import { encodeToBase64, decryptChallenge, signMessageRSA } from "$lib/modules/crypto";
-import { trpc } from "$trpc/client";
+import { trpc, isTRPCClientError } from "$trpc/client";
 
 export const requestSessionUpgrade = async (
   encryptKeyBase64: string,
@@ -16,7 +15,7 @@ export const requestSessionUpgrade = async (
       sigPubKey: verifyKeyBase64,
     }));
   } catch (e) {
-    if (e instanceof TRPCClientError && e.data?.code === "FORBIDDEN") {
+    if (isTRPCClientError(e) && e.data?.code === "FORBIDDEN") {
       return [false, "Unregistered client"] as const;
     }
     return [false] as const;
@@ -31,7 +30,7 @@ export const requestSessionUpgrade = async (
       force,
     });
   } catch (e) {
-    if (e instanceof TRPCClientError && e.data?.code === "CONFLICT") {
+    if (isTRPCClientError(e) && e.data?.code === "CONFLICT") {
       return [false, "Already logged in"] as const;
     }
     return [false] as const;

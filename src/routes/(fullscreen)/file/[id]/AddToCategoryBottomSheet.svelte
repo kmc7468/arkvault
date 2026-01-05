@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { Writable } from "svelte/store";
   import { BottomDiv, BottomSheet, Button, FullscreenDiv } from "$lib/components/atoms";
   import { SubCategories } from "$lib/components/molecules";
   import { CategoryCreateModal } from "$lib/components/organisms";
-  import { getCategoryInfo, type CategoryInfo } from "$lib/modules/filesystem";
+  import { getCategoryInfo, type MaybeCategoryInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
+  import { HybridPromise } from "$lib/utils";
   import { requestCategoryCreation } from "./service";
 
   interface Props {
@@ -14,32 +14,36 @@
 
   let { onAddToCategoryClick, isOpen = $bindable() }: Props = $props();
 
-  let category: Writable<CategoryInfo | null> | undefined = $state();
+  let categoryInfo: MaybeCategoryInfo | undefined = $state();
 
   let isCategoryCreateModalOpen = $state(false);
 
   $effect(() => {
     if (isOpen) {
-      category = getCategoryInfo("root", $masterKeyStore?.get(1)?.key!);
+      HybridPromise.resolve(getCategoryInfo("root", $masterKeyStore?.get(1)?.key!)).then(
+        (result) => (categoryInfo = result),
+      );
     }
   });
 </script>
 
-{#if $category}
+{#if categoryInfo?.exists}
   <BottomSheet bind:isOpen class="flex flex-col">
     <FullscreenDiv>
       <SubCategories
         class="py-4"
-        info={$category}
+        info={categoryInfo}
         onSubCategoryClick={({ id }) =>
-          (category = getCategoryInfo(id, $masterKeyStore?.get(1)?.key!))}
+          HybridPromise.resolve(getCategoryInfo(id, $masterKeyStore?.get(1)?.key!)).then(
+            (result) => (categoryInfo = result),
+          )}
         onSubCategoryCreateClick={() => (isCategoryCreateModalOpen = true)}
         subCategoryCreatePosition="top"
       />
-      {#if $category.id !== "root"}
+      {#if categoryInfo.id !== "root"}
         <BottomDiv>
-          <Button onclick={() => onAddToCategoryClick($category.id)} class="w-full">
-            이 카테고리에 추가하기
+          <Button onclick={() => onAddToCategoryClick(categoryInfo!.id as number)} class="w-full">
+            {categoryInfo!.name} 카테고리에 추가하기
           </Button>
         </BottomDiv>
       {/if}
@@ -50,8 +54,8 @@
 <CategoryCreateModal
   bind:isOpen={isCategoryCreateModalOpen}
   onCreateClick={async (name: string) => {
-    if (await requestCategoryCreation(name, $category!.id, $masterKeyStore?.get(1)!)) {
-      category = getCategoryInfo($category!.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+    if (await requestCategoryCreation(name, categoryInfo!.id, $masterKeyStore?.get(1)!)) {
+      void getCategoryInfo(categoryInfo!.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
       return true;
     }
     return false;
