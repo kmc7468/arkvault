@@ -96,6 +96,10 @@ export const deleteFileInfo = async (id: number) => {
   await filesystem.file.delete(id);
 };
 
+export const bulkDeleteFileInfos = async (ids: number[]) => {
+  await filesystem.file.bulkDelete(ids);
+};
+
 export const deleteDanglingFileInfos = async (parentId: DirectoryId, validIds: Set<number>) => {
   await filesystem.file
     .where({ parentId })

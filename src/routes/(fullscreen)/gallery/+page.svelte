@@ -24,8 +24,9 @@
         .filter((file) => file.exists)
         .filter(
           (file) => file.contentType.startsWith("image/") || file.contentType.startsWith("video/"),
-        ),
-      (file) => formatDateSortable(file.createdAt ?? file.lastModifiedAt),
+        )
+        .map((file) => ({ ...file, date: file.createdAt ?? file.lastModifiedAt })),
+      (file) => formatDateSortable(file.date),
     );
     return Array.from(groups.entries())
       .sort(([dateA], [dateB]) => dateB.localeCompare(dateA))
@@ -34,7 +35,7 @@
         return [
           {
             type: "header",
-            label: formatDate(sortedEntries[0]!.createdAt ?? sortedEntries[0]!.lastModifiedAt),
+            label: formatDate(sortedEntries[0]!.date),
           },
           ...Array.from({ length: Math.ceil(sortedEntries.length / 4) }, (_, i) => {
             const start = i * 4;

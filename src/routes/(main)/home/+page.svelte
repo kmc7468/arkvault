@@ -2,22 +2,13 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { EntryButton, FileThumbnailButton } from "$lib/components/atoms";
-  import { bulkGetFileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
-  import { masterKeyStore } from "$lib/stores";
+  import { type SummarizedFileInfo } from "$lib/modules/filesystem";
   import { requestFreshMediaFilesRetrieval } from "./service";
 
-  let mediaFiles: MaybeFileInfo[] = $state([]);
+  let mediaFiles: SummarizedFileInfo[] = $state([]);
 
   onMount(async () => {
-    const files = await requestFreshMediaFilesRetrieval();
-    mediaFiles = Array.from(
-      (
-        await bulkGetFileInfo(
-          files.map(({ id }) => id),
-          $masterKeyStore?.get(1)?.key!,
-        )
-      ).values(),
-    );
+    mediaFiles = await requestFreshMediaFilesRetrieval();
   });
 </script>
 
@@ -34,9 +25,7 @@
     {#if mediaFiles.length > 0}
       <div class="grid grid-cols-4 gap-2 p-2">
         {#each mediaFiles as file (file.id)}
-          {#if file.exists}
-            <FileThumbnailButton info={file} onclick={({ id }) => goto(`/file/${id}`)} />
-          {/if}
+          <FileThumbnailButton info={file} onclick={({ id }) => goto(`/file/${id}`)} />
         {/each}
       </div>
     {/if}

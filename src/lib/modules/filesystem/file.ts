@@ -126,12 +126,12 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
     );
 
     const existingIds = new Set(filesRaw.map(({ id }) => id));
+    const deletedIds = idsArray.filter((id) => !existingIds.has(id));
 
+    void IndexedDB.bulkDeleteFileInfos(deletedIds);
     return new Map<number, MaybeFileInfo>([
       ...bulkStoreToIndexedDB(files),
-      ...idsArray
-        .filter((id) => !existingIds.has(id))
-        .map((id) => [id, { id, exists: false }] as const),
+      ...deletedIds.map((id) => [id, { id, exists: false }] as const),
     ]);
   },
 });
