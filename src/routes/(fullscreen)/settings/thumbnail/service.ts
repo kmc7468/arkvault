@@ -77,7 +77,7 @@ export const requestThumbnailGeneration = async (fileInfo: FileInfo) => {
     await scheduler.schedule(
       async () => {
         statuses.set(fileInfo.id, "generation-pending");
-        file = await requestFileDownload(fileInfo.id, fileInfo.contentIv!, fileInfo.dataKey?.key!);
+        file = await requestFileDownload(fileInfo.id, fileInfo.dataKey?.key!);
         return file.byteLength;
       },
       async () => {

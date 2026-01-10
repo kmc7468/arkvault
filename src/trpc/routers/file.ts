@@ -24,7 +24,6 @@ const fileRouter = router({
         dek: file.encDek,
         dekVersion: file.dekVersion,
         contentType: file.contentType,
-        contentIv: file.encContentIv,
         name: file.encName.ciphertext,
         nameIv: file.encName.iv,
         createdAt: file.encCreatedAt?.ciphertext,
@@ -58,7 +57,6 @@ const fileRouter = router({
         dek: file.encDek,
         dekVersion: file.dekVersion,
         contentType: file.contentType,
-        contentIv: file.encContentIv,
         name: file.encName.ciphertext,
         nameIv: file.encName.iv,
         createdAt: file.encCreatedAt?.ciphertext,
@@ -158,7 +156,7 @@ const fileRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "File or its thumbnail not found" });
       }
 
-      return { updatedAt: thumbnail.updatedAt, contentIv: thumbnail.encContentIv };
+      return { updatedAt: thumbnail.updatedAt };
     }),
 });
 

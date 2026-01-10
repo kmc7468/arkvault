@@ -9,15 +9,11 @@ import {
 import type { FileThumbnailUploadRequest } from "$lib/server/schemas";
 import { trpc } from "$trpc/client";
 
-export const requestFileDownload = async (
-  fileId: number,
-  fileEncryptedIv: string,
-  dataKey: CryptoKey,
-) => {
+export const requestFileDownload = async (fileId: number, dataKey: CryptoKey) => {
   const cache = await getFileCache(fileId);
   if (cache) return cache;
 
-  const fileBuffer = await downloadFile(fileId, fileEncryptedIv, dataKey);
+  const fileBuffer = await downloadFile(fileId, dataKey);
   storeFileCache(fileId, fileBuffer); // Intended
   return fileBuffer;
 };

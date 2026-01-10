@@ -5,7 +5,7 @@
   import { page } from "$app/state";
   import { FullscreenDiv } from "$lib/components/atoms";
   import { Categories, IconEntryButton, TopBar } from "$lib/components/molecules";
-  import { getFileInfo, type FileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
+  import { getFileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
   import { captureVideoThumbnail } from "$lib/modules/thumbnail";
   import { getFileDownloadState } from "$lib/modules/file";
   import { masterKeyStore } from "$lib/stores";
@@ -95,14 +95,12 @@
       untrack(() => {
         if (!downloadState && !isDownloadRequested) {
           isDownloadRequested = true;
-          requestFileDownload(data.id, info!.contentIv!, info!.dataKey!.key).then(
-            async (buffer) => {
-              const blob = await updateViewer(buffer, contentType);
-              if (!viewerType) {
-                FileSaver.saveAs(blob, info!.name);
-              }
-            },
-          );
+          requestFileDownload(data.id, info!.dataKey!.key).then(async (buffer) => {
+            const blob = await updateViewer(buffer, contentType);
+            if (!viewerType) {
+              FileSaver.saveAs(blob, info!.name);
+            }
+          });
         }
       });
     }
@@ -110,7 +108,9 @@
 
   $effect(() => {
     if (info?.exists && downloadState?.status === "decrypted") {
-      untrack(() => !isDownloadRequested && updateViewer(downloadState.result!, info!.contentIv!));
+      untrack(
+        () => !isDownloadRequested && updateViewer(downloadState.result!, info!.contentType!),
+      );
     }
   });
 

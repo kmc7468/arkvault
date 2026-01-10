@@ -10,30 +10,69 @@ import { FileRepo, MediaRepo, IntegrityError } from "$lib/server/db";
 import env from "$lib/server/loadenv";
 import { safeUnlink } from "$lib/server/modules/filesystem";
 
-export const getFileStream = async (userId: number, fileId: number) => {
+const createEncContentStream = async (
+  path: string,
+  iv: Buffer,
+  range?: { start?: number; end?: number },
+) => {
+  const { size: fileSize } = await stat(path);
+  const ivSize = iv.byteLength;
+  const totalSize = fileSize + ivSize;
+
+  const start = range?.start ?? 0;
+  const end = range?.end ?? totalSize - 1;
+  if (start > end || start < 0 || end >= totalSize) {
+    error(416, "Invalid range");
+  }
+
+  return {
+    encContentStream: Readable.toWeb(
+      Readable.from(
+        (async function* () {
+          if (start < ivSize) {
+            yield iv.subarray(start, Math.min(end + 1, ivSize));
+          }
+          if (end >= ivSize) {
+            yield* createReadStream(path, {
+              start: Math.max(0, start - ivSize),
+              end: end - ivSize,
+            });
+          }
+        })(),
+      ),
+    ),
+    range: { start, end, total: totalSize },
+  };
+};
+
+export const getFileStream = async (
+  userId: number,
+  fileId: number,
+  range?: { start?: number; end?: number },
+) => {
   const file = await FileRepo.getFile(userId, fileId);
   if (!file) {
     error(404, "Invalid file id");
   }
 
-  const { size } = await stat(file.path);
-  return {
-    encContentStream: Readable.toWeb(createReadStream(file.path)),
-    encContentSize: size,
-  };
+  return createEncContentStream(file.path, Buffer.from(file.encContentIv, "base64"), range);
 };
 
-export const getFileThumbnailStream = async (userId: number, fileId: number) => {
+export const getFileThumbnailStream = async (
+  userId: number,
+  fileId: number,
+  range?: { start?: number; end?: number },
+) => {
   const thumbnail = await MediaRepo.getFileThumbnail(userId, fileId);
   if (!thumbnail) {
     error(404, "File or its thumbnail not found");
   }
 
-  const { size } = await stat(thumbnail.path);
-  return {
-    encContentStream: Readable.toWeb(createReadStream(thumbnail.path)),
-    encContentSize: size,
-  };
+  return createEncContentStream(
+    thumbnail.path,
+    Buffer.from(thumbnail.encContentIv, "base64"),
+    range,
+  );
 };
 
 export const uploadFileThumbnail = async (

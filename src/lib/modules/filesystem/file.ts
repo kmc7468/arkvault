@@ -50,7 +50,6 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
         parentId: file.parent,
         dataKey: metadata.dataKey,
         contentType: file.contentType,
-        contentIv: file.contentIv,
         name: metadata.name,
         createdAt: metadata.createdAt,
         lastModifiedAt: metadata.lastModifiedAt,
@@ -118,7 +117,6 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
           exists: true as const,
           parentId: metadataRaw.parent,
           contentType: metadataRaw.contentType,
-          contentIv: metadataRaw.contentIv,
           categories,
           ...metadata,
         };

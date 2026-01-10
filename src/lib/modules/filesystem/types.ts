@@ -31,7 +31,6 @@ export interface FileInfo {
   parentId: DirectoryId;
   dataKey?: DataKey;
   contentType: string;
-  contentIv?: string;
   name: string;
   createdAt?: Date;
   lastModifiedAt: Date;
@@ -42,7 +41,7 @@ export type MaybeFileInfo =
   | (FileInfo & { exists: true })
   | ({ id: number; exists: false } & AllUndefined<Omit<FileInfo, "id">>);
 
-export type SummarizedFileInfo = Omit<FileInfo, "contentIv" | "categories">;
+export type SummarizedFileInfo = Omit<FileInfo, "categories">;
 export type CategoryFileInfo = SummarizedFileInfo & { isRecursive: boolean };
 
 interface LocalCategoryInfo {

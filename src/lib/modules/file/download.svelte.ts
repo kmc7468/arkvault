@@ -62,15 +62,14 @@ const requestFileDownload = limitFunction(
 );
 
 const decryptFile = limitFunction(
-  async (
-    state: FileDownloadState,
-    fileEncrypted: ArrayBuffer,
-    fileEncryptedIv: string,
-    dataKey: CryptoKey,
-  ) => {
+  async (state: FileDownloadState, fileEncrypted: ArrayBuffer, dataKey: CryptoKey) => {
     state.status = "decrypting";
 
-    const fileBuffer = await decryptData(fileEncrypted, fileEncryptedIv, dataKey);
+    const fileBuffer = await decryptData(
+      fileEncrypted.slice(12),
+      fileEncrypted.slice(0, 12),
+      dataKey,
+    );
 
     state.status = "decrypted";
     state.result = fileBuffer;
@@ -79,7 +78,7 @@ const decryptFile = limitFunction(
   { concurrency: 4 },
 );
 
-export const downloadFile = async (id: number, fileEncryptedIv: string, dataKey: CryptoKey) => {
+export const downloadFile = async (id: number, dataKey: CryptoKey) => {
   downloadingFiles.push({
     id,
     status: "download-pending",
@@ -87,7 +86,7 @@ export const downloadFile = async (id: number, fileEncryptedIv: string, dataKey:
   const state = downloadingFiles.at(-1)!;
 
   try {
-    return await decryptFile(state, await requestFileDownload(state, id), fileEncryptedIv, dataKey);
+    return await decryptFile(state, await requestFileDownload(state, id), dataKey);
   } catch (e) {
     state.status = "error";
     throw e;

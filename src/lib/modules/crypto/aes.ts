@@ -89,11 +89,15 @@ export const encryptData = async (data: BufferSource, dataKey: CryptoKey) => {
   return { ciphertext, iv: encodeToBase64(iv.buffer) };
 };
 
-export const decryptData = async (ciphertext: BufferSource, iv: string, dataKey: CryptoKey) => {
+export const decryptData = async (
+  ciphertext: BufferSource,
+  iv: string | BufferSource,
+  dataKey: CryptoKey,
+) => {
   return await window.crypto.subtle.decrypt(
     {
       name: "AES-GCM",
-      iv: decodeFromBase64(iv),
+      iv: typeof iv === "string" ? decodeFromBase64(iv) : iv,
     } satisfies AesGcmParams,
     dataKey,
     ciphertext,
