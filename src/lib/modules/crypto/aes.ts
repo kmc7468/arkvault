@@ -1,4 +1,11 @@
-import { encodeString, decodeString, encodeToBase64, decodeFromBase64 } from "./util";
+import { AES_GCM_IV_SIZE } from "$lib/constants";
+import {
+  encodeString,
+  decodeString,
+  encodeToBase64,
+  decodeFromBase64,
+  concatenateBuffers,
+} from "./util";
 
 export const generateMasterKey = async () => {
   return {
@@ -86,7 +93,7 @@ export const encryptData = async (data: BufferSource, dataKey: CryptoKey) => {
     dataKey,
     data,
   );
-  return { ciphertext, iv: encodeToBase64(iv.buffer) };
+  return { ciphertext, iv: iv.buffer };
 };
 
 export const decryptData = async (
@@ -106,9 +113,22 @@ export const decryptData = async (
 
 export const encryptString = async (plaintext: string, dataKey: CryptoKey) => {
   const { ciphertext, iv } = await encryptData(encodeString(plaintext), dataKey);
-  return { ciphertext: encodeToBase64(ciphertext), iv };
+  return { ciphertext: encodeToBase64(ciphertext), iv: encodeToBase64(iv) };
 };
 
 export const decryptString = async (ciphertext: string, iv: string, dataKey: CryptoKey) => {
   return decodeString(await decryptData(decodeFromBase64(ciphertext), iv, dataKey));
+};
+
+export const encryptChunk = async (chunk: ArrayBuffer, dataKey: CryptoKey) => {
+  const { ciphertext, iv } = await encryptData(chunk, dataKey);
+  return concatenateBuffers(iv, ciphertext).buffer;
+};
+
+export const decryptChunk = async (encryptedChunk: ArrayBuffer, dataKey: CryptoKey) => {
+  return await decryptData(
+    encryptedChunk.slice(AES_GCM_IV_SIZE),
+    encryptedChunk.slice(0, AES_GCM_IV_SIZE),
+    dataKey,
+  );
 };

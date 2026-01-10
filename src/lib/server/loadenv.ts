@@ -26,4 +26,5 @@ export default {
   },
   libraryPath: env.LIBRARY_PATH || "library",
   thumbnailsPath: env.THUMBNAILS_PATH || "thumbnails",
+  uploadsPath: env.UPLOADS_PATH || "uploads",
 };

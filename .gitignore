@@ -10,6 +10,7 @@ node_modules
 /data
 /library
 /thumbnails
+/uploads
 
 # OS
 .DS_Store

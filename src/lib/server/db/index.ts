@@ -5,6 +5,7 @@ export * as HskRepo from "./hsk";
 export * as MediaRepo from "./media";
 export * as MekRepo from "./mek";
 export * as SessionRepo from "./session";
+export * as UploadRepo from "./upload";
 export * as UserRepo from "./user";
 
 export * from "./error";

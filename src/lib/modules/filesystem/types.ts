@@ -28,6 +28,7 @@ export type SubDirectoryInfo = Omit<LocalDirectoryInfo, "subDirectories" | "file
 
 export interface FileInfo {
   id: number;
+  isLegacy?: boolean;
   parentId: DirectoryId;
   dataKey?: DataKey;
   contentType: string;

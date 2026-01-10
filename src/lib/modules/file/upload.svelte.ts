@@ -1,24 +1,23 @@
 import axios from "axios";
 import ExifReader from "exifreader";
 import { limitFunction } from "p-limit";
+import { CHUNK_SIZE } from "$lib/constants";
 import {
   encodeToBase64,
   generateDataKey,
   wrapDataKey,
   encryptData,
   encryptString,
+  encryptChunk,
   digestMessage,
   signMessageHmac,
 } from "$lib/modules/crypto";
 import { Scheduler } from "$lib/modules/scheduler";
 import { generateThumbnail } from "$lib/modules/thumbnail";
-import type {
-  FileThumbnailUploadRequest,
-  FileUploadRequest,
-  FileUploadResponse,
-} from "$lib/server/schemas";
+import type { FileThumbnailUploadRequest } from "$lib/server/schemas";
 import type { MasterKey, HmacSecret } from "$lib/stores";
 import { trpc } from "$trpc/client";
+import type { RouterInputs } from "$trpc/router.server";
 
 export interface FileUploadState {
   name: string;
@@ -110,6 +109,23 @@ const extractExifDateTime = (fileBuffer: ArrayBuffer) => {
   return new Date(utcDate - offsetMs);
 };
 
+const encryptChunks = async (fileBuffer: ArrayBuffer, dataKey: CryptoKey) => {
+  const chunksEncrypted: { chunkEncrypted: ArrayBuffer; chunkEncryptedHash: string }[] = [];
+  let offset = 0;
+
+  while (offset < fileBuffer.byteLength) {
+    const nextOffset = Math.min(offset + CHUNK_SIZE, fileBuffer.byteLength);
+    const chunkEncrypted = await encryptChunk(fileBuffer.slice(offset, nextOffset), dataKey);
+    chunksEncrypted.push({
+      chunkEncrypted: chunkEncrypted,
+      chunkEncryptedHash: encodeToBase64(await digestMessage(chunkEncrypted)),
+    });
+    offset = nextOffset;
+  }
+
+  return chunksEncrypted;
+};
+
 const encryptFile = limitFunction(
   async (state: FileUploadState, file: File, fileBuffer: ArrayBuffer, masterKey: MasterKey) => {
     state.status = "encrypting";
@@ -123,9 +139,7 @@ const encryptFile = limitFunction(
 
     const { dataKey, dataKeyVersion } = await generateDataKey();
     const dataKeyWrapped = await wrapDataKey(dataKey, masterKey.key);
-
-    const fileEncrypted = await encryptData(fileBuffer, dataKey);
-    const fileEncryptedHash = encodeToBase64(await digestMessage(fileEncrypted.ciphertext));
+    const chunksEncrypted = await encryptChunks(fileBuffer, dataKey);
 
     const nameEncrypted = await encryptString(file.name, dataKey);
     const createdAtEncrypted =
@@ -142,8 +156,7 @@ const encryptFile = limitFunction(
       dataKeyWrapped,
       dataKeyVersion,
       fileType,
-      fileEncrypted,
-      fileEncryptedHash,
+      chunksEncrypted,
       nameEncrypted,
       createdAtEncrypted,
       lastModifiedAtEncrypted,
@@ -154,30 +167,70 @@ const encryptFile = limitFunction(
 );
 
 const requestFileUpload = limitFunction(
-  async (state: FileUploadState, form: FormData, thumbnailForm: FormData | null) => {
+  async (
+    state: FileUploadState,
+    metadata: RouterInputs["file"]["startUpload"],
+    chunksEncrypted: { chunkEncrypted: ArrayBuffer; chunkEncryptedHash: string }[],
+    fileSigned: string | undefined,
+    thumbnailForm: FormData | null,
+  ) => {
     state.status = "uploading";
 
-    const res = await axios.post("/api/file/upload", form, {
-      onUploadProgress: ({ progress, rate, estimated }) => {
-        state.progress = progress;
-        state.rate = rate;
-        state.estimated = estimated;
-      },
-    });
-    const { file }: FileUploadResponse = res.data;
+    const { uploadId } = await trpc().file.startUpload.mutate(metadata);
 
+    // Upload chunks with progress tracking
+    const totalBytes = chunksEncrypted.reduce((sum, c) => sum + c.chunkEncrypted.byteLength, 0);
+    let uploadedBytes = 0;
+    const startTime = Date.now();
+
+    for (let i = 0; i < chunksEncrypted.length; i++) {
+      const { chunkEncrypted, chunkEncryptedHash } = chunksEncrypted[i]!;
+
+      const response = await fetch(`/api/file/upload/${uploadId}/chunks/${i}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "Content-Digest": `sha-256=:${chunkEncryptedHash}:`,
+        },
+        body: chunkEncrypted,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Chunk upload failed: ${response.status} ${response.statusText}`);
+      }
+
+      uploadedBytes += chunkEncrypted.byteLength;
+
+      // Calculate progress, rate, estimated
+      const elapsed = (Date.now() - startTime) / 1000; // seconds
+      const rate = uploadedBytes / elapsed; // bytes per second
+      const remaining = totalBytes - uploadedBytes;
+      const estimated = rate > 0 ? remaining / rate : undefined;
+
+      state.progress = uploadedBytes / totalBytes;
+      state.rate = rate;
+      state.estimated = estimated;
+    }
+
+    // Complete upload
+    const { file: fileId } = await trpc().file.completeUpload.mutate({
+      uploadId,
+      contentHmac: fileSigned,
+    });
+
+    // Upload thumbnail if exists
     if (thumbnailForm) {
       try {
-        await axios.post(`/api/file/${file}/thumbnail/upload`, thumbnailForm);
+        await axios.post(`/api/file/${fileId}/thumbnail/upload`, thumbnailForm);
       } catch (e) {
-        // TODO
+        // TODO: Error handling for thumbnail upload
         console.error(e);
       }
     }
 
     state.status = "uploaded";
 
-    return { fileId: file };
+    return { fileId };
   },
   { concurrency: 1 },
 );
@@ -215,36 +268,28 @@ export const uploadFile = async (
         dataKeyWrapped,
         dataKeyVersion,
         fileType,
-        fileEncrypted,
-        fileEncryptedHash,
+        chunksEncrypted,
         nameEncrypted,
         createdAtEncrypted,
         lastModifiedAtEncrypted,
         thumbnail,
       } = await encryptFile(state, file, fileBuffer, masterKey);
 
-      const form = new FormData();
-      form.set(
-        "metadata",
-        JSON.stringify({
-          parent: parentId,
-          mekVersion: masterKey.version,
-          dek: dataKeyWrapped,
-          dekVersion: dataKeyVersion.toISOString(),
-          hskVersion: hmacSecret.version,
-          contentHmac: fileSigned,
-          contentType: fileType,
-          contentIv: fileEncrypted.iv,
-          name: nameEncrypted.ciphertext,
-          nameIv: nameEncrypted.iv,
-          createdAt: createdAtEncrypted?.ciphertext,
-          createdAtIv: createdAtEncrypted?.iv,
-          lastModifiedAt: lastModifiedAtEncrypted.ciphertext,
-          lastModifiedAtIv: lastModifiedAtEncrypted.iv,
-        } satisfies FileUploadRequest),
-      );
-      form.set("content", new Blob([fileEncrypted.ciphertext]));
-      form.set("checksum", fileEncryptedHash);
+      const metadata = {
+        chunks: chunksEncrypted.length,
+        parent: parentId,
+        mekVersion: masterKey.version,
+        dek: dataKeyWrapped,
+        dekVersion: dataKeyVersion,
+        hskVersion: hmacSecret.version,
+        contentType: fileType,
+        name: nameEncrypted.ciphertext,
+        nameIv: nameEncrypted.iv,
+        createdAt: createdAtEncrypted?.ciphertext,
+        createdAtIv: createdAtEncrypted?.iv,
+        lastModifiedAt: lastModifiedAtEncrypted.ciphertext,
+        lastModifiedAtIv: lastModifiedAtEncrypted.iv,
+      };
 
       let thumbnailForm = null;
       if (thumbnail) {
@@ -253,13 +298,19 @@ export const uploadFile = async (
           "metadata",
           JSON.stringify({
             dekVersion: dataKeyVersion.toISOString(),
-            contentIv: thumbnail.iv,
+            contentIv: encodeToBase64(thumbnail.iv),
           } satisfies FileThumbnailUploadRequest),
         );
         thumbnailForm.set("content", new Blob([thumbnail.ciphertext]));
       }
 
-      const { fileId } = await requestFileUpload(state, form, thumbnailForm);
+      const { fileId } = await requestFileUpload(
+        state,
+        metadata,
+        chunksEncrypted,
+        fileSigned,
+        thumbnailForm,
+      );
       return { fileId, fileBuffer, thumbnailBuffer: thumbnail?.plaintext };
     } catch (e) {
       state.status = "error";

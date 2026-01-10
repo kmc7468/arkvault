@@ -5,6 +5,7 @@ export * from "./hsk";
 export * from "./media";
 export * from "./mek";
 export * from "./session";
+export * from "./upload";
 export * from "./user";
 export * from "./util";
 

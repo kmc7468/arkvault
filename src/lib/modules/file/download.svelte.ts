@@ -1,6 +1,7 @@
 import axios from "axios";
 import { limitFunction } from "p-limit";
-import { decryptData } from "$lib/modules/crypto";
+import { CHUNK_SIZE, ENCRYPTION_OVERHEAD } from "$lib/constants";
+import { decryptChunk, concatenateBuffers } from "$lib/modules/crypto";
 
 export interface FileDownloadState {
   id: number;
@@ -62,15 +63,24 @@ const requestFileDownload = limitFunction(
 );
 
 const decryptFile = limitFunction(
-  async (state: FileDownloadState, fileEncrypted: ArrayBuffer, dataKey: CryptoKey) => {
+  async (
+    state: FileDownloadState,
+    fileEncrypted: ArrayBuffer,
+    encryptedChunkSize: number,
+    dataKey: CryptoKey,
+  ) => {
     state.status = "decrypting";
 
-    const fileBuffer = await decryptData(
-      fileEncrypted.slice(12),
-      fileEncrypted.slice(0, 12),
-      dataKey,
-    );
+    const chunks: ArrayBuffer[] = [];
+    let offset = 0;
 
+    while (offset < fileEncrypted.byteLength) {
+      const nextOffset = Math.min(offset + encryptedChunkSize, fileEncrypted.byteLength);
+      chunks.push(await decryptChunk(fileEncrypted.slice(offset, nextOffset), dataKey));
+      offset = nextOffset;
+    }
+
+    const fileBuffer = concatenateBuffers(...chunks).buffer;
     state.status = "decrypted";
     state.result = fileBuffer;
     return fileBuffer;
@@ -78,7 +88,7 @@ const decryptFile = limitFunction(
   { concurrency: 4 },
 );
 
-export const downloadFile = async (id: number, dataKey: CryptoKey) => {
+export const downloadFile = async (id: number, dataKey: CryptoKey, isLegacy: boolean) => {
   downloadingFiles.push({
     id,
     status: "download-pending",
@@ -86,7 +96,13 @@ export const downloadFile = async (id: number, dataKey: CryptoKey) => {
   const state = downloadingFiles.at(-1)!;
 
   try {
-    return await decryptFile(state, await requestFileDownload(state, id), dataKey);
+    const fileEncrypted = await requestFileDownload(state, id);
+    return await decryptFile(
+      state,
+      fileEncrypted,
+      isLegacy ? fileEncrypted.byteLength : CHUNK_SIZE + ENCRYPTION_OVERHEAD,
+      dataKey,
+    );
   } catch (e) {
     state.status = "error";
     throw e;

@@ -95,7 +95,7 @@
       untrack(() => {
         if (!downloadState && !isDownloadRequested) {
           isDownloadRequested = true;
-          requestFileDownload(data.id, info!.dataKey!.key).then(async (buffer) => {
+          requestFileDownload(data.id, info!.dataKey!.key, info!.isLegacy!).then(async (buffer) => {
             const blob = await updateViewer(buffer, contentType);
             if (!viewerType) {
               FileSaver.saveAs(blob, info!.name);

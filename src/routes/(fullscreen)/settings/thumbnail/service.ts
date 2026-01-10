@@ -50,7 +50,7 @@ const requestThumbnailUpload = limitFunction(
   async (
     fileId: number,
     dataKeyVersion: Date,
-    thumbnail: { plaintext: ArrayBuffer; ciphertext: ArrayBuffer; iv: string },
+    thumbnail: { plaintext: ArrayBuffer; ciphertext: ArrayBuffer; iv: ArrayBuffer },
   ) => {
     statuses.set(fileId, "uploading");
 
@@ -77,7 +77,7 @@ export const requestThumbnailGeneration = async (fileInfo: FileInfo) => {
     await scheduler.schedule(
       async () => {
         statuses.set(fileInfo.id, "generation-pending");
-        file = await requestFileDownload(fileInfo.id, fileInfo.dataKey?.key!);
+        file = await requestFileDownload(fileInfo.id, fileInfo.dataKey?.key!, fileInfo.isLegacy!);
         return file.byteLength;
       },
       async () => {

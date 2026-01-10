@@ -1,4 +1,5 @@
 import { getAllFileInfos } from "$lib/indexedDB/filesystem";
+import { encodeToBase64 } from "$lib/modules/crypto";
 import {
   getFileCache,
   storeFileCache,
@@ -9,11 +10,15 @@ import {
 import type { FileThumbnailUploadRequest } from "$lib/server/schemas";
 import { trpc } from "$trpc/client";
 
-export const requestFileDownload = async (fileId: number, dataKey: CryptoKey) => {
+export const requestFileDownload = async (
+  fileId: number,
+  dataKey: CryptoKey,
+  isLegacy: boolean,
+) => {
   const cache = await getFileCache(fileId);
   if (cache) return cache;
 
-  const fileBuffer = await downloadFile(fileId, dataKey);
+  const fileBuffer = await downloadFile(fileId, dataKey, isLegacy);
   storeFileCache(fileId, fileBuffer); // Intended
   return fileBuffer;
 };
@@ -21,14 +26,14 @@ export const requestFileDownload = async (fileId: number, dataKey: CryptoKey) =>
 export const requestFileThumbnailUpload = async (
   fileId: number,
   dataKeyVersion: Date,
-  thumbnailEncrypted: { ciphertext: ArrayBuffer; iv: string },
+  thumbnailEncrypted: { ciphertext: ArrayBuffer; iv: ArrayBuffer },
 ) => {
   const form = new FormData();
   form.set(
     "metadata",
     JSON.stringify({
       dekVersion: dataKeyVersion.toISOString(),
-      contentIv: thumbnailEncrypted.iv,
+      contentIv: encodeToBase64(thumbnailEncrypted.iv),
     } satisfies FileThumbnailUploadRequest),
   );
   form.set("content", new Blob([thumbnailEncrypted.ciphertext]));
