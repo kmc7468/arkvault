@@ -1,5 +1,5 @@
 import type { Generated } from "kysely";
-import type { Ciphertext } from "./util";
+import type { Ciphertext } from "./utils";
 
 interface CategoryTable {
   id: Generated<number>;

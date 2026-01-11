@@ -9,6 +9,7 @@ import {
   fileRouter,
   hskRouter,
   mekRouter,
+  uploadRouter,
   userRouter,
 } from "./routers";
 
@@ -20,6 +21,7 @@ export const appRouter = router({
   file: fileRouter,
   hsk: hskRouter,
   mek: mekRouter,
+  upload: uploadRouter,
   user: userRouter,
 });
 

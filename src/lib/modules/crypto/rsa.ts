@@ -1,7 +1,7 @@
-import { encodeString, encodeToBase64, decodeFromBase64 } from "./util";
+import { encodeString, encodeToBase64, decodeFromBase64 } from "./utils";
 
 export const generateEncryptionKeyPair = async () => {
-  const keyPair = await window.crypto.subtle.generateKey(
+  const keyPair = await crypto.subtle.generateKey(
     {
       name: "RSA-OAEP",
       modulusLength: 4096,
@@ -18,7 +18,7 @@ export const generateEncryptionKeyPair = async () => {
 };
 
 export const generateSigningKeyPair = async () => {
-  const keyPair = await window.crypto.subtle.generateKey(
+  const keyPair = await crypto.subtle.generateKey(
     {
       name: "RSA-PSS",
       modulusLength: 4096,
@@ -37,7 +37,7 @@ export const generateSigningKeyPair = async () => {
 export const exportRSAKey = async (key: CryptoKey) => {
   const format = key.type === "public" ? ("spki" as const) : ("pkcs8" as const);
   return {
-    key: await window.crypto.subtle.exportKey(format, key),
+    key: await crypto.subtle.exportKey(format, key),
     format,
   };
 };
@@ -54,14 +54,14 @@ export const importEncryptionKeyPairFromBase64 = async (
     name: "RSA-OAEP",
     hash: "SHA-256",
   };
-  const encryptKey = await window.crypto.subtle.importKey(
+  const encryptKey = await crypto.subtle.importKey(
     "spki",
     decodeFromBase64(encryptKeyBase64),
     algorithm,
     true,
     ["encrypt", "wrapKey"],
   );
-  const decryptKey = await window.crypto.subtle.importKey(
+  const decryptKey = await crypto.subtle.importKey(
     "pkcs8",
     decodeFromBase64(decryptKeyBase64),
     algorithm,
@@ -79,14 +79,14 @@ export const importSigningKeyPairFromBase64 = async (
     name: "RSA-PSS",
     hash: "SHA-256",
   };
-  const signKey = await window.crypto.subtle.importKey(
+  const signKey = await crypto.subtle.importKey(
     "pkcs8",
     decodeFromBase64(signKeyBase64),
     algorithm,
     true,
     ["sign"],
   );
-  const verifyKey = await window.crypto.subtle.importKey(
+  const verifyKey = await crypto.subtle.importKey(
     "spki",
     decodeFromBase64(verifyKeyBase64),
     algorithm,
@@ -98,17 +98,11 @@ export const importSigningKeyPairFromBase64 = async (
 
 export const makeRSAKeyNonextractable = async (key: CryptoKey) => {
   const { key: exportedKey, format } = await exportRSAKey(key);
-  return await window.crypto.subtle.importKey(
-    format,
-    exportedKey,
-    key.algorithm,
-    false,
-    key.usages,
-  );
+  return await crypto.subtle.importKey(format, exportedKey, key.algorithm, false, key.usages);
 };
 
 export const decryptChallenge = async (challenge: string, decryptKey: CryptoKey) => {
-  return await window.crypto.subtle.decrypt(
+  return await crypto.subtle.decrypt(
     {
       name: "RSA-OAEP",
     } satisfies RsaOaepParams,
@@ -119,7 +113,7 @@ export const decryptChallenge = async (challenge: string, decryptKey: CryptoKey)
 
 export const wrapMasterKey = async (masterKey: CryptoKey, encryptKey: CryptoKey) => {
   return encodeToBase64(
-    await window.crypto.subtle.wrapKey("raw", masterKey, encryptKey, {
+    await crypto.subtle.wrapKey("raw", masterKey, encryptKey, {
       name: "RSA-OAEP",
     } satisfies RsaOaepParams),
   );
@@ -131,7 +125,7 @@ export const unwrapMasterKey = async (
   extractable = false,
 ) => {
   return {
-    masterKey: await window.crypto.subtle.unwrapKey(
+    masterKey: await crypto.subtle.unwrapKey(
       "raw",
       decodeFromBase64(masterKeyWrapped),
       decryptKey,
@@ -146,7 +140,7 @@ export const unwrapMasterKey = async (
 };
 
 export const signMessageRSA = async (message: BufferSource, signKey: CryptoKey) => {
-  return await window.crypto.subtle.sign(
+  return await crypto.subtle.sign(
     {
       name: "RSA-PSS",
       saltLength: 32, // SHA-256
@@ -161,7 +155,7 @@ export const verifySignatureRSA = async (
   signature: BufferSource,
   verifyKey: CryptoKey,
 ) => {
-  return await window.crypto.subtle.verify(
+  return await crypto.subtle.verify(
     {
       name: "RSA-PSS",
       saltLength: 32, // SHA-256

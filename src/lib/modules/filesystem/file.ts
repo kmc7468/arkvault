@@ -47,6 +47,7 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
 
       return storeToIndexedDB({
         id,
+        isLegacy: file.isLegacy,
         parentId: file.parent,
         dataKey: metadata.dataKey,
         contentType: file.contentType,
@@ -115,6 +116,7 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
         return {
           id,
           exists: true as const,
+          isLegacy: metadataRaw.isLegacy,
           parentId: metadataRaw.parent,
           contentType: metadataRaw.contentType,
           categories,

@@ -1,15 +1,15 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { DirectoryIdSchema } from "$lib/schemas";
 import { FileRepo, IntegrityError } from "$lib/server/db";
 import { safeUnlink } from "$lib/server/modules/filesystem";
-import { directoryIdSchema } from "$lib/server/schemas";
 import { router, roleProcedure } from "../init.server";
 
 const directoryRouter = router({
   get: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: directoryIdSchema,
+        id: DirectoryIdSchema,
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -59,7 +59,7 @@ const directoryRouter = router({
   create: roleProcedure["activeClient"]
     .input(
       z.object({
-        parent: directoryIdSchema,
+        parent: DirectoryIdSchema,
         mekVersion: z.int().positive(),
         dek: z.base64().nonempty(),
         dekVersion: z.date(),

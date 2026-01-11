@@ -7,7 +7,7 @@ interface ThumbnailTable {
   category_id: number | null;
   path: string;
   updated_at: Date;
-  encrypted_content_iv: string; // Base64
+  encrypted_content_iv: string | null; // Base64
 }
 
 declare module "./index" {

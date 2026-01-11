@@ -122,6 +122,22 @@ export const generateThumbnail = async (fileBuffer: ArrayBuffer, fileType: strin
   }
 };
 
+export const generateThumbnailFromFile = async (file: File) => {
+  if (!file.type.startsWith("video/")) return null;
+
+  let url;
+  try {
+    url = URL.createObjectURL(file);
+    return await generateVideoThumbnail(url);
+  } catch {
+    return null;
+  } finally {
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
+  }
+};
+
 export const getThumbnailUrl = (thumbnailBuffer: ArrayBuffer) => {
   return `data:image/webp;base64,${encodeToBase64(thumbnailBuffer)}`;
 };

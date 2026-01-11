@@ -1,13 +1,5 @@
-let rootHandle: FileSystemDirectoryHandle | null = null;
-
-export const prepareOpfs = async () => {
-  rootHandle = await navigator.storage.getDirectory();
-};
-
 const getFileHandle = async (path: string, create = true) => {
-  if (!rootHandle) {
-    throw new Error("OPFS not prepared");
-  } else if (path[0] !== "/") {
+  if (path[0] !== "/") {
     throw new Error("Path must be absolute");
   }
 
@@ -17,7 +9,7 @@ const getFileHandle = async (path: string, create = true) => {
   }
 
   try {
-    let directoryHandle = rootHandle;
+    let directoryHandle = await navigator.storage.getDirectory();
     for (const part of parts.slice(0, -1)) {
       if (!part) continue;
       directoryHandle = await directoryHandle.getDirectoryHandle(part, { create });
@@ -34,12 +26,15 @@ const getFileHandle = async (path: string, create = true) => {
   }
 };
 
-export const readFile = async (path: string) => {
+export const getFile = async (path: string) => {
   const { fileHandle } = await getFileHandle(path, false);
   if (!fileHandle) return null;
 
-  const file = await fileHandle.getFile();
-  return await file.arrayBuffer();
+  return await fileHandle.getFile();
+};
+
+export const readFile = async (path: string) => {
+  return (await getFile(path))?.arrayBuffer() ?? null;
 };
 
 export const writeFile = async (path: string, data: ArrayBuffer) => {
@@ -61,9 +56,7 @@ export const deleteFile = async (path: string) => {
 };
 
 const getDirectoryHandle = async (path: string) => {
-  if (!rootHandle) {
-    throw new Error("OPFS not prepared");
-  } else if (path[0] !== "/") {
+  if (path[0] !== "/") {
     throw new Error("Path must be absolute");
   }
 
@@ -73,7 +66,7 @@ const getDirectoryHandle = async (path: string) => {
   }
 
   try {
-    let directoryHandle = rootHandle;
+    let directoryHandle = await navigator.storage.getDirectory();
     let parentHandle;
     for (const part of parts.slice(1)) {
       if (!part) continue;

@@ -1,7 +1,6 @@
 import type { ClientInit } from "@sveltejs/kit";
 import { cleanupDanglingInfos, getClientKey, getMasterKeys, getHmacSecrets } from "$lib/indexedDB";
 import { prepareFileCache } from "$lib/modules/file";
-import { prepareOpfs } from "$lib/modules/opfs";
 import { clientKeyStore, masterKeyStore, hmacSecretStore } from "$lib/stores";
 
 const requestPersistentStorage = async () => {
@@ -46,7 +45,6 @@ export const init: ClientInit = async () => {
     prepareClientKeyStore(),
     prepareMasterKeyStore(),
     prepareHmacSecretStore(),
-    prepareOpfs(),
   ]);
 
   cleanupDanglingInfos(); // Intended

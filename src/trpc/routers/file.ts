@@ -19,6 +19,7 @@ const fileRouter = router({
 
       const categories = await FileRepo.getAllFileCategories(input.id);
       return {
+        isLegacy: !!file.encContentIv,
         parent: file.parentId,
         mekVersion: file.mekVersion,
         dek: file.encDek,
@@ -52,6 +53,7 @@ const fileRouter = router({
       const files = await FileRepo.getFilesWithCategories(ctx.session.userId, input.ids);
       return files.map((file) => ({
         id: file.id,
+        isLegacy: !!file.encContentIv,
         parent: file.parentId,
         mekVersion: file.mekVersion,
         dek: file.encDek,

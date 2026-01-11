@@ -10,17 +10,29 @@
 
   interface Props {
     directoryId?: "root" | number;
+    downloadUrl?: string;
     fileBlob?: Blob;
     filename?: string;
     isOpen: boolean;
   }
 
-  let { directoryId, fileBlob, filename, isOpen = $bindable() }: Props = $props();
+  let { directoryId, downloadUrl, fileBlob, filename, isOpen = $bindable() }: Props = $props();
+
+  const handleDownload = () => {
+    if (fileBlob && filename) {
+      FileSaver.saveAs(fileBlob, filename);
+    } else if (downloadUrl && filename) {
+      // Use streaming download via Content-Disposition header
+      const url = new URL(downloadUrl, window.location.origin);
+      url.searchParams.set("download", filename);
+      window.open(url.toString(), "_blank");
+    }
+  };
 </script>
 
 <svelte:window onclick={() => (isOpen = false)} />
 
-{#if isOpen && (directoryId || fileBlob)}
+{#if isOpen && (directoryId || downloadUrl || fileBlob)}
   <div
     class="absolute right-2 top-full z-20 space-y-1 rounded-lg bg-white px-1 py-2 shadow-2xl"
     transition:fly={{ y: -8, duration: 200 }}
@@ -49,10 +61,8 @@
           ),
         )}
       {/if}
-      {#if fileBlob}
-        {@render menuButton(IconCloudDownload, "다운로드", () => {
-          FileSaver.saveAs(fileBlob, filename);
-        })}
+      {#if fileBlob || downloadUrl}
+        {@render menuButton(IconCloudDownload, "다운로드", handleDownload)}
       {/if}
     </div>
   </div>

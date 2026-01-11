@@ -1,14 +1,14 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { CategoryIdSchema } from "$lib/schemas";
 import { CategoryRepo, FileRepo, IntegrityError } from "$lib/server/db";
-import { categoryIdSchema } from "$lib/server/schemas";
 import { router, roleProcedure } from "../init.server";
 
 const categoryRouter = router({
   get: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: categoryIdSchema,
+        id: CategoryIdSchema,
         recurse: z.boolean().default(false),
       }),
     )
@@ -65,7 +65,7 @@ const categoryRouter = router({
   create: roleProcedure["activeClient"]
     .input(
       z.object({
-        parent: categoryIdSchema,
+        parent: CategoryIdSchema,
         mekVersion: z.int().positive(),
         dek: z.base64().nonempty(),
         dekVersion: z.date(),

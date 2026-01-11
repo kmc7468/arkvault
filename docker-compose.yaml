@@ -20,6 +20,7 @@ services:
       - SESSION_UPGRADE_CHALLENGE_EXPIRES
       - LIBRARY_PATH=/app/data/library
       - THUMBNAILS_PATH=/app/data/thumbnails
+      - UPLOADS_PATH=/app/data/uploads
       # SvelteKit
       - ADDRESS_HEADER=${TRUST_PROXY:+X-Forwarded-For}
       - XFF_DEPTH=${TRUST_PROXY:-}
