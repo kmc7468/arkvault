@@ -125,3 +125,20 @@ export const generateThumbnail = async (fileBuffer: ArrayBuffer, fileType: strin
 export const getThumbnailUrl = (thumbnailBuffer: ArrayBuffer) => {
   return `data:image/webp;base64,${encodeToBase64(thumbnailBuffer)}`;
 };
+
+export const generateThumbnailFromFile = async (file: File) => {
+  const fileType = file.type || (file.name.endsWith(".heic") ? "image/heic" : "");
+  if (!fileType.startsWith("video/")) return null;
+
+  let url;
+  try {
+    url = URL.createObjectURL(file);
+    return await generateVideoThumbnail(url);
+  } catch {
+    return null;
+  } finally {
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
+  }
+};

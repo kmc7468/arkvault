@@ -88,7 +88,9 @@ export const requestFileUpload = async (
   const res = await uploadFile(file, parentId, hmacSecret, masterKey, onDuplicate);
   if (!res) return false;
 
-  storeFileCache(res.fileId, res.fileBuffer); // Intended
+  if (res.fileBuffer) {
+    storeFileCache(res.fileId, res.fileBuffer); // Intended
+  }
   if (res.thumbnailBuffer) {
     storeFileThumbnailCache(res.fileId, res.thumbnailBuffer); // Intended
   }

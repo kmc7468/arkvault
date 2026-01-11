@@ -9,8 +9,8 @@ export const decodeString = (data: ArrayBuffer) => {
   return textDecoder.decode(data);
 };
 
-export const encodeToBase64 = (data: ArrayBuffer) => {
-  return btoa(String.fromCharCode(...new Uint8Array(data)));
+export const encodeToBase64 = (data: ArrayBuffer | Uint8Array) => {
+  return btoa(String.fromCharCode(...(data instanceof ArrayBuffer ? new Uint8Array(data) : data)));
 };
 
 export const decodeFromBase64 = (data: string) => {

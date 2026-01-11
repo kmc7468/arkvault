@@ -77,7 +77,7 @@ export const unwrapHmacSecret = async (hmacSecretWrapped: string, masterKey: Cry
         name: "HMAC",
         hash: "SHA-256",
       } satisfies HmacImportParams,
-      false, // Nonextractable
+      true, // Extractable
       ["sign", "verify"],
     ),
   };
