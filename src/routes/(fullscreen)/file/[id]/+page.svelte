@@ -154,6 +154,7 @@
         ? info?.parentId
         : undefined}
       {fileBlob}
+      downloadUrl={videoStreamUrl}
       filename={info?.name}
     />
   </div>

@@ -10,15 +10,23 @@ const createResponse = (
   isRangeRequest: boolean,
   range: { start: number; end: number; total: number },
   contentType?: string,
+  downloadFilename?: string,
 ) => {
+  const headers: Record<string, string> = {
+    "Accept-Ranges": "bytes",
+    "Content-Length": String(range.end - range.start + 1),
+    "Content-Type": contentType ?? "application/octet-stream",
+    ...(isRangeRequest ? getContentRangeHeader(range) : {}),
+  };
+
+  if (downloadFilename) {
+    headers["Content-Disposition"] =
+      `attachment; filename*=UTF-8''${encodeURIComponent(downloadFilename)}`;
+  }
+
   return new Response(stream, {
     status: isRangeRequest ? 206 : 200,
-    headers: {
-      "Accept-Ranges": "bytes",
-      "Content-Length": String(range.end - range.start + 1),
-      "Content-Type": contentType ?? "application/octet-stream",
-      ...(isRangeRequest ? getContentRangeHeader(range) : {}),
-    },
+    headers,
   });
 };
 
@@ -26,6 +34,7 @@ const streamFromOpfs = async (
   file: File,
   metadata?: FileMetadata,
   range?: { start?: number; end?: number },
+  downloadFilename?: string,
 ) => {
   const start = range?.start ?? 0;
   const end = range?.end ?? file.size - 1;
@@ -38,6 +47,7 @@ const streamFromOpfs = async (
     !!range,
     { start, end, total: file.size },
     metadata?.contentType,
+    downloadFilename,
   );
 };
 
@@ -45,6 +55,7 @@ const streamFromServer = async (
   id: number,
   metadata: FileMetadata,
   range?: { start?: number; end?: number },
+  downloadFilename?: string,
 ) => {
   const totalSize = getDecryptedSize(metadata.encContentSize, metadata.isLegacy);
   const start = range?.start ?? 0;
@@ -59,39 +70,63 @@ const streamFromServer = async (
   const apiResponse = await fetch(`/api/file/${id}/download`, {
     headers: { Range: `bytes=${encryptedRange.start}-${encryptedRange.end}` },
   });
-  if (apiResponse.status !== 206) {
+  if (apiResponse.status !== 206 || !apiResponse.body) {
     return new Response("Failed to fetch encrypted file", { status: 502 });
   }
 
-  const fileEncrypted = await apiResponse.arrayBuffer();
-  return createResponse(
-    new ReadableStream<Uint8Array>({
-      async start(controller) {
-        if (metadata.isLegacy) {
-          const decrypted = await decryptChunk(fileEncrypted, metadata.dataKey);
+  if (metadata.isLegacy) {
+    const fileEncrypted = await apiResponse.arrayBuffer();
+    const decrypted = await decryptChunk(fileEncrypted, metadata.dataKey);
+    return createResponse(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
           controller.enqueue(new Uint8Array(decrypted.slice(start, end + 1)));
           controller.close();
-          return;
-        }
+        },
+      }),
+      !!range,
+      { start, end, total: totalSize },
+      metadata.contentType,
+    );
+  }
 
-        const chunks = encryptedRange.lastChunkIndex - encryptedRange.firstChunkIndex + 1;
+  const totalChunks = encryptedRange.lastChunkIndex - encryptedRange.firstChunkIndex + 1;
+  let currentChunkIndex = 0;
+  let buffer = new Uint8Array(0);
 
-        for (let i = 0; i < chunks; i++) {
-          const chunk = await decryptChunk(
-            fileEncrypted.slice(i * ENCRYPTED_CHUNK_SIZE, (i + 1) * ENCRYPTED_CHUNK_SIZE),
-            metadata.dataKey,
-          );
-          const sliceStart = i === 0 ? start % CHUNK_SIZE : 0;
-          const sliceEnd = i === chunks - 1 ? (end % CHUNK_SIZE) + 1 : chunk.byteLength;
-          controller.enqueue(new Uint8Array(chunk.slice(sliceStart, sliceEnd)));
-        }
+  const decryptingStream = new TransformStream<Uint8Array, Uint8Array>({
+    async transform(chunk, controller) {
+      const newBuffer = new Uint8Array(buffer.length + chunk.length);
+      newBuffer.set(buffer);
+      newBuffer.set(chunk, buffer.length);
+      buffer = newBuffer;
 
-        controller.close();
-      },
-    }),
+      while (buffer.length >= ENCRYPTED_CHUNK_SIZE && currentChunkIndex < totalChunks - 1) {
+        const encryptedChunk = buffer.slice(0, ENCRYPTED_CHUNK_SIZE);
+        buffer = buffer.slice(ENCRYPTED_CHUNK_SIZE);
+
+        const decrypted = await decryptChunk(encryptedChunk.buffer, metadata.dataKey);
+        const sliceStart = currentChunkIndex === 0 ? start % CHUNK_SIZE : 0;
+        controller.enqueue(new Uint8Array(decrypted.slice(sliceStart)));
+        currentChunkIndex++;
+      }
+    },
+    async flush(controller) {
+      if (buffer.length > 0) {
+        const decrypted = await decryptChunk(buffer.buffer, metadata.dataKey);
+        const sliceStart = currentChunkIndex === 0 ? start % CHUNK_SIZE : 0;
+        const sliceEnd = (end % CHUNK_SIZE) + 1;
+        controller.enqueue(new Uint8Array(decrypted.slice(sliceStart, sliceEnd)));
+      }
+    },
+  });
+
+  return createResponse(
+    apiResponse.body.pipeThrough(decryptingStream),
     !!range,
     { start, end, total: totalSize },
     metadata.contentType,
+    downloadFilename,
   );
 };
 
@@ -102,13 +137,14 @@ const decryptFileHandler = async (request: Request) => {
     throw new Response("Invalid file id", { status: 400 });
   }
 
+  const downloadFilename = url.searchParams.get("download") ?? undefined;
   const metadata = fileMetadataStore.get(fileId);
   const range = parseRangeHeader(request.headers.get("Range"));
   const cache = await getFile(`/cache/${fileId}`);
   if (cache) {
-    return streamFromOpfs(cache, metadata, range);
+    return streamFromOpfs(cache, metadata, range, downloadFilename);
   } else if (metadata) {
-    return streamFromServer(fileId, metadata, range);
+    return streamFromServer(fileId, metadata, range, downloadFilename);
   } else {
     return new Response("Decryption not prepared", { status: 400 });
   }
