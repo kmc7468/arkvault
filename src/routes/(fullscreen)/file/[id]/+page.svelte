@@ -17,6 +17,7 @@
     requestFileDownload,
     requestThumbnailUpload,
     requestFileAdditionToCategory,
+    requestVideoStream,
   } from "./service";
   import TopBarMenu from "./TopBarMenu.svelte";
 
@@ -37,6 +38,7 @@
   let viewerType: "image" | "video" | undefined = $state();
   let fileBlob: Blob | undefined = $state();
   let fileBlobUrl: string | undefined = $state();
+  let videoStreamUrl: string | undefined = $state();
   let videoElement: HTMLVideoElement | undefined = $state();
 
   const updateViewer = async (buffer: ArrayBuffer, contentType: string) => {
@@ -95,12 +97,27 @@
       untrack(() => {
         if (!downloadState && !isDownloadRequested) {
           isDownloadRequested = true;
-          requestFileDownload(data.id, info!.dataKey!.key, info!.isLegacy!).then(async (buffer) => {
-            const blob = await updateViewer(buffer, contentType);
-            if (!viewerType) {
-              FileSaver.saveAs(blob, info!.name);
-            }
-          });
+
+          if (viewerType === "video" && !info!.isLegacy) {
+            requestVideoStream(data.id, info!.dataKey!.key, contentType).then((streamUrl) => {
+              if (streamUrl) {
+                videoStreamUrl = streamUrl;
+              } else {
+                requestFileDownload(data.id, info!.dataKey!.key, info!.isLegacy!).then((buffer) =>
+                  updateViewer(buffer, contentType),
+                );
+              }
+            });
+          } else {
+            requestFileDownload(data.id, info!.dataKey!.key, info!.isLegacy!).then(
+              async (buffer) => {
+                const blob = await updateViewer(buffer, contentType);
+                if (!viewerType) {
+                  FileSaver.saveAs(blob, info!.name);
+                }
+              },
+            );
+          }
         }
       });
     }
@@ -159,9 +176,10 @@
             {@render viewerLoading("이미지를 불러오고 있어요.")}
           {/if}
         {:else if viewerType === "video"}
-          {#if fileBlobUrl}
+          {#if videoStreamUrl || fileBlobUrl}
             <div class="flex flex-col space-y-2">
-              <video bind:this={videoElement} src={fileBlobUrl} controls muted></video>
+              <video bind:this={videoElement} src={videoStreamUrl ?? fileBlobUrl} controls muted
+              ></video>
               <IconEntryButton
                 icon={IconCamera}
                 onclick={() => updateThumbnail(info?.dataKey?.key!, info?.dataKey?.version!)}

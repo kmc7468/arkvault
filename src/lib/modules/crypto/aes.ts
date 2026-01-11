@@ -9,7 +9,7 @@ import {
 
 export const generateMasterKey = async () => {
   return {
-    masterKey: await window.crypto.subtle.generateKey(
+    masterKey: await crypto.subtle.generateKey(
       {
         name: "AES-KW",
         length: 256,
@@ -22,7 +22,7 @@ export const generateMasterKey = async () => {
 
 export const generateDataKey = async () => {
   return {
-    dataKey: await window.crypto.subtle.generateKey(
+    dataKey: await crypto.subtle.generateKey(
       {
         name: "AES-GCM",
         length: 256,
@@ -35,9 +35,9 @@ export const generateDataKey = async () => {
 };
 
 export const makeAESKeyNonextractable = async (key: CryptoKey) => {
-  return await window.crypto.subtle.importKey(
+  return await crypto.subtle.importKey(
     "raw",
-    await window.crypto.subtle.exportKey("raw", key),
+    await crypto.subtle.exportKey("raw", key),
     key.algorithm,
     false,
     key.usages,
@@ -45,12 +45,12 @@ export const makeAESKeyNonextractable = async (key: CryptoKey) => {
 };
 
 export const wrapDataKey = async (dataKey: CryptoKey, masterKey: CryptoKey) => {
-  return encodeToBase64(await window.crypto.subtle.wrapKey("raw", dataKey, masterKey, "AES-KW"));
+  return encodeToBase64(await crypto.subtle.wrapKey("raw", dataKey, masterKey, "AES-KW"));
 };
 
 export const unwrapDataKey = async (dataKeyWrapped: string, masterKey: CryptoKey) => {
   return {
-    dataKey: await window.crypto.subtle.unwrapKey(
+    dataKey: await crypto.subtle.unwrapKey(
       "raw",
       decodeFromBase64(dataKeyWrapped),
       masterKey,
@@ -63,12 +63,12 @@ export const unwrapDataKey = async (dataKeyWrapped: string, masterKey: CryptoKey
 };
 
 export const wrapHmacSecret = async (hmacSecret: CryptoKey, masterKey: CryptoKey) => {
-  return encodeToBase64(await window.crypto.subtle.wrapKey("raw", hmacSecret, masterKey, "AES-KW"));
+  return encodeToBase64(await crypto.subtle.wrapKey("raw", hmacSecret, masterKey, "AES-KW"));
 };
 
 export const unwrapHmacSecret = async (hmacSecretWrapped: string, masterKey: CryptoKey) => {
   return {
-    hmacSecret: await window.crypto.subtle.unwrapKey(
+    hmacSecret: await crypto.subtle.unwrapKey(
       "raw",
       decodeFromBase64(hmacSecretWrapped),
       masterKey,
@@ -84,8 +84,8 @@ export const unwrapHmacSecret = async (hmacSecretWrapped: string, masterKey: Cry
 };
 
 export const encryptData = async (data: BufferSource, dataKey: CryptoKey) => {
-  const iv = window.crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = await window.crypto.subtle.encrypt(
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt(
     {
       name: "AES-GCM",
       iv,
@@ -101,7 +101,7 @@ export const decryptData = async (
   iv: string | BufferSource,
   dataKey: CryptoKey,
 ) => {
-  return await window.crypto.subtle.decrypt(
+  return await crypto.subtle.decrypt(
     {
       name: "AES-GCM",
       iv: typeof iv === "string" ? decodeFromBase64(iv) : iv,
