@@ -2,7 +2,7 @@ import { error, text } from "@sveltejs/kit";
 import { Readable } from "stream";
 import { z } from "zod";
 import { authorize } from "$lib/server/modules/auth";
-import { uploadChunk } from "$lib/server/services/file";
+import { uploadChunk } from "$lib/server/services/upload";
 import type { RequestHandler } from "./$types";
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {

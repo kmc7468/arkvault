@@ -3,13 +3,16 @@ import { IntegrityError } from "./error";
 import db from "./kysely";
 import type { Ciphertext } from "./schema";
 
-interface UploadSession {
+interface BaseUploadSession {
   id: string;
   userId: number;
   totalChunks: number;
   uploadedChunks: number[];
   expiresAt: Date;
+}
 
+interface FileUploadSession extends BaseUploadSession {
+  type: "file";
   parentId: DirectoryId;
   mekVersion: number;
   encDek: string;
@@ -21,7 +24,15 @@ interface UploadSession {
   encLastModifiedAt: Ciphertext;
 }
 
-export const createUploadSession = async (params: Omit<UploadSession, "id" | "uploadedChunks">) => {
+interface ThumbnailUploadSession extends BaseUploadSession {
+  type: "thumbnail";
+  fileId: number;
+  dekVersion: Date;
+}
+
+export const createFileUploadSession = async (
+  params: Omit<FileUploadSession, "id" | "type" | "uploadedChunks">,
+) => {
   return await db.transaction().execute(async (trx) => {
     const mek = await trx
       .selectFrom("master_encryption_key")
@@ -52,6 +63,7 @@ export const createUploadSession = async (params: Omit<UploadSession, "id" | "up
     const { sessionId } = await trx
       .insertInto("upload_session")
       .values({
+        type: "file",
         user_id: params.userId,
         total_chunks: params.totalChunks,
         expires_at: params.expiresAt,
@@ -71,6 +83,40 @@ export const createUploadSession = async (params: Omit<UploadSession, "id" | "up
   });
 };
 
+export const createThumbnailUploadSession = async (
+  params: Omit<ThumbnailUploadSession, "id" | "type" | "uploadedChunks" | "totalChunks">,
+) => {
+  return await db.transaction().execute(async (trx) => {
+    const file = await trx
+      .selectFrom("file")
+      .select("data_encryption_key_version")
+      .where("id", "=", params.fileId)
+      .where("user_id", "=", params.userId)
+      .limit(1)
+      .forUpdate()
+      .executeTakeFirst();
+    if (!file) {
+      throw new IntegrityError("File not found");
+    } else if (file.data_encryption_key_version.getTime() !== params.dekVersion.getTime()) {
+      throw new IntegrityError("Invalid DEK version");
+    }
+
+    const { sessionId } = await trx
+      .insertInto("upload_session")
+      .values({
+        type: "thumbnail",
+        user_id: params.userId,
+        total_chunks: 1,
+        expires_at: params.expiresAt,
+        file_id: params.fileId,
+        data_encryption_key_version: params.dekVersion,
+      })
+      .returning("id as sessionId")
+      .executeTakeFirstOrThrow();
+    return { id: sessionId };
+  });
+};
+
 export const getUploadSession = async (sessionId: string, userId: number) => {
   const session = await db
     .selectFrom("upload_session")
@@ -80,24 +126,39 @@ export const getUploadSession = async (sessionId: string, userId: number) => {
     .where("expires_at", ">", new Date())
     .limit(1)
     .executeTakeFirst();
-  return session
-    ? ({
-        id: session.id,
-        userId: session.user_id,
-        totalChunks: session.total_chunks,
-        uploadedChunks: session.uploaded_chunks,
-        expiresAt: session.expires_at,
-        parentId: session.parent_id ?? "root",
-        mekVersion: session.master_encryption_key_version,
-        encDek: session.encrypted_data_encryption_key,
-        dekVersion: session.data_encryption_key_version,
-        hskVersion: session.hmac_secret_key_version,
-        contentType: session.content_type,
-        encName: session.encrypted_name,
-        encCreatedAt: session.encrypted_created_at,
-        encLastModifiedAt: session.encrypted_last_modified_at,
-      } satisfies UploadSession)
-    : null;
+
+  if (!session) return null;
+
+  if (session.type === "file") {
+    return {
+      type: "file",
+      id: session.id,
+      userId: session.user_id,
+      totalChunks: session.total_chunks,
+      uploadedChunks: session.uploaded_chunks,
+      expiresAt: session.expires_at,
+      parentId: session.parent_id ?? "root",
+      mekVersion: session.master_encryption_key_version!,
+      encDek: session.encrypted_data_encryption_key!,
+      dekVersion: session.data_encryption_key_version!,
+      hskVersion: session.hmac_secret_key_version,
+      contentType: session.content_type!,
+      encName: session.encrypted_name!,
+      encCreatedAt: session.encrypted_created_at,
+      encLastModifiedAt: session.encrypted_last_modified_at!,
+    } satisfies FileUploadSession;
+  } else {
+    return {
+      type: "thumbnail",
+      id: session.id,
+      userId: session.user_id,
+      totalChunks: session.total_chunks,
+      uploadedChunks: session.uploaded_chunks,
+      expiresAt: session.expires_at,
+      fileId: session.file_id!,
+      dekVersion: session.data_encryption_key_version!,
+    } satisfies ThumbnailUploadSession;
+  }
 };
 
 export const markChunkAsUploaded = async (sessionId: string, chunkIndex: number) => {

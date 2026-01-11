@@ -3,20 +3,25 @@ import type { Ciphertext } from "./util";
 
 interface UploadSessionTable {
   id: Generated<string>;
+  type: "file" | "thumbnail";
   user_id: number;
   total_chunks: number;
   uploaded_chunks: Generated<number[]>;
   expires_at: Date;
 
+  // For file uploads
   parent_id: number | null;
-  master_encryption_key_version: number;
-  encrypted_data_encryption_key: string; // Base64
-  data_encryption_key_version: Date;
+  master_encryption_key_version: number | null;
+  encrypted_data_encryption_key: string | null; // Base64
+  data_encryption_key_version: Date | null;
   hmac_secret_key_version: number | null;
-  content_type: string;
-  encrypted_name: Ciphertext;
+  content_type: string | null;
+  encrypted_name: Ciphertext | null;
   encrypted_created_at: Ciphertext | null;
-  encrypted_last_modified_at: Ciphertext;
+  encrypted_last_modified_at: Ciphertext | null;
+
+  // For thumbnail uploads
+  file_id: number | null;
 }
 
 declare module "./index" {

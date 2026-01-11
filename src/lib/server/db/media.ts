@@ -6,7 +6,7 @@ interface Thumbnail {
   id: number;
   path: string;
   updatedAt: Date;
-  encContentIv: string;
+  encContentIv: string | null;
 }
 
 interface FileThumbnail extends Thumbnail {
@@ -18,7 +18,7 @@ export const updateFileThumbnail = async (
   fileId: number,
   dekVersion: Date,
   path: string,
-  encContentIv: string,
+  encContentIv: string | null,
 ) => {
   return await db.transaction().execute(async (trx) => {
     const file = await trx

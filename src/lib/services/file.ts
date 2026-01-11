@@ -1,5 +1,5 @@
 import { getAllFileInfos } from "$lib/indexedDB/filesystem";
-import { encodeToBase64 } from "$lib/modules/crypto";
+import { encodeToBase64, digestMessage } from "$lib/modules/crypto";
 import {
   getFileCache,
   storeFileCache,
@@ -7,7 +7,6 @@ import {
   downloadFile,
   deleteFileThumbnailCache,
 } from "$lib/modules/file";
-import type { FileThumbnailUploadRequest } from "$lib/server/schemas";
 import { trpc } from "$trpc/client";
 
 export const requestFileDownload = async (
@@ -28,17 +27,38 @@ export const requestFileThumbnailUpload = async (
   dataKeyVersion: Date,
   thumbnailEncrypted: { ciphertext: ArrayBuffer; iv: ArrayBuffer },
 ) => {
-  const form = new FormData();
-  form.set(
-    "metadata",
-    JSON.stringify({
-      dekVersion: dataKeyVersion.toISOString(),
-      contentIv: encodeToBase64(thumbnailEncrypted.iv),
-    } satisfies FileThumbnailUploadRequest),
-  );
-  form.set("content", new Blob([thumbnailEncrypted.ciphertext]));
+  const { uploadId } = await trpc().upload.startFileThumbnailUpload.mutate({
+    file: fileId,
+    dekVersion: dataKeyVersion,
+  });
 
-  return await fetch(`/api/file/${fileId}/thumbnail/upload`, { method: "POST", body: form });
+  // Prepend IV to ciphertext (consistent with file download format)
+  const ivAndCiphertext = new Uint8Array(
+    thumbnailEncrypted.iv.byteLength + thumbnailEncrypted.ciphertext.byteLength,
+  );
+  ivAndCiphertext.set(new Uint8Array(thumbnailEncrypted.iv), 0);
+  ivAndCiphertext.set(
+    new Uint8Array(thumbnailEncrypted.ciphertext),
+    thumbnailEncrypted.iv.byteLength,
+  );
+
+  const chunkHash = encodeToBase64(await digestMessage(ivAndCiphertext));
+
+  const response = await fetch(`/api/upload/${uploadId}/chunks/0`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "Content-Digest": `sha-256=:${chunkHash}:`,
+    },
+    body: ivAndCiphertext,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Thumbnail upload failed: ${response.status} ${response.statusText}`);
+  }
+
+  await trpc().upload.completeFileThumbnailUpload.mutate({ uploadId });
+  return response;
 };
 
 export const requestDeletedFilesCleanup = async () => {

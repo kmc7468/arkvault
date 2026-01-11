@@ -1,4 +1,3 @@
-import axios from "axios";
 import ExifReader from "exifreader";
 import pLimit, { limitFunction } from "p-limit";
 import { CHUNK_SIZE } from "$lib/constants";
@@ -15,7 +14,6 @@ import {
 } from "$lib/modules/crypto";
 import { Scheduler } from "$lib/modules/scheduler";
 import { generateThumbnail, generateThumbnailFromFile } from "$lib/modules/thumbnail";
-import type { FileThumbnailUploadRequest } from "$lib/server/schemas";
 import type { MasterKey, HmacSecret } from "$lib/stores";
 import { trpc } from "$trpc/client";
 import type { RouterInputs } from "$trpc/router.server";
@@ -194,17 +192,55 @@ const encryptFile = limitFunction(
   { concurrency: 4 },
 );
 
+const uploadThumbnail = async (
+  fileId: number,
+  thumbnailEncrypted: { ciphertext: ArrayBuffer; iv: ArrayBuffer },
+  dataKeyVersion: Date,
+) => {
+  const { uploadId } = await trpc().upload.startFileThumbnailUpload.mutate({
+    file: fileId,
+    dekVersion: dataKeyVersion,
+  });
+
+  const ivAndCiphertext = new Uint8Array(
+    thumbnailEncrypted.iv.byteLength + thumbnailEncrypted.ciphertext.byteLength,
+  );
+  ivAndCiphertext.set(new Uint8Array(thumbnailEncrypted.iv), 0);
+  ivAndCiphertext.set(
+    new Uint8Array(thumbnailEncrypted.ciphertext),
+    thumbnailEncrypted.iv.byteLength,
+  );
+
+  const chunkHash = encodeToBase64(await digestMessage(ivAndCiphertext));
+
+  const response = await fetch(`/api/upload/${uploadId}/chunks/0`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "Content-Digest": `sha-256=:${chunkHash}:`,
+    },
+    body: ivAndCiphertext,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Thumbnail upload failed: ${response.status} ${response.statusText}`);
+  }
+
+  await trpc().upload.completeFileThumbnailUpload.mutate({ uploadId });
+};
+
 const requestFileUpload = limitFunction(
   async (
     state: FileUploadState,
-    metadata: RouterInputs["file"]["startUpload"],
+    metadata: RouterInputs["upload"]["startFileUpload"],
     chunksEncrypted: { chunkEncrypted: ArrayBuffer; chunkEncryptedHash: string }[],
     fileSigned: string | undefined,
-    thumbnailForm: FormData | null,
+    thumbnailData: { ciphertext: ArrayBuffer; iv: ArrayBuffer; plaintext: ArrayBuffer } | null,
+    dataKeyVersion: Date,
   ) => {
     state.status = "uploading";
 
-    const { uploadId } = await trpc().file.startUpload.mutate(metadata);
+    const { uploadId } = await trpc().upload.startFileUpload.mutate(metadata);
 
     // Upload chunks with progress tracking
     const totalBytes = chunksEncrypted.reduce((sum, c) => sum + c.chunkEncrypted.byteLength, 0);
@@ -214,7 +250,7 @@ const requestFileUpload = limitFunction(
     for (let i = 0; i < chunksEncrypted.length; i++) {
       const { chunkEncrypted, chunkEncryptedHash } = chunksEncrypted[i]!;
 
-      const response = await fetch(`/api/file/upload/${uploadId}/chunks/${i}`, {
+      const response = await fetch(`/api/upload/${uploadId}/chunks/${i}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/octet-stream",
@@ -241,15 +277,15 @@ const requestFileUpload = limitFunction(
     }
 
     // Complete upload
-    const { file: fileId } = await trpc().file.completeUpload.mutate({
+    const { file: fileId } = await trpc().upload.completeFileUpload.mutate({
       uploadId,
       contentHmac: fileSigned,
     });
 
     // Upload thumbnail if exists
-    if (thumbnailForm) {
+    if (thumbnailData) {
       try {
-        await axios.post(`/api/file/${fileId}/thumbnail/upload`, thumbnailForm);
+        await uploadThumbnail(fileId, thumbnailData, dataKeyVersion);
       } catch (e) {
         // TODO: Error handling for thumbnail upload
         console.error(e);
@@ -258,7 +294,7 @@ const requestFileUpload = limitFunction(
 
     state.status = "uploaded";
 
-    return { fileId };
+    return { fileId, thumbnailBuffer: thumbnailData?.plaintext };
   },
   { concurrency: 1 },
 );
@@ -296,7 +332,7 @@ const uploadFileStreaming = async (
     lastModifiedAtIv: lastModifiedAtEncrypted.iv,
   };
 
-  const { uploadId } = await trpc().file.startUpload.mutate(metadata);
+  const { uploadId } = await trpc().upload.startFileUpload.mutate(metadata);
 
   // Stream file, encrypt, and upload with concurrency limit
   const reader = file.stream().getReader();
@@ -315,7 +351,7 @@ const uploadFileStreaming = async (
     chunkHash: string,
     originalChunkSize: number,
   ) => {
-    const response = await fetch(`/api/file/upload/${uploadId}/chunks/${index}`, {
+    const response = await fetch(`/api/upload/${uploadId}/chunks/${index}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/octet-stream",
@@ -370,7 +406,7 @@ const uploadFileStreaming = async (
 
   await Promise.all(uploadPromises);
 
-  const { file: fileId } = await trpc().file.completeUpload.mutate({
+  const { file: fileId } = await trpc().upload.completeFileUpload.mutate({
     uploadId,
     contentHmac: fileSigned,
   });
@@ -383,16 +419,7 @@ const uploadFileStreaming = async (
         const thumbnailBuffer = await thumbnail.arrayBuffer();
         const thumbnailEncrypted = await encryptData(thumbnailBuffer, dataKey);
 
-        const thumbnailForm = new FormData();
-        thumbnailForm.set(
-          "metadata",
-          JSON.stringify({
-            dekVersion: dataKeyVersion.toISOString(),
-            contentIv: encodeToBase64(thumbnailEncrypted.iv),
-          } satisfies FileThumbnailUploadRequest),
-        );
-        thumbnailForm.set("content", new Blob([thumbnailEncrypted.ciphertext]));
-        await axios.post(`/api/file/${fileId}/thumbnail/upload`, thumbnailForm);
+        await uploadThumbnail(fileId, thumbnailEncrypted, dataKeyVersion);
       }
     } catch (e) {
       // Thumbnail upload failure is not critical
@@ -465,27 +492,15 @@ export const uploadFile = async (
           lastModifiedAtIv: lastModifiedAtEncrypted.iv,
         };
 
-        let thumbnailForm = null;
-        if (thumbnail) {
-          thumbnailForm = new FormData();
-          thumbnailForm.set(
-            "metadata",
-            JSON.stringify({
-              dekVersion: dataKeyVersion.toISOString(),
-              contentIv: encodeToBase64(thumbnail.iv),
-            } satisfies FileThumbnailUploadRequest),
-          );
-          thumbnailForm.set("content", new Blob([thumbnail.ciphertext]));
-        }
-
-        const { fileId } = await requestFileUpload(
+        const { fileId, thumbnailBuffer } = await requestFileUpload(
           state,
           metadata,
           chunksEncrypted,
           fileSigned,
-          thumbnailForm,
+          thumbnail ?? null,
+          dataKeyVersion,
         );
-        return { fileId, fileBuffer, thumbnailBuffer: thumbnail?.plaintext };
+        return { fileId, fileBuffer, thumbnailBuffer };
       } catch (e) {
         state.status = "error";
         throw e;
