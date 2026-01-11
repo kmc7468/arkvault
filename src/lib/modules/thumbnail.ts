@@ -122,13 +122,8 @@ export const generateThumbnail = async (fileBuffer: ArrayBuffer, fileType: strin
   }
 };
 
-export const getThumbnailUrl = (thumbnailBuffer: ArrayBuffer) => {
-  return `data:image/webp;base64,${encodeToBase64(thumbnailBuffer)}`;
-};
-
 export const generateThumbnailFromFile = async (file: File) => {
-  const fileType = file.type || (file.name.endsWith(".heic") ? "image/heic" : "");
-  if (!fileType.startsWith("video/")) return null;
+  if (!file.type.startsWith("video/")) return null;
 
   let url;
   try {
@@ -141,4 +136,8 @@ export const generateThumbnailFromFile = async (file: File) => {
       URL.revokeObjectURL(url);
     }
   }
+};
+
+export const getThumbnailUrl = (thumbnailBuffer: ArrayBuffer) => {
+  return `data:image/webp;base64,${encodeToBase64(thumbnailBuffer)}`;
 };

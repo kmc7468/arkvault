@@ -9,8 +9,7 @@ import {
   encryptString,
   encryptChunk,
   digestMessage,
-  signMessageHmac,
-  createStreamingHmac,
+  createHmacStream,
 } from "$lib/modules/crypto";
 import { Scheduler } from "$lib/modules/scheduler";
 import { generateThumbnail, generateThumbnailFromFile } from "$lib/modules/thumbnail";
@@ -60,27 +59,7 @@ export const clearUploadedFiles = () => {
 
 const requestDuplicateFileScan = limitFunction(
   async (file: File, hmacSecret: HmacSecret, onDuplicate: () => Promise<boolean>) => {
-    const fileBuffer = await file.arrayBuffer();
-    const fileSigned = encodeToBase64(await signMessageHmac(fileBuffer, hmacSecret.secret));
-
-    const files = await trpc().file.listByHash.query({
-      hskVersion: hmacSecret.version,
-      contentHmac: fileSigned,
-    });
-    if (files.length === 0 || (await onDuplicate())) {
-      return { fileBuffer, fileSigned };
-    } else {
-      return {};
-    }
-  },
-  { concurrency: 1 },
-);
-
-const isImageFile = (fileType: string) => fileType.startsWith("image/");
-
-const requestDuplicateFileScanStreaming = limitFunction(
-  async (file: File, hmacSecret: HmacSecret, onDuplicate: () => Promise<boolean>) => {
-    const hmacStream = await createStreamingHmac(hmacSecret.secret);
+    const hmacStream = await createHmacStream(hmacSecret.secret);
     const reader = file.stream().getReader();
 
     while (true) {
@@ -152,16 +131,12 @@ const encryptChunks = async (fileBuffer: ArrayBuffer, dataKey: CryptoKey) => {
   return chunksEncrypted;
 };
 
-const encryptFile = limitFunction(
-  async (state: FileUploadState, file: File, fileBuffer: ArrayBuffer, masterKey: MasterKey) => {
+const encryptImageFile = limitFunction(
+  async (state: FileUploadState, file: File, masterKey: MasterKey) => {
     state.status = "encrypting";
 
-    const fileType = getFileType(file);
-
-    let createdAt;
-    if (fileType.startsWith("image/")) {
-      createdAt = extractExifDateTime(fileBuffer);
-    }
+    const fileBuffer = await file.arrayBuffer();
+    const createdAt = extractExifDateTime(fileBuffer);
 
     const { dataKey, dataKeyVersion } = await generateDataKey();
     const dataKeyWrapped = await wrapDataKey(dataKey, masterKey.key);
@@ -172,7 +147,7 @@ const encryptFile = limitFunction(
       createdAt && (await encryptString(createdAt.getTime().toString(), dataKey));
     const lastModifiedAtEncrypted = await encryptString(file.lastModified.toString(), dataKey);
 
-    const thumbnail = await generateThumbnail(fileBuffer, fileType);
+    const thumbnail = await generateThumbnail(fileBuffer, getFileType(file));
     const thumbnailBuffer = await thumbnail?.arrayBuffer();
     const thumbnailEncrypted = thumbnailBuffer && (await encryptData(thumbnailBuffer, dataKey));
 
@@ -181,7 +156,6 @@ const encryptFile = limitFunction(
     return {
       dataKeyWrapped,
       dataKeyVersion,
-      fileType,
       chunksEncrypted,
       nameEncrypted,
       createdAtEncrypted,
@@ -229,7 +203,7 @@ const uploadThumbnail = async (
   await trpc().upload.completeFileThumbnailUpload.mutate({ uploadId });
 };
 
-const requestFileUpload = limitFunction(
+const requestImageFileUpload = limitFunction(
   async (
     state: FileUploadState,
     metadata: RouterInputs["upload"]["startFileUpload"],
@@ -242,7 +216,6 @@ const requestFileUpload = limitFunction(
 
     const { uploadId } = await trpc().upload.startFileUpload.mutate(metadata);
 
-    // Upload chunks with progress tracking
     const totalBytes = chunksEncrypted.reduce((sum, c) => sum + c.chunkEncrypted.byteLength, 0);
     let uploadedBytes = 0;
     const startTime = Date.now();
@@ -265,9 +238,8 @@ const requestFileUpload = limitFunction(
 
       uploadedBytes += chunkEncrypted.byteLength;
 
-      // Calculate progress, rate, estimated
-      const elapsed = (Date.now() - startTime) / 1000; // seconds
-      const rate = uploadedBytes / elapsed; // bytes per second
+      const elapsed = (Date.now() - startTime) / 1000;
+      const rate = uploadedBytes / elapsed;
       const remaining = totalBytes - uploadedBytes;
       const estimated = rate > 0 ? remaining / rate : undefined;
 
@@ -276,13 +248,11 @@ const requestFileUpload = limitFunction(
       state.estimated = estimated;
     }
 
-    // Complete upload
     const { file: fileId } = await trpc().upload.completeFileUpload.mutate({
       uploadId,
       contentHmac: fileSigned,
     });
 
-    // Upload thumbnail if exists
     if (thumbnailData) {
       try {
         await uploadThumbnail(fileId, thumbnailData, dataKeyVersion);
@@ -299,7 +269,7 @@ const requestFileUpload = limitFunction(
   { concurrency: 1 },
 );
 
-const uploadFileStreaming = async (
+const requestFileUpload = async (
   state: FileUploadState,
   file: File,
   masterKey: MasterKey,
@@ -316,7 +286,6 @@ const uploadFileStreaming = async (
   const nameEncrypted = await encryptString(file.name, dataKey);
   const lastModifiedAtEncrypted = await encryptString(file.lastModified.toString(), dataKey);
 
-  // Calculate total chunks for metadata
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
   const metadata = {
     chunks: totalChunks,
@@ -334,7 +303,6 @@ const uploadFileStreaming = async (
 
   const { uploadId } = await trpc().upload.startFileUpload.mutate(metadata);
 
-  // Stream file, encrypt, and upload with concurrency limit
   const reader = file.stream().getReader();
   const limit = pLimit(4);
   let buffer = new Uint8Array(0);
@@ -364,7 +332,6 @@ const uploadFileStreaming = async (
       throw new Error(`Chunk upload failed: ${response.status} ${response.statusText}`);
     }
 
-    // Update progress after upload completes
     uploadedBytes += originalChunkSize;
     const elapsed = (Date.now() - startTime) / 1000;
     const rate = uploadedBytes / elapsed;
@@ -411,7 +378,6 @@ const uploadFileStreaming = async (
     contentHmac: fileSigned,
   });
 
-  // Generate and upload thumbnail for video files
   if (fileType.startsWith("video/")) {
     try {
       const thumbnail = await generateThumbnailFromFile(file);
@@ -446,35 +412,29 @@ export const uploadFile = async (
   });
   const state = uploadingFiles.at(-1)!;
 
-  const fileType = getFileType(file);
+  return await scheduler.schedule(file.size, async () => {
+    state.status = "encryption-pending";
 
-  // Image files: use buffer-based approach (need EXIF + thumbnail)
-  if (isImageFile(fileType)) {
-    return await scheduler.schedule(file.size, async () => {
-      state.status = "encryption-pending";
+    try {
+      const { fileSigned } = await requestDuplicateFileScan(file, hmacSecret, onDuplicate);
+      if (!fileSigned) {
+        state.status = "canceled";
+        uploadingFiles = uploadingFiles.filter((file) => file !== state);
+        return;
+      }
 
-      try {
-        const { fileBuffer, fileSigned } = await requestDuplicateFileScan(
-          file,
-          hmacSecret,
-          onDuplicate,
-        );
-        if (!fileBuffer || !fileSigned) {
-          state.status = "canceled";
-          uploadingFiles = uploadingFiles.filter((file) => file !== state);
-          return undefined;
-        }
-
+      const fileType = getFileType(file);
+      if (fileType.startsWith("image/")) {
+        const fileBuffer = await file.arrayBuffer();
         const {
           dataKeyWrapped,
           dataKeyVersion,
-          fileType,
           chunksEncrypted,
           nameEncrypted,
           createdAtEncrypted,
           lastModifiedAtEncrypted,
           thumbnail,
-        } = await encryptFile(state, file, fileBuffer, masterKey);
+        } = await encryptImageFile(state, file, masterKey);
 
         const metadata = {
           chunks: chunksEncrypted.length,
@@ -492,7 +452,7 @@ export const uploadFile = async (
           lastModifiedAtIv: lastModifiedAtEncrypted.iv,
         };
 
-        const { fileId, thumbnailBuffer } = await requestFileUpload(
+        const { fileId, thumbnailBuffer } = await requestImageFileUpload(
           state,
           metadata,
           chunksEncrypted,
@@ -501,36 +461,17 @@ export const uploadFile = async (
           dataKeyVersion,
         );
         return { fileId, fileBuffer, thumbnailBuffer };
-      } catch (e) {
-        state.status = "error";
-        throw e;
+      } else {
+        const { fileId } = await requestFileUpload(
+          state,
+          file,
+          masterKey,
+          hmacSecret,
+          fileSigned,
+          parentId,
+        );
+        return { fileId };
       }
-    });
-  }
-
-  // Video and other files: use streaming approach
-  return await scheduler.schedule(file.size, async () => {
-    state.status = "encryption-pending";
-
-    try {
-      // 1st pass: streaming HMAC for duplicate check
-      const { fileSigned } = await requestDuplicateFileScanStreaming(file, hmacSecret, onDuplicate);
-      if (!fileSigned) {
-        state.status = "canceled";
-        uploadingFiles = uploadingFiles.filter((f) => f !== state);
-        return undefined;
-      }
-
-      // 2nd pass: streaming encrypt + upload
-      const { fileId } = await uploadFileStreaming(
-        state,
-        file,
-        masterKey,
-        hmacSecret,
-        fileSigned,
-        parentId,
-      );
-      return { fileId, fileBuffer: undefined, thumbnailBuffer: undefined };
     } catch (e) {
       state.status = "error";
       throw e;
