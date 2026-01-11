@@ -334,6 +334,16 @@ export const getAllFileIds = async (userId: number) => {
   return files.map(({ id }) => id);
 };
 
+export const getLegacyFileIds = async (userId: number) => {
+  const files = await db
+    .selectFrom("file")
+    .select("id")
+    .where("user_id", "=", userId)
+    .where("encrypted_content_iv", "is not", null)
+    .execute();
+  return files.map(({ id }) => id);
+};
+
 export const getAllFileIdsByContentHmac = async (
   userId: number,
   hskVersion: number,
@@ -480,6 +490,52 @@ export const unregisterFile = async (userId: number, fileId: number) => {
     await trx.deleteFrom("file").where("id", "=", fileId).execute();
     return file;
   });
+};
+
+export const migrateFileContent = async (
+  trx: typeof db,
+  userId: number,
+  fileId: number,
+  newPath: string,
+  encContentHash: string,
+) => {
+  const file = await trx
+    .selectFrom("file")
+    .select(["path", "encrypted_content_iv"])
+    .where("id", "=", fileId)
+    .where("user_id", "=", userId)
+    .limit(1)
+    .forUpdate()
+    .executeTakeFirst();
+
+  if (!file) {
+    throw new IntegrityError("File not found");
+  }
+  if (!file.encrypted_content_iv) {
+    throw new IntegrityError("File is not legacy");
+  }
+
+  await trx
+    .updateTable("file")
+    .set({
+      path: newPath,
+      encrypted_content_iv: null,
+      encrypted_content_hash: encContentHash,
+    })
+    .where("id", "=", fileId)
+    .where("user_id", "=", userId)
+    .execute();
+
+  await trx
+    .insertInto("file_log")
+    .values({
+      file_id: fileId,
+      timestamp: new Date(),
+      action: "migrate",
+    })
+    .execute();
+
+  return file.path;
 };
 
 export const addFileToCategory = async (fileId: number, categoryId: number) => {

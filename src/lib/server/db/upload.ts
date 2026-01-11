@@ -31,6 +31,11 @@ interface ThumbnailUploadSession extends BaseUploadSession {
   dekVersion: Date;
 }
 
+interface MigrationUploadSession extends BaseUploadSession {
+  type: "migration";
+  fileId: number;
+}
+
 export const createFileUploadSession = async (
   params: Omit<FileUploadSession, "type" | "uploadedChunks">,
 ) => {
@@ -118,6 +123,39 @@ export const createThumbnailUploadSession = async (
   });
 };
 
+export const createMigrationUploadSession = async (
+  params: Omit<MigrationUploadSession, "type" | "uploadedChunks">,
+) => {
+  await db.transaction().execute(async (trx) => {
+    const file = await trx
+      .selectFrom("file")
+      .select("encrypted_content_iv")
+      .where("id", "=", params.fileId)
+      .where("user_id", "=", params.userId)
+      .limit(1)
+      .forUpdate()
+      .executeTakeFirst();
+    if (!file) {
+      throw new IntegrityError("File not found");
+    } else if (!file.encrypted_content_iv) {
+      throw new IntegrityError("File is not legacy");
+    }
+
+    await trx
+      .insertInto("upload_session")
+      .values({
+        id: params.id,
+        type: "migration",
+        user_id: params.userId,
+        path: params.path,
+        total_chunks: params.totalChunks,
+        expires_at: params.expiresAt,
+        file_id: params.fileId,
+      })
+      .execute();
+  });
+};
+
 export const getUploadSession = async (sessionId: string, userId: number) => {
   const session = await db
     .selectFrom("upload_session")
@@ -148,7 +186,7 @@ export const getUploadSession = async (sessionId: string, userId: number) => {
       encCreatedAt: session.encrypted_created_at,
       encLastModifiedAt: session.encrypted_last_modified_at!,
     } satisfies FileUploadSession;
-  } else {
+  } else if (session.type === "thumbnail") {
     return {
       type: "thumbnail",
       id: session.id,
@@ -160,6 +198,17 @@ export const getUploadSession = async (sessionId: string, userId: number) => {
       fileId: session.file_id!,
       dekVersion: session.data_encryption_key_version!,
     } satisfies ThumbnailUploadSession;
+  } else {
+    return {
+      type: "migration",
+      id: session.id,
+      userId: session.user_id,
+      path: session.path,
+      totalChunks: session.total_chunks,
+      uploadedChunks: session.uploaded_chunks,
+      expiresAt: session.expires_at,
+      fileId: session.file_id!,
+    } satisfies MigrationUploadSession;
   }
 };
 

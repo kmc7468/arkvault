@@ -41,7 +41,7 @@ interface FileLogTable {
   id: Generated<number>;
   file_id: number;
   timestamp: ColumnType<Date, Date, never>;
-  action: "create" | "rename" | "add-to-category" | "remove-from-category";
+  action: "create" | "rename" | "migrate" | "add-to-category" | "remove-from-category";
   new_name: Ciphertext | null;
   category_id: number | null;
 }

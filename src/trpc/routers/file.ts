@@ -100,6 +100,10 @@ const fileRouter = router({
     return await MediaRepo.getMissingFileThumbnails(ctx.session.userId);
   }),
 
+  listLegacy: roleProcedure["activeClient"].query(async ({ ctx }) => {
+    return await FileRepo.getLegacyFileIds(ctx.session.userId);
+  }),
+
   rename: roleProcedure["activeClient"]
     .input(
       z.object({

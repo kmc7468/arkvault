@@ -250,6 +250,110 @@ const uploadRouter = router({
         sessionLocks.delete(uploadId);
       }
     }),
+
+  startMigrationUpload: roleProcedure["activeClient"]
+    .input(
+      z.object({
+        file: z.int().positive(),
+        chunks: z.int().positive(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, path } = await generateSessionId();
+
+      try {
+        await UploadRepo.createMigrationUploadSession({
+          id,
+          userId: ctx.session.userId,
+          path,
+          totalChunks: input.chunks,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+          fileId: input.file,
+        });
+        return { uploadId: id };
+      } catch (e) {
+        await safeRecursiveRm(path);
+
+        if (e instanceof IntegrityError) {
+          if (e.message === "File not found") {
+            throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
+          } else if (e.message === "File is not legacy") {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "File is not legacy" });
+          }
+        }
+        throw e;
+      }
+    }),
+
+  completeMigrationUpload: roleProcedure["activeClient"]
+    .input(
+      z.object({
+        uploadId: z.uuidv4(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { uploadId } = input;
+      if (sessionLocks.has(uploadId)) {
+        throw new TRPCError({ code: "CONFLICT", message: "Completion already in progress" });
+      } else {
+        sessionLocks.add(uploadId);
+      }
+
+      let filePath = "";
+
+      try {
+        const session = await UploadRepo.getUploadSession(uploadId, ctx.session.userId);
+        if (!session || session.type !== "migration") {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Invalid upload id" });
+        } else if (session.uploadedChunks.length < session.totalChunks) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Upload not completed" });
+        }
+
+        filePath = `${env.libraryPath}/${ctx.session.userId}/${uuidv4()}`;
+        await mkdir(dirname(filePath), { recursive: true });
+
+        const hashStream = createHash("sha256");
+        const writeStream = createWriteStream(filePath, { flags: "wx", mode: 0o600 });
+
+        for (let i = 0; i < session.totalChunks; i++) {
+          for await (const chunk of createReadStream(`${session.path}/${i}`)) {
+            hashStream.update(chunk);
+            writeStream.write(chunk);
+          }
+        }
+
+        await new Promise<void>((resolve, reject) => {
+          writeStream.end((e: any) => (e ? reject(e) : resolve()));
+        });
+
+        const hash = hashStream.digest("base64");
+        const oldPath = await db.transaction().execute(async (trx) => {
+          const oldPath = await FileRepo.migrateFileContent(
+            trx,
+            ctx.session.userId,
+            session.fileId,
+            filePath,
+            hash,
+          );
+          await UploadRepo.deleteUploadSession(trx, uploadId);
+          return oldPath;
+        });
+
+        await Promise.all([safeUnlink(oldPath), safeRecursiveRm(session.path)]);
+      } catch (e) {
+        await safeUnlink(filePath);
+        if (e instanceof IntegrityError) {
+          if (e.message === "File not found") {
+            throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
+          } else if (e.message === "File is not legacy") {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "File is not legacy" });
+          }
+        }
+        throw e;
+      } finally {
+        sessionLocks.delete(uploadId);
+      }
+    }),
 });
 
 export default uploadRouter;

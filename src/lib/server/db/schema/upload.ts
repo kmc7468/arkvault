@@ -3,7 +3,7 @@ import type { Ciphertext } from "./utils";
 
 interface UploadSessionTable {
   id: string;
-  type: "file" | "thumbnail";
+  type: "file" | "thumbnail" | "migration";
   user_id: number;
   path: string;
   total_chunks: number;
