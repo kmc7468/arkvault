@@ -1,7 +1,7 @@
 import { error } from "@sveltejs/kit";
 import { z } from "zod";
-import { authorize } from "$lib/server/modules/auth";
 import { parseRangeHeader, getContentRangeHeader } from "$lib/modules/http";
+import { authorize } from "$lib/server/modules/auth";
 import { getFileStream } from "$lib/server/services/file";
 import type { RequestHandler } from "./$types";
 

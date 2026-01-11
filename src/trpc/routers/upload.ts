@@ -6,11 +6,11 @@ import mime from "mime";
 import { dirname } from "path";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
+import { DirectoryIdSchema } from "$lib/schemas";
 import { FileRepo, MediaRepo, UploadRepo, IntegrityError } from "$lib/server/db";
 import db from "$lib/server/db/kysely";
 import env from "$lib/server/loadenv";
 import { getChunkDirectoryPath, safeUnlink } from "$lib/server/modules/filesystem";
-import { directoryIdSchema } from "$lib/server/schemas";
 import { router, roleProcedure } from "../init.server";
 
 const uploadLocks = new Set<string>();
@@ -20,7 +20,7 @@ const uploadRouter = router({
     .input(
       z.object({
         chunks: z.int().positive(),
-        parent: directoryIdSchema,
+        parent: DirectoryIdSchema,
         mekVersion: z.int().positive(),
         dek: z.base64().nonempty(),
         dekVersion: z.date(),

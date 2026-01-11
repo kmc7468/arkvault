@@ -5,7 +5,7 @@ import {
   encodeToBase64,
   decodeFromBase64,
   concatenateBuffers,
-} from "./util";
+} from "./utils";
 
 export const generateMasterKey = async () => {
   return {

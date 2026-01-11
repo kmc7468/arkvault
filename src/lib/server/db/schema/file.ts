@@ -1,5 +1,5 @@
 import type { ColumnType, Generated } from "kysely";
-import type { Ciphertext } from "./util";
+import type { Ciphertext } from "./utils";
 
 interface DirectoryTable {
   id: Generated<number>;
