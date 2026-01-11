@@ -2,9 +2,9 @@ import { error } from "@sveltejs/kit";
 import { createHash } from "crypto";
 import { createWriteStream } from "fs";
 import { Readable } from "stream";
-import { CHUNK_SIZE, ENCRYPTION_OVERHEAD } from "$lib/constants";
+import { ENCRYPTION_OVERHEAD, ENCRYPTED_CHUNK_SIZE } from "$lib/constants";
 import { UploadRepo } from "$lib/server/db";
-import { getChunkDirectoryPath, safeUnlink } from "$lib/server/modules/filesystem";
+import { safeRecursiveRm, safeUnlink } from "$lib/server/modules/filesystem";
 
 const chunkLocks = new Set<string>();
 
@@ -17,12 +17,12 @@ export const uploadChunk = async (
 ) => {
   const lockKey = `${sessionId}/${chunkIndex}`;
   if (chunkLocks.has(lockKey)) {
-    error(409, "Chunk already uploaded"); // TODO: Message
+    error(409, "Chunk upload already in progress");
   } else {
     chunkLocks.add(lockKey);
   }
 
-  const filePath = `${getChunkDirectoryPath(sessionId)}/${chunkIndex}`;
+  let filePath;
 
   try {
     const session = await UploadRepo.getUploadSession(sessionId, userId);
@@ -35,15 +35,16 @@ export const uploadChunk = async (
     }
 
     const isLastChunk = chunkIndex === session.totalChunks - 1;
+    filePath = `${session.path}/${chunkIndex}`;
 
-    let writtenBytes = 0;
     const hashStream = createHash("sha256");
     const writeStream = createWriteStream(filePath, { flags: "wx", mode: 0o600 });
+    let writtenBytes = 0;
 
     for await (const chunk of encChunkStream) {
-      writtenBytes += chunk.length;
       hashStream.update(chunk);
       writeStream.write(chunk);
+      writtenBytes += chunk.length;
     }
 
     await new Promise<void>((resolve, reject) => {
@@ -53,9 +54,8 @@ export const uploadChunk = async (
     if (hashStream.digest("base64") !== encChunkHash) {
       throw new Error("Invalid checksum");
     } else if (
-      (!isLastChunk && writtenBytes !== CHUNK_SIZE + ENCRYPTION_OVERHEAD) ||
-      (isLastChunk &&
-        (writtenBytes <= ENCRYPTION_OVERHEAD || writtenBytes > CHUNK_SIZE + ENCRYPTION_OVERHEAD))
+      (!isLastChunk && writtenBytes !== ENCRYPTED_CHUNK_SIZE) ||
+      (isLastChunk && (writtenBytes <= ENCRYPTION_OVERHEAD || writtenBytes > ENCRYPTED_CHUNK_SIZE))
     ) {
       throw new Error("Invalid chunk size");
     }
@@ -74,4 +74,9 @@ export const uploadChunk = async (
   } finally {
     chunkLocks.delete(lockKey);
   }
+};
+
+export const cleanupExpiredUploadSessions = async () => {
+  const paths = await UploadRepo.cleanupExpiredUploadSessions();
+  await Promise.all(paths.map(safeRecursiveRm));
 };

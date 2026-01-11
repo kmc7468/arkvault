@@ -7,7 +7,7 @@ import {
   cleanupExpiredSessions,
   cleanupExpiredSessionUpgradeChallenges,
 } from "$lib/server/db/session";
-import { cleanupExpiredUploadSessions } from "$lib/server/db/upload";
+import { cleanupExpiredUploadSessions } from "$lib/server/services/upload";
 import { authenticate, setAgentInfo } from "$lib/server/middlewares";
 
 export const init: ServerInit = async () => {

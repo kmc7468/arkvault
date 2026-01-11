@@ -17,9 +17,10 @@ export const up = async (db: Kysely<any>) => {
   // upload.ts
   await db.schema
     .createTable("upload_session")
-    .addColumn("id", "uuid", (col) => col.primaryKey().defaultTo(sql`gen_random_uuid()`))
+    .addColumn("id", "uuid", (col) => col.primaryKey())
     .addColumn("type", "text", (col) => col.notNull())
     .addColumn("user_id", "integer", (col) => col.references("user.id").notNull())
+    .addColumn("path", "text", (col) => col.notNull())
     .addColumn("total_chunks", "integer", (col) => col.notNull())
     .addColumn("uploaded_chunks", sql`integer[]`, (col) => col.notNull().defaultTo(sql`'{}'`))
     .addColumn("expires_at", "timestamp(3)", (col) => col.notNull())

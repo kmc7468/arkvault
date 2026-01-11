@@ -2,5 +2,5 @@ export const AES_GCM_IV_SIZE = 12;
 export const AES_GCM_TAG_SIZE = 16;
 export const ENCRYPTION_OVERHEAD = AES_GCM_IV_SIZE + AES_GCM_TAG_SIZE;
 
-export const CHUNK_SIZE = 4 * 1024 * 1024;
+export const CHUNK_SIZE = 4 * 1024 * 1024; // 4 MiB
 export const ENCRYPTED_CHUNK_SIZE = CHUNK_SIZE + ENCRYPTION_OVERHEAD;

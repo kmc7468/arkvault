@@ -6,6 +6,7 @@ import type { Ciphertext } from "./schema";
 interface BaseUploadSession {
   id: string;
   userId: number;
+  path: string;
   totalChunks: number;
   uploadedChunks: number[];
   expiresAt: Date;
@@ -31,9 +32,9 @@ interface ThumbnailUploadSession extends BaseUploadSession {
 }
 
 export const createFileUploadSession = async (
-  params: Omit<FileUploadSession, "id" | "type" | "uploadedChunks">,
+  params: Omit<FileUploadSession, "type" | "uploadedChunks">,
 ) => {
-  return await db.transaction().execute(async (trx) => {
+  await db.transaction().execute(async (trx) => {
     const mek = await trx
       .selectFrom("master_encryption_key")
       .select("version")
@@ -60,11 +61,13 @@ export const createFileUploadSession = async (
       }
     }
 
-    const { sessionId } = await trx
+    await trx
       .insertInto("upload_session")
       .values({
+        id: params.id,
         type: "file",
         user_id: params.userId,
+        path: params.path,
         total_chunks: params.totalChunks,
         expires_at: params.expiresAt,
         parent_id: params.parentId !== "root" ? params.parentId : null,
@@ -77,16 +80,14 @@ export const createFileUploadSession = async (
         encrypted_created_at: params.encCreatedAt,
         encrypted_last_modified_at: params.encLastModifiedAt,
       })
-      .returning("id as sessionId")
-      .executeTakeFirstOrThrow();
-    return { id: sessionId };
+      .execute();
   });
 };
 
 export const createThumbnailUploadSession = async (
-  params: Omit<ThumbnailUploadSession, "id" | "type" | "uploadedChunks" | "totalChunks">,
+  params: Omit<ThumbnailUploadSession, "type" | "uploadedChunks">,
 ) => {
-  return await db.transaction().execute(async (trx) => {
+  await db.transaction().execute(async (trx) => {
     const file = await trx
       .selectFrom("file")
       .select("data_encryption_key_version")
@@ -101,19 +102,19 @@ export const createThumbnailUploadSession = async (
       throw new IntegrityError("Invalid DEK version");
     }
 
-    const { sessionId } = await trx
+    await trx
       .insertInto("upload_session")
       .values({
+        id: params.id,
         type: "thumbnail",
         user_id: params.userId,
-        total_chunks: 1,
+        path: params.path,
+        total_chunks: params.totalChunks,
         expires_at: params.expiresAt,
         file_id: params.fileId,
         data_encryption_key_version: params.dekVersion,
       })
-      .returning("id as sessionId")
-      .executeTakeFirstOrThrow();
-    return { id: sessionId };
+      .execute();
   });
 };
 
@@ -126,14 +127,14 @@ export const getUploadSession = async (sessionId: string, userId: number) => {
     .where("expires_at", ">", new Date())
     .limit(1)
     .executeTakeFirst();
-
-  if (!session) return null;
-
-  if (session.type === "file") {
+  if (!session) {
+    return null;
+  } else if (session.type === "file") {
     return {
       type: "file",
       id: session.id,
       userId: session.user_id,
+      path: session.path,
       totalChunks: session.total_chunks,
       uploadedChunks: session.uploaded_chunks,
       expiresAt: session.expires_at,
@@ -152,6 +153,7 @@ export const getUploadSession = async (sessionId: string, userId: number) => {
       type: "thumbnail",
       id: session.id,
       userId: session.user_id,
+      path: session.path,
       totalChunks: session.total_chunks,
       uploadedChunks: session.uploaded_chunks,
       expiresAt: session.expires_at,
@@ -176,8 +178,8 @@ export const deleteUploadSession = async (trx: typeof db, sessionId: string) => 
 export const cleanupExpiredUploadSessions = async () => {
   const sessions = await db
     .deleteFrom("upload_session")
-    .where("expires_at", "<", new Date())
-    .returning("id")
+    .where("expires_at", "<=", new Date())
+    .returning("path")
     .execute();
-  return sessions.map(({ id }) => id);
+  return sessions.map(({ path }) => path);
 };

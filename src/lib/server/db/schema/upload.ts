@@ -2,9 +2,10 @@ import type { Generated } from "kysely";
 import type { Ciphertext } from "./utils";
 
 interface UploadSessionTable {
-  id: Generated<string>;
+  id: string;
   type: "file" | "thumbnail";
   user_id: number;
+  path: string;
   total_chunks: number;
   uploaded_chunks: Generated<number[]>;
   expires_at: Date;
