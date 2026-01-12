@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { createHash } from "crypto";
 import { createReadStream, createWriteStream } from "fs";
-import { mkdir, rename } from "fs/promises";
+import { copyFile, mkdir } from "fs/promises";
 import mime from "mime";
 import { dirname } from "path";
 import { v4 as uuidv4 } from "uuid";
@@ -12,6 +12,8 @@ import db from "$lib/server/db/kysely";
 import env from "$lib/server/loadenv";
 import { safeRecursiveRm, safeUnlink } from "$lib/server/modules/filesystem";
 import { router, roleProcedure } from "../init.server";
+
+const UPLOADS_EXPIRES = 24 * 3600 * 1000; // 24 hours
 
 const sessionLocks = new Set<string>();
 
@@ -60,7 +62,7 @@ const uploadRouter = router({
           userId: ctx.session.userId,
           path,
           totalChunks: input.chunks,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+          expiresAt: new Date(Date.now() + UPLOADS_EXPIRES),
           parentId: input.parent,
           mekVersion: input.mekVersion,
           encDek: input.dek,
@@ -89,41 +91,6 @@ const uploadRouter = router({
       }
     }),
 
-  startFileThumbnailUpload: roleProcedure["activeClient"]
-    .input(
-      z.object({
-        file: z.int().positive(),
-        dekVersion: z.date(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const { id, path } = await generateSessionId();
-
-      try {
-        await UploadRepo.createThumbnailUploadSession({
-          id,
-          userId: ctx.session.userId,
-          path,
-          totalChunks: 1, // Up to 4 MiB
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-          fileId: input.file,
-          dekVersion: input.dekVersion,
-        });
-        return { uploadId: id };
-      } catch (e) {
-        await safeRecursiveRm(path);
-
-        if (e instanceof IntegrityError) {
-          if (e.message === "File not found") {
-            throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
-          } else if (e.message === "Invalid DEK version") {
-            throw new TRPCError({ code: "BAD_REQUEST", message: "Mismatched DEK version" });
-          }
-        }
-        throw e;
-      }
-    }),
-
   completeFileUpload: roleProcedure["activeClient"]
     .input(
       z.object({
@@ -143,7 +110,7 @@ const uploadRouter = router({
 
       try {
         const session = await UploadRepo.getUploadSession(uploadId, ctx.session.userId);
-        if (!session || session.type !== "file") {
+        if (session?.type !== "file") {
           throw new TRPCError({ code: "NOT_FOUND", message: "Invalid upload id" });
         } else if (
           (session.hskVersion && !input.contentHmac) ||
@@ -195,6 +162,42 @@ const uploadRouter = router({
       }
     }),
 
+  startFileThumbnailUpload: roleProcedure["activeClient"]
+    .input(
+      z.object({
+        file: z.int().positive(),
+        dekVersion: z.date(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, path } = await generateSessionId();
+
+      try {
+        await UploadRepo.createThumbnailOrMigrationUploadSession({
+          id,
+          type: "thumbnail",
+          userId: ctx.session.userId,
+          path,
+          totalChunks: 1, // Up to 4 MiB
+          expiresAt: new Date(Date.now() + UPLOADS_EXPIRES),
+          fileId: input.file,
+          dekVersion: input.dekVersion,
+        });
+        return { uploadId: id };
+      } catch (e) {
+        await safeRecursiveRm(path);
+
+        if (e instanceof IntegrityError) {
+          if (e.message === "File not found") {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Invalid file id" });
+          } else if (e.message === "Invalid DEK version") {
+            throw new TRPCError({ code: "BAD_REQUEST", message: e.message });
+          }
+        }
+        throw e;
+      }
+    }),
+
   completeFileThumbnailUpload: roleProcedure["activeClient"]
     .input(
       z.object({
@@ -213,7 +216,7 @@ const uploadRouter = router({
 
       try {
         const session = await UploadRepo.getUploadSession(uploadId, ctx.session.userId);
-        if (!session || session.type !== "thumbnail") {
+        if (session?.type !== "thumbnail") {
           throw new TRPCError({ code: "NOT_FOUND", message: "Invalid upload id" });
         } else if (session.uploadedChunks < session.totalChunks) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Upload not completed" });
@@ -221,7 +224,7 @@ const uploadRouter = router({
 
         thumbnailPath = `${env.thumbnailsPath}/${ctx.session.userId}/${uploadId}`;
         await mkdir(dirname(thumbnailPath), { recursive: true });
-        await rename(`${session.path}/1`, thumbnailPath);
+        await copyFile(`${session.path}/1`, thumbnailPath);
 
         const oldThumbnailPath = await db.transaction().execute(async (trx) => {
           const oldPath = await MediaRepo.updateFileThumbnail(
@@ -238,12 +241,10 @@ const uploadRouter = router({
         await Promise.all([safeUnlink(oldThumbnailPath), safeRecursiveRm(session.path)]);
       } catch (e) {
         await safeUnlink(thumbnailPath);
-        if (e instanceof IntegrityError) {
-          if (e.message === "File not found") {
-            throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
-          } else if (e.message === "Invalid DEK version") {
-            throw new TRPCError({ code: "BAD_REQUEST", message: "Mismatched DEK version" });
-          }
+
+        if (e instanceof IntegrityError && e.message === "Invalid DEK version") {
+          // DEK rotated after this upload started
+          throw new TRPCError({ code: "CONFLICT", message: e.message });
         }
         throw e;
       } finally {
@@ -256,19 +257,22 @@ const uploadRouter = router({
       z.object({
         file: z.int().positive(),
         chunks: z.int().positive(),
+        dekVersion: z.date(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const { id, path } = await generateSessionId();
 
       try {
-        await UploadRepo.createMigrationUploadSession({
+        await UploadRepo.createThumbnailOrMigrationUploadSession({
           id,
+          type: "migration",
           userId: ctx.session.userId,
           path,
           totalChunks: input.chunks,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+          expiresAt: new Date(Date.now() + UPLOADS_EXPIRES),
           fileId: input.file,
+          dekVersion: input.dekVersion,
         });
         return { uploadId: id };
       } catch (e) {
@@ -276,9 +280,9 @@ const uploadRouter = router({
 
         if (e instanceof IntegrityError) {
           if (e.message === "File not found") {
-            throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
+            throw new TRPCError({ code: "NOT_FOUND", message: "Invalid file id" });
           } else if (e.message === "File is not legacy") {
-            throw new TRPCError({ code: "BAD_REQUEST", message: "File is not legacy" });
+            throw new TRPCError({ code: "BAD_REQUEST", message: e.message });
           }
         }
         throw e;
@@ -303,7 +307,7 @@ const uploadRouter = router({
 
       try {
         const session = await UploadRepo.getUploadSession(uploadId, ctx.session.userId);
-        if (!session || session.type !== "migration") {
+        if (session?.type !== "migration") {
           throw new TRPCError({ code: "NOT_FOUND", message: "Invalid upload id" });
         } else if (session.uploadedChunks < session.totalChunks) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Upload not completed" });
@@ -328,11 +332,12 @@ const uploadRouter = router({
 
         const hash = hashStream.digest("base64");
         const oldPath = await db.transaction().execute(async (trx) => {
-          const oldPath = await FileRepo.migrateFileContent(
+          const { oldPath } = await FileRepo.migrateFileContent(
             trx,
             ctx.session.userId,
             session.fileId,
             filePath,
+            session.dekVersion!,
             hash,
           );
           await UploadRepo.deleteUploadSession(trx, uploadId);
@@ -342,12 +347,10 @@ const uploadRouter = router({
         await Promise.all([safeUnlink(oldPath), safeRecursiveRm(session.path)]);
       } catch (e) {
         await safeUnlink(filePath);
-        if (e instanceof IntegrityError) {
-          if (e.message === "File not found") {
-            throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
-          } else if (e.message === "File is not legacy") {
-            throw new TRPCError({ code: "BAD_REQUEST", message: "File is not legacy" });
-          }
+
+        if (e instanceof IntegrityError && e.message === "File is not legacy") {
+          // File migrated after this upload started
+          throw new TRPCError({ code: "CONFLICT", message: e.message });
         }
         throw e;
       } finally {

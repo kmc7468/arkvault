@@ -42,18 +42,25 @@ export const clearMigrationStates = () => {
 };
 
 const requestFileUpload = limitFunction(
-  async (state: MigrationState, fileId: number, fileBuffer: ArrayBuffer, dataKey: CryptoKey) => {
+  async (
+    state: MigrationState,
+    fileId: number,
+    fileBuffer: ArrayBuffer,
+    dataKey: CryptoKey,
+    dataKeyVersion: Date,
+  ) => {
     state.status = "uploading";
 
     const { uploadId } = await trpc().upload.startMigrationUpload.mutate({
       file: fileId,
       chunks: Math.ceil(fileBuffer.byteLength / CHUNK_SIZE),
+      dekVersion: dataKeyVersion,
     });
 
     await uploadBlob(uploadId, new Blob([fileBuffer]), dataKey, {
       onProgress(s) {
         state.progress = s.progress;
-        state.rate = s.rateBps;
+        state.rate = s.rate;
       },
     });
 
@@ -76,7 +83,7 @@ export const requestFileMigration = async (fileInfo: FileInfo) => {
   }
 
   try {
-    const dataKey = fileInfo.dataKey?.key;
+    const dataKey = fileInfo.dataKey;
     if (!dataKey) {
       throw new Error("Data key not available");
     }
@@ -86,10 +93,10 @@ export const requestFileMigration = async (fileInfo: FileInfo) => {
     await scheduler.schedule(
       async () => {
         state.status = "downloading";
-        fileBuffer = await requestFileDownload(fileInfo.id, dataKey, true);
+        fileBuffer = await requestFileDownload(fileInfo.id, dataKey.key, true);
         return fileBuffer.byteLength;
       },
-      () => requestFileUpload(state, fileInfo.id, fileBuffer!, dataKey),
+      () => requestFileUpload(state, fileInfo.id, fileBuffer!, dataKey.key, dataKey.version),
     );
   } catch (e) {
     state.status = "error";

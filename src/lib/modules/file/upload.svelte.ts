@@ -58,8 +58,7 @@ const requestDuplicateFileScan = limitFunction(
   ) => {
     state.status = "encryption-pending";
 
-    const hmacResult = await signMessageHmac(file, hmacSecret.secret);
-    const fileSigned = encodeToBase64(hmacResult);
+    const fileSigned = encodeToBase64(await signMessageHmac(file, hmacSecret.secret));
     const files = await trpc().file.listByHash.query({
       hskVersion: hmacSecret.version,
       contentHmac: fileSigned,
@@ -171,7 +170,7 @@ const requestFileUpload = limitFunction(
     await uploadBlob(uploadId, file, dataKey, {
       onProgress(s) {
         state.progress = s.progress;
-        state.rate = s.rateBps;
+        state.rate = s.rate;
       },
     });
 

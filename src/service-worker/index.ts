@@ -3,7 +3,7 @@
 /// <reference lib="webworker" />
 /// <reference types="@sveltejs/kit" />
 
-import { DECRYPTED_FILE_URL_PREFIX } from "./modules/constants";
+import { DECRYPTED_FILE_URL_PREFIX } from "./constants";
 import { decryptFile } from "./handlers";
 import { fileMetadataStore } from "./stores";
 import type { ServiceWorkerMessage, ServiceWorkerResponse } from "./types";

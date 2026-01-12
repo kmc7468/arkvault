@@ -7,8 +7,8 @@ import {
   cleanupExpiredSessions,
   cleanupExpiredSessionUpgradeChallenges,
 } from "$lib/server/db/session";
-import { cleanupExpiredUploadSessions } from "$lib/server/services/upload";
 import { authenticate, setAgentInfo } from "$lib/server/middlewares";
+import { cleanupExpiredUploadSessions } from "$lib/server/services/upload";
 
 export const init: ServerInit = async () => {
   await migrateDB();

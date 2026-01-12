@@ -1,6 +1,6 @@
 import axios from "axios";
 import { limitFunction } from "p-limit";
-import { CHUNK_SIZE, ENCRYPTION_OVERHEAD } from "$lib/constants";
+import { ENCRYPTED_CHUNK_SIZE } from "$lib/constants";
 import { decryptChunk, concatenateBuffers } from "$lib/modules/crypto";
 
 export interface FileDownloadState {
@@ -100,7 +100,7 @@ export const downloadFile = async (id: number, dataKey: CryptoKey, isLegacy: boo
     return await decryptFile(
       state,
       fileEncrypted,
-      isLegacy ? fileEncrypted.byteLength : CHUNK_SIZE + ENCRYPTION_OVERHEAD,
+      isLegacy ? fileEncrypted.byteLength : ENCRYPTED_CHUNK_SIZE,
       dataKey,
     );
   } catch (e) {

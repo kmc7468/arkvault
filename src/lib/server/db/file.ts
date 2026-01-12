@@ -497,21 +497,22 @@ export const migrateFileContent = async (
   userId: number,
   fileId: number,
   newPath: string,
+  dekVersion: Date,
   encContentHash: string,
 ) => {
   const file = await trx
     .selectFrom("file")
-    .select(["path", "encrypted_content_iv"])
+    .select(["path", "data_encryption_key_version", "encrypted_content_iv"])
     .where("id", "=", fileId)
     .where("user_id", "=", userId)
     .limit(1)
     .forUpdate()
     .executeTakeFirst();
-
   if (!file) {
     throw new IntegrityError("File not found");
-  }
-  if (!file.encrypted_content_iv) {
+  } else if (file.data_encryption_key_version.getTime() !== dekVersion.getTime()) {
+    throw new IntegrityError("Invalid DEK version");
+  } else if (!file.encrypted_content_iv) {
     throw new IntegrityError("File is not legacy");
   }
 
@@ -525,7 +526,6 @@ export const migrateFileContent = async (
     .where("id", "=", fileId)
     .where("user_id", "=", userId)
     .execute();
-
   await trx
     .insertInto("file_log")
     .values({
@@ -534,8 +534,7 @@ export const migrateFileContent = async (
       action: "migrate",
     })
     .execute();
-
-  return file.path;
+  return { oldPath: file.path };
 };
 
 export const addFileToCategory = async (fileId: number, categoryId: number) => {

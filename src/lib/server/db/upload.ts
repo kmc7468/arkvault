@@ -26,15 +26,10 @@ interface FileUploadSession extends BaseUploadSession {
   encLastModifiedAt: Ciphertext;
 }
 
-interface ThumbnailUploadSession extends BaseUploadSession {
-  type: "thumbnail";
+interface ThumbnailOrMigrationUploadSession extends BaseUploadSession {
+  type: "thumbnail" | "migration";
   fileId: number;
   dekVersion: Date;
-}
-
-interface MigrationUploadSession extends BaseUploadSession {
-  type: "migration";
-  fileId: number;
 }
 
 export const createFileUploadSession = async (
@@ -91,8 +86,8 @@ export const createFileUploadSession = async (
   });
 };
 
-export const createThumbnailUploadSession = async (
-  params: Omit<ThumbnailUploadSession, "type" | "bitmap" | "uploadedChunks">,
+export const createThumbnailOrMigrationUploadSession = async (
+  params: Omit<ThumbnailOrMigrationUploadSession, "bitmap" | "uploadedChunks">,
 ) => {
   await db.transaction().execute(async (trx) => {
     const file = await trx
@@ -113,7 +108,7 @@ export const createThumbnailUploadSession = async (
       .insertInto("upload_session")
       .values({
         id: params.id,
-        type: "thumbnail",
+        type: params.type,
         user_id: params.userId,
         path: params.path,
         bitmap: Buffer.alloc(Math.ceil(params.totalChunks / 8)),
@@ -121,40 +116,6 @@ export const createThumbnailUploadSession = async (
         expires_at: params.expiresAt,
         file_id: params.fileId,
         data_encryption_key_version: params.dekVersion,
-      })
-      .execute();
-  });
-};
-
-export const createMigrationUploadSession = async (
-  params: Omit<MigrationUploadSession, "type" | "bitmap" | "uploadedChunks">,
-) => {
-  await db.transaction().execute(async (trx) => {
-    const file = await trx
-      .selectFrom("file")
-      .select("encrypted_content_iv")
-      .where("id", "=", params.fileId)
-      .where("user_id", "=", params.userId)
-      .limit(1)
-      .forUpdate()
-      .executeTakeFirst();
-    if (!file) {
-      throw new IntegrityError("File not found");
-    } else if (!file.encrypted_content_iv) {
-      throw new IntegrityError("File is not legacy");
-    }
-
-    await trx
-      .insertInto("upload_session")
-      .values({
-        id: params.id,
-        type: "migration",
-        user_id: params.userId,
-        path: params.path,
-        bitmap: Buffer.alloc(Math.ceil(params.totalChunks / 8)),
-        total_chunks: params.totalChunks,
-        expires_at: params.expiresAt,
-        file_id: params.fileId,
       })
       .execute();
   });
@@ -191,9 +152,9 @@ export const getUploadSession = async (sessionId: string, userId: number) => {
       encCreatedAt: session.encrypted_created_at,
       encLastModifiedAt: session.encrypted_last_modified_at!,
     } satisfies FileUploadSession;
-  } else if (session.type === "thumbnail") {
+  } else {
     return {
-      type: "thumbnail",
+      type: session.type,
       id: session.id,
       userId: session.user_id,
       path: session.path,
@@ -203,19 +164,7 @@ export const getUploadSession = async (sessionId: string, userId: number) => {
       expiresAt: session.expires_at,
       fileId: session.file_id!,
       dekVersion: session.data_encryption_key_version!,
-    } satisfies ThumbnailUploadSession;
-  } else {
-    return {
-      type: "migration",
-      id: session.id,
-      userId: session.user_id,
-      path: session.path,
-      bitmap: session.bitmap,
-      totalChunks: session.total_chunks,
-      uploadedChunks: session.uploaded_chunks,
-      expiresAt: session.expires_at,
-      fileId: session.file_id!,
-    } satisfies MigrationUploadSession;
+    } satisfies ThumbnailOrMigrationUploadSession;
   }
 };
 

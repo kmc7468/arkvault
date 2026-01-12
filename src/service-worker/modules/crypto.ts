@@ -1,4 +1,4 @@
-import { ENCRYPTION_OVERHEAD, CHUNK_SIZE, ENCRYPTED_CHUNK_SIZE } from "./constants";
+import { ENCRYPTION_OVERHEAD, CHUNK_SIZE, ENCRYPTED_CHUNK_SIZE } from "../constants";
 
 export * from "../../lib/modules/crypto";
 

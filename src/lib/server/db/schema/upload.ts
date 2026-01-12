@@ -11,7 +11,6 @@ interface UploadSessionTable {
   uploaded_chunks: Generated<number>;
   expires_at: Date;
 
-  // For file uploads
   parent_id: number | null;
   master_encryption_key_version: number | null;
   encrypted_data_encryption_key: string | null; // Base64
@@ -21,8 +20,6 @@ interface UploadSessionTable {
   encrypted_name: Ciphertext | null;
   encrypted_created_at: Ciphertext | null;
   encrypted_last_modified_at: Ciphertext | null;
-
-  // For thumbnail uploads
   file_id: number | null;
 }
 

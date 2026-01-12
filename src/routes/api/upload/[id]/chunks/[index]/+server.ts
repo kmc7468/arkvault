@@ -1,6 +1,6 @@
 import { error, text } from "@sveltejs/kit";
 import { Readable } from "stream";
-import { ReadableStream } from "stream/web";
+import type { ReadableStream } from "stream/web";
 import { z } from "zod";
 import { parseContentDigestHeader } from "$lib/modules/http";
 import { authorize } from "$lib/server/modules/auth";

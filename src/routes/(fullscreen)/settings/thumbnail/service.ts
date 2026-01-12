@@ -10,7 +10,6 @@ export type GenerationStatus =
   | "queued"
   | "generation-pending"
   | "generating"
-  | "upload-pending"
   | "uploading"
   | "uploaded"
   | "error";
@@ -38,6 +37,8 @@ const requestThumbnailUpload = limitFunction(
       new Blob([fileBuffer], { type: fileInfo.contentType }),
     );
     if (!thumbnail) return false;
+
+    statuses.set(fileInfo.id, "uploading");
 
     const res = await requestFileThumbnailUpload(
       fileInfo.id,

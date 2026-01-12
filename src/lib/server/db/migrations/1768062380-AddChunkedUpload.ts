@@ -52,11 +52,11 @@ export const up = async (db: Kysely<any>) => {
       "hmac_secret_key",
       ["user_id", "version"],
     )
-    .addCheckConstraint("upload_session_ck01", sql`uploaded_chunks <= total_chunks`)
     .addCheckConstraint(
-      "upload_session_ck02",
+      "upload_session_ck01",
       sql`length(bitmap) = ceil(total_chunks / 8.0)::integer`,
     )
+    .addCheckConstraint("upload_session_ck02", sql`uploaded_chunks <= total_chunks`)
     .execute();
 };
 

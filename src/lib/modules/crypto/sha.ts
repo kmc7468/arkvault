@@ -19,13 +19,13 @@ export const generateHmacSecret = async () => {
 };
 
 export const signMessageHmac = async (message: Blob, hmacSecret: CryptoKey) => {
-  const worker = new HmacWorker();
   const stream = message.stream();
   const hmacSecretRaw = new Uint8Array(await crypto.subtle.exportKey("raw", hmacSecret));
+  const worker = new HmacWorker();
 
   return new Promise<Uint8Array>((resolve, reject) => {
-    worker.onmessage = (event: MessageEvent<ResultMessage>) => {
-      resolve(event.data.result);
+    worker.onmessage = ({ data }: MessageEvent<ResultMessage>) => {
+      resolve(data.result);
       worker.terminate();
     };
 

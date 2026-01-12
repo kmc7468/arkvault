@@ -1,4 +1,4 @@
-import { DECRYPTED_FILE_URL_PREFIX, CHUNK_SIZE, ENCRYPTED_CHUNK_SIZE } from "../modules/constants";
+import { DECRYPTED_FILE_URL_PREFIX, CHUNK_SIZE, ENCRYPTED_CHUNK_SIZE } from "../constants";
 import { decryptChunk, getEncryptedRange, getDecryptedSize } from "../modules/crypto";
 import { parseRangeHeader, getContentRangeHeader } from "../modules/http";
 import { getFile } from "../modules/opfs";
@@ -15,9 +15,12 @@ const createResponse = (
   const headers: Record<string, string> = {
     "Accept-Ranges": "bytes",
     "Content-Length": String(range.end - range.start + 1),
-    "Content-Type": contentType ?? "application/octet-stream",
     ...(isRangeRequest ? getContentRangeHeader(range) : {}),
   };
+
+  if (contentType) {
+    headers["Content-Type"] = contentType;
+  }
 
   if (downloadFilename) {
     headers["Content-Disposition"] =

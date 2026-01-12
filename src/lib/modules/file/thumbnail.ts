@@ -1,7 +1,7 @@
 import { LRUCache } from "lru-cache";
 import { writable, type Writable } from "svelte/store";
 import { browser } from "$app/environment";
-import { decryptData } from "$lib/modules/crypto";
+import { decryptChunk } from "$lib/modules/crypto";
 import type { SummarizedFileInfo } from "$lib/modules/filesystem";
 import { readFile, writeFile, deleteFile, deleteDirectory } from "$lib/modules/opfs";
 import { getThumbnailUrl } from "$lib/modules/thumbnail";
@@ -20,12 +20,7 @@ const fetchFromServer = async (fileId: number, dataKey: CryptoKey) => {
   const res = await fetch(`/api/file/${fileId}/thumbnail/download`);
   if (!res.ok) return null;
 
-  const thumbnailEncrypted = await res.arrayBuffer();
-  const thumbnailBuffer = await decryptData(
-    thumbnailEncrypted.slice(12),
-    thumbnailEncrypted.slice(0, 12),
-    dataKey,
-  );
+  const thumbnailBuffer = await decryptChunk(await res.arrayBuffer(), dataKey);
 
   void writeFile(`/thumbnail/file/${fileId}`, thumbnailBuffer);
   return getThumbnailUrl(thumbnailBuffer);

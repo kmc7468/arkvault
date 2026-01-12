@@ -9,6 +9,7 @@ services:
     volumes:
       - ./data/library:/app/data/library
       - ./data/thumbnails:/app/data/thumbnails
+      - ./data/uploads:/app/data/uploads
     environment:
       # ArkVault
       - DATABASE_HOST=database

@@ -3,27 +3,32 @@ import pLimit from "p-limit";
 import { ENCRYPTION_OVERHEAD, CHUNK_SIZE } from "$lib/constants";
 import { encryptChunk, digestMessage, encodeToBase64 } from "$lib/modules/crypto";
 
-type UploadStats = {
-  progress: number; // 0..1 (암호화 후 기준)
-  rateBps: number; // bytes/sec
-  uploadedBytes: number;
-  totalBytes: number;
-};
+interface UploadStats {
+  progress: number;
+  rate: number;
+}
 
-function createSpeedMeter(windowMs = 1500) {
-  const samples: Array<{ t: number; b: number }> = [];
-  return (bytesNow: number) => {
+const createSpeedMeter = (timeWindow = 1500) => {
+  const samples: { t: number; b: number }[] = [];
+  let lastSpeed = 0;
+
+  return (bytesNow?: number) => {
+    if (!bytesNow) return lastSpeed;
+
     const now = performance.now();
     samples.push({ t: now, b: bytesNow });
-    const cutoff = now - windowMs;
+
+    const cutoff = now - timeWindow;
     while (samples.length > 2 && samples[0]!.t < cutoff) samples.shift();
 
     const first = samples[0]!;
     const dt = now - first.t;
     const db = bytesNow - first.b;
-    return dt > 0 ? (db / dt) * 1000 : 0;
+
+    lastSpeed = dt > 0 ? (db / dt) * 1000 : 0;
+    return lastSpeed;
   };
-}
+};
 
 const uploadChunk = async (
   uploadId: string,
@@ -66,10 +71,10 @@ export const uploadBlob = async (
     if (!onProgress) return;
 
     const uploadedBytes = uploadedByChunk.reduce((a, b) => a + b, 0);
-    const rateBps = speedMeter(uploadedBytes);
+    const rate = speedMeter(uploadedBytes);
     const progress = Math.min(1, uploadedBytes / totalBytes);
 
-    onProgress({ progress, rateBps, uploadedBytes, totalBytes });
+    onProgress({ progress, rate });
   };
 
   const onChunkProgress = (idx: number, loaded: number) => {
@@ -84,7 +89,7 @@ export const uploadBlob = async (
       limit(() =>
         uploadChunk(
           uploadId,
-          i + 1, // 1-based chunk index
+          i + 1,
           blob.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE),
           dataKey,
           onChunkProgress,
@@ -93,11 +98,5 @@ export const uploadBlob = async (
     ),
   );
 
-  // 완료 보정
-  onProgress?.({
-    progress: 1,
-    rateBps: 0,
-    uploadedBytes: totalBytes,
-    totalBytes,
-  });
+  onProgress?.({ progress: 1, rate: speedMeter() });
 };
