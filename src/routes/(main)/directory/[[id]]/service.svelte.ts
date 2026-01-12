@@ -81,14 +81,16 @@ export const requestDirectoryCreation = async (
 export const requestFileUpload = async (
   file: File,
   parentId: "root" | number,
-  hmacSecret: HmacSecret,
   masterKey: MasterKey,
+  hmacSecret: HmacSecret,
   onDuplicate: () => Promise<boolean>,
 ) => {
-  const res = await uploadFile(file, parentId, hmacSecret, masterKey, onDuplicate);
+  const res = await uploadFile(file, parentId, masterKey, hmacSecret, onDuplicate);
   if (!res) return false;
 
-  storeFileCache(res.fileId, res.fileBuffer); // Intended
+  if (res.fileBuffer) {
+    storeFileCache(res.fileId, res.fileBuffer); // Intended
+  }
   if (res.thumbnailBuffer) {
     storeFileThumbnailCache(res.fileId, res.thumbnailBuffer); // Intended
   }

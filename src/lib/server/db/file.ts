@@ -15,8 +15,6 @@ interface Directory {
   encName: Ciphertext;
 }
 
-export type NewDirectory = Omit<Directory, "id">;
-
 interface File {
   id: number;
   parentId: DirectoryId;
@@ -28,14 +26,12 @@ interface File {
   hskVersion: number | null;
   contentHmac: string | null;
   contentType: string;
-  encContentIv: string;
+  encContentIv: string | null;
   encContentHash: string;
   encName: Ciphertext;
   encCreatedAt: Ciphertext | null;
   encLastModifiedAt: Ciphertext;
 }
-
-export type NewFile = Omit<File, "id">;
 
 interface FileCategory {
   id: number;
@@ -46,7 +42,7 @@ interface FileCategory {
   encName: Ciphertext;
 }
 
-export const registerDirectory = async (params: NewDirectory) => {
+export const registerDirectory = async (params: Omit<Directory, "id">) => {
   await db.transaction().execute(async (trx) => {
     const mek = await trx
       .selectFrom("master_encryption_key")
@@ -214,69 +210,41 @@ export const unregisterDirectory = async (userId: number, directoryId: number) =
     });
 };
 
-export const registerFile = async (params: NewFile) => {
+export const registerFile = async (trx: typeof db, params: Omit<File, "id">) => {
   if ((params.hskVersion && !params.contentHmac) || (!params.hskVersion && params.contentHmac)) {
     throw new Error("Invalid arguments");
   }
 
-  return await db.transaction().execute(async (trx) => {
-    const mek = await trx
-      .selectFrom("master_encryption_key")
-      .select("version")
-      .where("user_id", "=", params.userId)
-      .where("state", "=", "active")
-      .limit(1)
-      .forUpdate()
-      .executeTakeFirst();
-    if (mek?.version !== params.mekVersion) {
-      throw new IntegrityError("Inactive MEK version");
-    }
-
-    if (params.hskVersion) {
-      const hsk = await trx
-        .selectFrom("hmac_secret_key")
-        .select("version")
-        .where("user_id", "=", params.userId)
-        .where("state", "=", "active")
-        .limit(1)
-        .forUpdate()
-        .executeTakeFirst();
-      if (hsk?.version !== params.hskVersion) {
-        throw new IntegrityError("Inactive HSK version");
-      }
-    }
-
-    const { fileId } = await trx
-      .insertInto("file")
-      .values({
-        parent_id: params.parentId !== "root" ? params.parentId : null,
-        user_id: params.userId,
-        path: params.path,
-        master_encryption_key_version: params.mekVersion,
-        encrypted_data_encryption_key: params.encDek,
-        data_encryption_key_version: params.dekVersion,
-        hmac_secret_key_version: params.hskVersion,
-        content_hmac: params.contentHmac,
-        content_type: params.contentType,
-        encrypted_content_iv: params.encContentIv,
-        encrypted_content_hash: params.encContentHash,
-        encrypted_name: params.encName,
-        encrypted_created_at: params.encCreatedAt,
-        encrypted_last_modified_at: params.encLastModifiedAt,
-      })
-      .returning("id as fileId")
-      .executeTakeFirstOrThrow();
-    await trx
-      .insertInto("file_log")
-      .values({
-        file_id: fileId,
-        timestamp: new Date(),
-        action: "create",
-        new_name: params.encName,
-      })
-      .execute();
-    return { id: fileId };
-  });
+  const { fileId } = await trx
+    .insertInto("file")
+    .values({
+      parent_id: params.parentId !== "root" ? params.parentId : null,
+      user_id: params.userId,
+      path: params.path,
+      master_encryption_key_version: params.mekVersion,
+      encrypted_data_encryption_key: params.encDek,
+      data_encryption_key_version: params.dekVersion,
+      hmac_secret_key_version: params.hskVersion,
+      content_hmac: params.contentHmac,
+      content_type: params.contentType,
+      encrypted_content_iv: params.encContentIv,
+      encrypted_content_hash: params.encContentHash,
+      encrypted_name: params.encName,
+      encrypted_created_at: params.encCreatedAt,
+      encrypted_last_modified_at: params.encLastModifiedAt,
+    })
+    .returning("id as fileId")
+    .executeTakeFirstOrThrow();
+  await trx
+    .insertInto("file_log")
+    .values({
+      file_id: fileId,
+      timestamp: new Date(),
+      action: "create",
+      new_name: params.encName,
+    })
+    .execute();
+  return { id: fileId };
 };
 
 export const getAllFilesByParent = async (userId: number, parentId: DirectoryId) => {
@@ -363,6 +331,16 @@ export const getAllFilesByCategory = async (
 
 export const getAllFileIds = async (userId: number) => {
   const files = await db.selectFrom("file").select("id").where("user_id", "=", userId).execute();
+  return files.map(({ id }) => id);
+};
+
+export const getLegacyFileIds = async (userId: number) => {
+  const files = await db
+    .selectFrom("file")
+    .select("id")
+    .where("user_id", "=", userId)
+    .where("encrypted_content_iv", "is not", null)
+    .execute();
   return files.map(({ id }) => id);
 };
 
@@ -512,6 +490,51 @@ export const unregisterFile = async (userId: number, fileId: number) => {
     await trx.deleteFrom("file").where("id", "=", fileId).execute();
     return file;
   });
+};
+
+export const migrateFileContent = async (
+  trx: typeof db,
+  userId: number,
+  fileId: number,
+  newPath: string,
+  dekVersion: Date,
+  encContentHash: string,
+) => {
+  const file = await trx
+    .selectFrom("file")
+    .select(["path", "data_encryption_key_version", "encrypted_content_iv"])
+    .where("id", "=", fileId)
+    .where("user_id", "=", userId)
+    .limit(1)
+    .forUpdate()
+    .executeTakeFirst();
+  if (!file) {
+    throw new IntegrityError("File not found");
+  } else if (file.data_encryption_key_version.getTime() !== dekVersion.getTime()) {
+    throw new IntegrityError("Invalid DEK version");
+  } else if (!file.encrypted_content_iv) {
+    throw new IntegrityError("File is not legacy");
+  }
+
+  await trx
+    .updateTable("file")
+    .set({
+      path: newPath,
+      encrypted_content_iv: null,
+      encrypted_content_hash: encContentHash,
+    })
+    .where("id", "=", fileId)
+    .where("user_id", "=", userId)
+    .execute();
+  await trx
+    .insertInto("file_log")
+    .values({
+      file_id: fileId,
+      timestamp: new Date(),
+      action: "migrate",
+    })
+    .execute();
+  return { oldPath: file.path };
 };
 
 export const addFileToCategory = async (fileId: number, categoryId: number) => {

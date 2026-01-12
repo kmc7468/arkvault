@@ -1,5 +1,5 @@
 import type { ColumnType, Generated } from "kysely";
-import type { Ciphertext } from "./util";
+import type { Ciphertext } from "./utils";
 
 interface DirectoryTable {
   id: Generated<number>;
@@ -30,7 +30,7 @@ interface FileTable {
   hmac_secret_key_version: number | null;
   content_hmac: string | null; // Base64
   content_type: string;
-  encrypted_content_iv: string; // Base64
+  encrypted_content_iv: string | null; // Base64
   encrypted_content_hash: string; // Base64
   encrypted_name: Ciphertext;
   encrypted_created_at: Ciphertext | null;
@@ -41,7 +41,7 @@ interface FileLogTable {
   id: Generated<number>;
   file_id: number;
   timestamp: ColumnType<Date, Date, never>;
-  action: "create" | "rename" | "add-to-category" | "remove-from-category";
+  action: "create" | "rename" | "migrate" | "add-to-category" | "remove-from-category";
   new_name: Ciphertext | null;
   category_id: number | null;
 }

@@ -19,12 +19,12 @@ const fileRouter = router({
 
       const categories = await FileRepo.getAllFileCategories(input.id);
       return {
+        isLegacy: !!file.encContentIv,
         parent: file.parentId,
         mekVersion: file.mekVersion,
         dek: file.encDek,
         dekVersion: file.dekVersion,
         contentType: file.contentType,
-        contentIv: file.encContentIv,
         name: file.encName.ciphertext,
         nameIv: file.encName.iv,
         createdAt: file.encCreatedAt?.ciphertext,
@@ -53,12 +53,12 @@ const fileRouter = router({
       const files = await FileRepo.getFilesWithCategories(ctx.session.userId, input.ids);
       return files.map((file) => ({
         id: file.id,
+        isLegacy: !!file.encContentIv,
         parent: file.parentId,
         mekVersion: file.mekVersion,
         dek: file.encDek,
         dekVersion: file.dekVersion,
         contentType: file.contentType,
-        contentIv: file.encContentIv,
         name: file.encName.ciphertext,
         nameIv: file.encName.iv,
         createdAt: file.encCreatedAt?.ciphertext,
@@ -98,6 +98,10 @@ const fileRouter = router({
 
   listWithoutThumbnail: roleProcedure["activeClient"].query(async ({ ctx }) => {
     return await MediaRepo.getMissingFileThumbnails(ctx.session.userId);
+  }),
+
+  listLegacy: roleProcedure["activeClient"].query(async ({ ctx }) => {
+    return await FileRepo.getLegacyFileIds(ctx.session.userId);
   }),
 
   rename: roleProcedure["activeClient"]
@@ -158,7 +162,7 @@ const fileRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "File or its thumbnail not found" });
       }
 
-      return { updatedAt: thumbnail.updatedAt, contentIv: thumbnail.encContentIv };
+      return { updatedAt: thumbnail.updatedAt };
     }),
 });
 

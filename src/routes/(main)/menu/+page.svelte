@@ -5,6 +5,7 @@
 
   import IconStorage from "~icons/material-symbols/storage";
   import IconImage from "~icons/material-symbols/image";
+  import IconLockReset from "~icons/material-symbols/lock-reset";
   import IconPassword from "~icons/material-symbols/password";
   import IconLogout from "~icons/material-symbols/logout";
 
@@ -40,6 +41,13 @@
       iconColor="text-blue-500"
     >
       썸네일
+    </MenuEntryButton>
+    <MenuEntryButton
+      onclick={() => goto("/settings/migration")}
+      icon={IconLockReset}
+      iconColor="text-teal-500"
+    >
+      암호화 마이그레이션
     </MenuEntryButton>
   </div>
   <div class="space-y-2">

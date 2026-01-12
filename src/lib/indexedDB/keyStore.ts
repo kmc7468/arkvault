@@ -70,12 +70,12 @@ export const storeMasterKeys = async (keys: MasterKey[]) => {
 };
 
 export const getHmacSecrets = async () => {
-  return await keyStore.hmacSecret.toArray();
+  return (await keyStore.hmacSecret.toArray()).filter(({ secret }) => secret.extractable);
 };
 
 export const storeHmacSecrets = async (secrets: HmacSecret[]) => {
-  if (secrets.some(({ secret }) => secret.extractable)) {
-    throw new Error("Hmac secrets must be nonextractable");
+  if (secrets.some(({ secret }) => !secret.extractable)) {
+    throw new Error("Hmac secrets must be extractable");
   }
   await keyStore.hmacSecret.bulkPut(secrets);
 };

@@ -8,6 +8,7 @@ import {
   cleanupExpiredSessionUpgradeChallenges,
 } from "$lib/server/db/session";
 import { authenticate, setAgentInfo } from "$lib/server/middlewares";
+import { cleanupExpiredUploadSessions } from "$lib/server/services/upload";
 
 export const init: ServerInit = async () => {
   await migrateDB();
@@ -16,6 +17,7 @@ export const init: ServerInit = async () => {
     cleanupExpiredUserClientChallenges();
     cleanupExpiredSessions();
     cleanupExpiredSessionUpgradeChallenges();
+    cleanupExpiredUploadSessions();
   });
 };
 

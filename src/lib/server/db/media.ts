@@ -6,7 +6,7 @@ interface Thumbnail {
   id: number;
   path: string;
   updatedAt: Date;
-  encContentIv: string;
+  encContentIv: string | null;
 }
 
 interface FileThumbnail extends Thumbnail {
@@ -14,54 +14,53 @@ interface FileThumbnail extends Thumbnail {
 }
 
 export const updateFileThumbnail = async (
+  trx: typeof db,
   userId: number,
   fileId: number,
   dekVersion: Date,
   path: string,
-  encContentIv: string,
+  encContentIv: string | null,
 ) => {
-  return await db.transaction().execute(async (trx) => {
-    const file = await trx
-      .selectFrom("file")
-      .select("data_encryption_key_version")
-      .where("id", "=", fileId)
-      .where("user_id", "=", userId)
-      .limit(1)
-      .forUpdate()
-      .executeTakeFirst();
-    if (!file) {
-      throw new IntegrityError("File not found");
-    } else if (file.data_encryption_key_version.getTime() !== dekVersion.getTime()) {
-      throw new IntegrityError("Invalid DEK version");
-    }
+  const file = await trx
+    .selectFrom("file")
+    .select("data_encryption_key_version")
+    .where("id", "=", fileId)
+    .where("user_id", "=", userId)
+    .limit(1)
+    .forUpdate()
+    .executeTakeFirst();
+  if (!file) {
+    throw new IntegrityError("File not found");
+  } else if (file.data_encryption_key_version.getTime() !== dekVersion.getTime()) {
+    throw new IntegrityError("Invalid DEK version");
+  }
 
-    const thumbnail = await trx
-      .selectFrom("thumbnail")
-      .select("path as oldPath")
-      .where("file_id", "=", fileId)
-      .limit(1)
-      .forUpdate()
-      .executeTakeFirst();
-    const now = new Date();
+  const thumbnail = await trx
+    .selectFrom("thumbnail")
+    .select("path as oldPath")
+    .where("file_id", "=", fileId)
+    .limit(1)
+    .forUpdate()
+    .executeTakeFirst();
+  const now = new Date();
 
-    await trx
-      .insertInto("thumbnail")
-      .values({
-        file_id: fileId,
+  await trx
+    .insertInto("thumbnail")
+    .values({
+      file_id: fileId,
+      path,
+      updated_at: now,
+      encrypted_content_iv: encContentIv,
+    })
+    .onConflict((oc) =>
+      oc.column("file_id").doUpdateSet({
         path,
         updated_at: now,
         encrypted_content_iv: encContentIv,
-      })
-      .onConflict((oc) =>
-        oc.column("file_id").doUpdateSet({
-          path,
-          updated_at: now,
-          encrypted_content_iv: encContentIv,
-        }),
-      )
-      .execute();
-    return thumbnail?.oldPath ?? null;
-  });
+      }),
+    )
+    .execute();
+  return thumbnail?.oldPath ?? null;
 };
 
 export const getFileThumbnail = async (userId: number, fileId: number) => {

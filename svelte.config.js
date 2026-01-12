@@ -8,6 +8,7 @@ const config = {
     adapter: adapter(),
     alias: {
       $trpc: "./src/trpc",
+      $workers: "./src/workers",
     },
   },
 };

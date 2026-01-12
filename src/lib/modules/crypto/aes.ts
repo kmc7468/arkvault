@@ -1,8 +1,15 @@
-import { encodeString, decodeString, encodeToBase64, decodeFromBase64 } from "./util";
+import { AES_GCM_IV_SIZE } from "$lib/constants";
+import {
+  encodeString,
+  decodeString,
+  encodeToBase64,
+  decodeFromBase64,
+  concatenateBuffers,
+} from "./utils";
 
 export const generateMasterKey = async () => {
   return {
-    masterKey: await window.crypto.subtle.generateKey(
+    masterKey: await crypto.subtle.generateKey(
       {
         name: "AES-KW",
         length: 256,
@@ -15,7 +22,7 @@ export const generateMasterKey = async () => {
 
 export const generateDataKey = async () => {
   return {
-    dataKey: await window.crypto.subtle.generateKey(
+    dataKey: await crypto.subtle.generateKey(
       {
         name: "AES-GCM",
         length: 256,
@@ -28,9 +35,9 @@ export const generateDataKey = async () => {
 };
 
 export const makeAESKeyNonextractable = async (key: CryptoKey) => {
-  return await window.crypto.subtle.importKey(
+  return await crypto.subtle.importKey(
     "raw",
-    await window.crypto.subtle.exportKey("raw", key),
+    await crypto.subtle.exportKey("raw", key),
     key.algorithm,
     false,
     key.usages,
@@ -38,12 +45,12 @@ export const makeAESKeyNonextractable = async (key: CryptoKey) => {
 };
 
 export const wrapDataKey = async (dataKey: CryptoKey, masterKey: CryptoKey) => {
-  return encodeToBase64(await window.crypto.subtle.wrapKey("raw", dataKey, masterKey, "AES-KW"));
+  return encodeToBase64(await crypto.subtle.wrapKey("raw", dataKey, masterKey, "AES-KW"));
 };
 
 export const unwrapDataKey = async (dataKeyWrapped: string, masterKey: CryptoKey) => {
   return {
-    dataKey: await window.crypto.subtle.unwrapKey(
+    dataKey: await crypto.subtle.unwrapKey(
       "raw",
       decodeFromBase64(dataKeyWrapped),
       masterKey,
@@ -56,12 +63,12 @@ export const unwrapDataKey = async (dataKeyWrapped: string, masterKey: CryptoKey
 };
 
 export const wrapHmacSecret = async (hmacSecret: CryptoKey, masterKey: CryptoKey) => {
-  return encodeToBase64(await window.crypto.subtle.wrapKey("raw", hmacSecret, masterKey, "AES-KW"));
+  return encodeToBase64(await crypto.subtle.wrapKey("raw", hmacSecret, masterKey, "AES-KW"));
 };
 
 export const unwrapHmacSecret = async (hmacSecretWrapped: string, masterKey: CryptoKey) => {
   return {
-    hmacSecret: await window.crypto.subtle.unwrapKey(
+    hmacSecret: await crypto.subtle.unwrapKey(
       "raw",
       decodeFromBase64(hmacSecretWrapped),
       masterKey,
@@ -70,15 +77,15 @@ export const unwrapHmacSecret = async (hmacSecretWrapped: string, masterKey: Cry
         name: "HMAC",
         hash: "SHA-256",
       } satisfies HmacImportParams,
-      false, // Nonextractable
+      true, // Extractable
       ["sign", "verify"],
     ),
   };
 };
 
 export const encryptData = async (data: BufferSource, dataKey: CryptoKey) => {
-  const iv = window.crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = await window.crypto.subtle.encrypt(
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt(
     {
       name: "AES-GCM",
       iv,
@@ -86,14 +93,18 @@ export const encryptData = async (data: BufferSource, dataKey: CryptoKey) => {
     dataKey,
     data,
   );
-  return { ciphertext, iv: encodeToBase64(iv.buffer) };
+  return { ciphertext, iv: iv.buffer };
 };
 
-export const decryptData = async (ciphertext: BufferSource, iv: string, dataKey: CryptoKey) => {
-  return await window.crypto.subtle.decrypt(
+export const decryptData = async (
+  ciphertext: BufferSource,
+  iv: string | BufferSource,
+  dataKey: CryptoKey,
+) => {
+  return await crypto.subtle.decrypt(
     {
       name: "AES-GCM",
-      iv: decodeFromBase64(iv),
+      iv: typeof iv === "string" ? decodeFromBase64(iv) : iv,
     } satisfies AesGcmParams,
     dataKey,
     ciphertext,
@@ -102,9 +113,22 @@ export const decryptData = async (ciphertext: BufferSource, iv: string, dataKey:
 
 export const encryptString = async (plaintext: string, dataKey: CryptoKey) => {
   const { ciphertext, iv } = await encryptData(encodeString(plaintext), dataKey);
-  return { ciphertext: encodeToBase64(ciphertext), iv };
+  return { ciphertext: encodeToBase64(ciphertext), iv: encodeToBase64(iv) };
 };
 
 export const decryptString = async (ciphertext: string, iv: string, dataKey: CryptoKey) => {
   return decodeString(await decryptData(decodeFromBase64(ciphertext), iv, dataKey));
+};
+
+export const encryptChunk = async (chunk: ArrayBuffer, dataKey: CryptoKey) => {
+  const { ciphertext, iv } = await encryptData(chunk, dataKey);
+  return concatenateBuffers(iv, ciphertext).buffer;
+};
+
+export const decryptChunk = async (encryptedChunk: ArrayBuffer, dataKey: CryptoKey) => {
+  return await decryptData(
+    encryptedChunk.slice(AES_GCM_IV_SIZE),
+    encryptedChunk.slice(0, AES_GCM_IV_SIZE),
+    dataKey,
+  );
 };

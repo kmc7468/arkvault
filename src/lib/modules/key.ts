@@ -2,7 +2,7 @@ import { z } from "zod";
 import { storeClientKey } from "$lib/indexedDB";
 import type { ClientKeys } from "$lib/stores";
 
-const serializedClientKeysSchema = z.intersection(
+const SerializedClientKeysSchema = z.intersection(
   z.object({
     generator: z.literal("ArkVault"),
     exportedAt: z.iso.datetime(),
@@ -16,7 +16,7 @@ const serializedClientKeysSchema = z.intersection(
   }),
 );
 
-type SerializedClientKeys = z.infer<typeof serializedClientKeysSchema>;
+type SerializedClientKeys = z.infer<typeof SerializedClientKeysSchema>;
 
 type DeserializedClientKeys = {
   encryptKeyBase64: string;
@@ -43,7 +43,7 @@ export const serializeClientKeys = ({
 };
 
 export const deserializeClientKeys = (serialized: string) => {
-  const zodRes = serializedClientKeysSchema.safeParse(JSON.parse(serialized));
+  const zodRes = SerializedClientKeysSchema.safeParse(JSON.parse(serialized));
   if (zodRes.success) {
     return {
       encryptKeyBase64: zodRes.data.encryptKey,

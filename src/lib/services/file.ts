@@ -6,38 +6,42 @@ import {
   downloadFile,
   deleteFileThumbnailCache,
 } from "$lib/modules/file";
-import type { FileThumbnailUploadRequest } from "$lib/server/schemas";
+import { uploadBlob } from "$lib/modules/upload";
 import { trpc } from "$trpc/client";
 
 export const requestFileDownload = async (
   fileId: number,
-  fileEncryptedIv: string,
   dataKey: CryptoKey,
+  isLegacy: boolean,
 ) => {
   const cache = await getFileCache(fileId);
   if (cache) return cache;
 
-  const fileBuffer = await downloadFile(fileId, fileEncryptedIv, dataKey);
+  const fileBuffer = await downloadFile(fileId, dataKey, isLegacy);
   storeFileCache(fileId, fileBuffer); // Intended
   return fileBuffer;
 };
 
 export const requestFileThumbnailUpload = async (
   fileId: number,
+  thumbnail: Blob,
+  dataKey: CryptoKey,
   dataKeyVersion: Date,
-  thumbnailEncrypted: { ciphertext: ArrayBuffer; iv: string },
 ) => {
-  const form = new FormData();
-  form.set(
-    "metadata",
-    JSON.stringify({
-      dekVersion: dataKeyVersion.toISOString(),
-      contentIv: thumbnailEncrypted.iv,
-    } satisfies FileThumbnailUploadRequest),
-  );
-  form.set("content", new Blob([thumbnailEncrypted.ciphertext]));
+  try {
+    const { uploadId } = await trpc().upload.startFileThumbnailUpload.mutate({
+      file: fileId,
+      dekVersion: dataKeyVersion,
+    });
 
-  return await fetch(`/api/file/${fileId}/thumbnail/upload`, { method: "POST", body: form });
+    await uploadBlob(uploadId, thumbnail, dataKey);
+
+    await trpc().upload.completeFileThumbnailUpload.mutate({ uploadId });
+    return true;
+  } catch {
+    // TODO: Error Handling
+    return false;
+  }
 };
 
 export const requestDeletedFilesCleanup = async () => {

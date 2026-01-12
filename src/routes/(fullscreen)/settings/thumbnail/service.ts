@@ -1,17 +1,15 @@
 import { limitFunction } from "p-limit";
 import { SvelteMap } from "svelte/reactivity";
-import { encryptData } from "$lib/modules/crypto";
 import { storeFileThumbnailCache } from "$lib/modules/file";
 import type { FileInfo } from "$lib/modules/filesystem";
-import { Scheduler } from "$lib/modules/scheduler";
-import { generateThumbnail as doGenerateThumbnail } from "$lib/modules/thumbnail";
+import { generateThumbnail } from "$lib/modules/thumbnail";
 import { requestFileDownload, requestFileThumbnailUpload } from "$lib/services/file";
+import { Scheduler } from "$lib/utils";
 
 export type GenerationStatus =
   | "queued"
   | "generation-pending"
   | "generating"
-  | "upload-pending"
   | "uploading"
   | "uploaded"
   | "error";
@@ -31,33 +29,27 @@ export const clearThumbnailGenerationStatuses = () => {
   }
 };
 
-const generateThumbnail = limitFunction(
-  async (fileId: number, fileBuffer: ArrayBuffer, fileType: string, dataKey: CryptoKey) => {
-    statuses.set(fileId, "generating");
-
-    const thumbnail = await doGenerateThumbnail(fileBuffer, fileType);
-    if (!thumbnail) return null;
-
-    const thumbnailBuffer = await thumbnail.arrayBuffer();
-    const thumbnailEncrypted = await encryptData(thumbnailBuffer, dataKey);
-    statuses.set(fileId, "upload-pending");
-    return { plaintext: thumbnailBuffer, ...thumbnailEncrypted };
-  },
-  { concurrency: 4 },
-);
-
 const requestThumbnailUpload = limitFunction(
-  async (
-    fileId: number,
-    dataKeyVersion: Date,
-    thumbnail: { plaintext: ArrayBuffer; ciphertext: ArrayBuffer; iv: string },
-  ) => {
-    statuses.set(fileId, "uploading");
+  async (fileInfo: FileInfo, fileBuffer: ArrayBuffer) => {
+    statuses.set(fileInfo.id, "generating");
 
-    const res = await requestFileThumbnailUpload(fileId, dataKeyVersion, thumbnail);
-    if (!res.ok) return false;
-    statuses.set(fileId, "uploaded");
-    storeFileThumbnailCache(fileId, thumbnail.plaintext); // Intended
+    const thumbnail = await generateThumbnail(
+      new Blob([fileBuffer], { type: fileInfo.contentType }),
+    );
+    if (!thumbnail) return false;
+
+    statuses.set(fileInfo.id, "uploading");
+
+    const res = await requestFileThumbnailUpload(
+      fileInfo.id,
+      thumbnail,
+      fileInfo.dataKey?.key!,
+      fileInfo.dataKey?.version!,
+    );
+    if (!res) return false;
+
+    statuses.set(fileInfo.id, "uploaded");
+    void thumbnail.arrayBuffer().then((buffer) => storeFileThumbnailCache(fileInfo.id, buffer));
     return true;
   },
   { concurrency: 4 },
@@ -77,20 +69,11 @@ export const requestThumbnailGeneration = async (fileInfo: FileInfo) => {
     await scheduler.schedule(
       async () => {
         statuses.set(fileInfo.id, "generation-pending");
-        file = await requestFileDownload(fileInfo.id, fileInfo.contentIv!, fileInfo.dataKey?.key!);
+        file = await requestFileDownload(fileInfo.id, fileInfo.dataKey?.key!, fileInfo.isLegacy!);
         return file.byteLength;
       },
       async () => {
-        const thumbnail = await generateThumbnail(
-          fileInfo.id,
-          file!,
-          fileInfo.contentType,
-          fileInfo.dataKey?.key!,
-        );
-        if (
-          !thumbnail ||
-          !(await requestThumbnailUpload(fileInfo.id, fileInfo.dataKey?.version!, thumbnail))
-        ) {
+        if (!(await requestThumbnailUpload(fileInfo, file!))) {
           statuses.set(fileInfo.id, "error");
         }
       },

@@ -1,6 +1,7 @@
 import axios from "axios";
 import { limitFunction } from "p-limit";
-import { decryptData } from "$lib/modules/crypto";
+import { ENCRYPTED_CHUNK_SIZE } from "$lib/constants";
+import { decryptChunk, concatenateBuffers } from "$lib/modules/crypto";
 
 export interface FileDownloadState {
   id: number;
@@ -65,13 +66,21 @@ const decryptFile = limitFunction(
   async (
     state: FileDownloadState,
     fileEncrypted: ArrayBuffer,
-    fileEncryptedIv: string,
+    encryptedChunkSize: number,
     dataKey: CryptoKey,
   ) => {
     state.status = "decrypting";
 
-    const fileBuffer = await decryptData(fileEncrypted, fileEncryptedIv, dataKey);
+    const chunks: ArrayBuffer[] = [];
+    let offset = 0;
 
+    while (offset < fileEncrypted.byteLength) {
+      const nextOffset = Math.min(offset + encryptedChunkSize, fileEncrypted.byteLength);
+      chunks.push(await decryptChunk(fileEncrypted.slice(offset, nextOffset), dataKey));
+      offset = nextOffset;
+    }
+
+    const fileBuffer = concatenateBuffers(...chunks).buffer;
     state.status = "decrypted";
     state.result = fileBuffer;
     return fileBuffer;
@@ -79,7 +88,7 @@ const decryptFile = limitFunction(
   { concurrency: 4 },
 );
 
-export const downloadFile = async (id: number, fileEncryptedIv: string, dataKey: CryptoKey) => {
+export const downloadFile = async (id: number, dataKey: CryptoKey, isLegacy: boolean) => {
   downloadingFiles.push({
     id,
     status: "download-pending",
@@ -87,7 +96,13 @@ export const downloadFile = async (id: number, fileEncryptedIv: string, dataKey:
   const state = downloadingFiles.at(-1)!;
 
   try {
-    return await decryptFile(state, await requestFileDownload(state, id), fileEncryptedIv, dataKey);
+    const fileEncrypted = await requestFileDownload(state, id);
+    return await decryptFile(
+      state,
+      fileEncrypted,
+      isLegacy ? fileEncrypted.byteLength : ENCRYPTED_CHUNK_SIZE,
+      dataKey,
+    );
   } catch (e) {
     state.status = "error";
     throw e;

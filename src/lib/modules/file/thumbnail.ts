@@ -1,11 +1,10 @@
 import { LRUCache } from "lru-cache";
 import { writable, type Writable } from "svelte/store";
 import { browser } from "$app/environment";
-import { decryptData } from "$lib/modules/crypto";
+import { decryptChunk } from "$lib/modules/crypto";
 import type { SummarizedFileInfo } from "$lib/modules/filesystem";
 import { readFile, writeFile, deleteFile, deleteDirectory } from "$lib/modules/opfs";
 import { getThumbnailUrl } from "$lib/modules/thumbnail";
-import { isTRPCClientError, trpc } from "$trpc/client";
 
 const loadedThumbnails = new LRUCache<number, Writable<string>>({ max: 100 });
 const loadingThumbnails = new Map<number, Writable<string | undefined>>();
@@ -18,25 +17,13 @@ const fetchFromOpfs = async (fileId: number) => {
 };
 
 const fetchFromServer = async (fileId: number, dataKey: CryptoKey) => {
-  try {
-    const [thumbnailEncrypted, { contentIv: thumbnailEncryptedIv }] = await Promise.all([
-      fetch(`/api/file/${fileId}/thumbnail/download`),
-      trpc().file.thumbnail.query({ id: fileId }),
-    ]);
-    const thumbnailBuffer = await decryptData(
-      await thumbnailEncrypted.arrayBuffer(),
-      thumbnailEncryptedIv,
-      dataKey,
-    );
+  const res = await fetch(`/api/file/${fileId}/thumbnail/download`);
+  if (!res.ok) return null;
 
-    void writeFile(`/thumbnail/file/${fileId}`, thumbnailBuffer);
-    return getThumbnailUrl(thumbnailBuffer);
-  } catch (e) {
-    if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
-      return null;
-    }
-    throw e;
-  }
+  const thumbnailBuffer = await decryptChunk(await res.arrayBuffer(), dataKey);
+
+  void writeFile(`/thumbnail/file/${fileId}`, thumbnailBuffer);
+  return getThumbnailUrl(thumbnailBuffer);
 };
 
 export const getFileThumbnail = (file: SummarizedFileInfo) => {
