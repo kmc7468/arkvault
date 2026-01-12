@@ -1,13 +1,8 @@
 import ExifReader from "exifreader";
 import { limitFunction } from "p-limit";
 import { CHUNK_SIZE } from "$lib/constants";
-import {
-  encodeToBase64,
-  generateDataKey,
-  wrapDataKey,
-  encryptString,
-  createHmacStream,
-} from "$lib/modules/crypto";
+import { encodeToBase64, generateDataKey, wrapDataKey, encryptString } from "$lib/modules/crypto";
+import { signMessageHmac } from "$lib/modules/crypto";
 import { Scheduler } from "$lib/modules/scheduler";
 import { generateThumbnail } from "$lib/modules/thumbnail";
 import { uploadBlob } from "$lib/modules/upload";
@@ -56,16 +51,8 @@ export const clearUploadedFiles = () => {
 
 const requestDuplicateFileScan = limitFunction(
   async (file: File, hmacSecret: HmacSecret, onDuplicate: () => Promise<boolean>) => {
-    const hmacStream = await createHmacStream(hmacSecret.secret);
-    const reader = file.stream().getReader();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      hmacStream.update(value);
-    }
-
-    const fileSigned = encodeToBase64(hmacStream.digest());
+    const hmacResult = await signMessageHmac(file, hmacSecret.secret);
+    const fileSigned = encodeToBase64(hmacResult);
     const files = await trpc().file.listByHash.query({
       hskVersion: hmacSecret.version,
       contentHmac: fileSigned,

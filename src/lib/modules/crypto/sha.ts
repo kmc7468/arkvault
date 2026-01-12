@@ -1,5 +1,5 @@
-import { hmac } from "@noble/hashes/hmac.js";
-import { sha256 } from "@noble/hashes/sha2.js";
+import HmacWorker from "$workers/hmac?worker";
+import type { ComputeMessage, ResultMessage } from "$workers/hmac";
 
 export const digestMessage = async (message: BufferSource) => {
   return await crypto.subtle.digest("SHA-256", message);
@@ -18,10 +18,24 @@ export const generateHmacSecret = async () => {
   };
 };
 
-export const createHmacStream = async (hmacSecret: CryptoKey) => {
-  const h = hmac.create(sha256, new Uint8Array(await crypto.subtle.exportKey("raw", hmacSecret)));
-  return {
-    update: (data: Uint8Array) => h.update(data),
-    digest: () => h.digest(),
-  };
+export const signMessageHmac = async (message: Blob, hmacSecret: CryptoKey) => {
+  const worker = new HmacWorker();
+  const stream = message.stream();
+  const hmacSecretRaw = new Uint8Array(await crypto.subtle.exportKey("raw", hmacSecret));
+
+  return new Promise<Uint8Array>((resolve, reject) => {
+    worker.onmessage = (event: MessageEvent<ResultMessage>) => {
+      resolve(event.data.result);
+      worker.terminate();
+    };
+
+    worker.onerror = ({ error }) => {
+      reject(error);
+      worker.terminate();
+    };
+
+    worker.postMessage({ stream, key: hmacSecretRaw } satisfies ComputeMessage, {
+      transfer: [stream, hmacSecretRaw.buffer],
+    });
+  });
 };
