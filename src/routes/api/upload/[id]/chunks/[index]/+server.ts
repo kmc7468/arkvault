@@ -13,7 +13,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
   const zodRes = z
     .object({
       id: z.uuidv4(),
-      index: z.coerce.number().int().nonnegative(),
+      index: z.coerce.number().int().positive(),
     })
     .safeParse(params);
   if (!zodRes.success) error(400, "Invalid path parameters");

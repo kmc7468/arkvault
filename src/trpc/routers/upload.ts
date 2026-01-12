@@ -150,7 +150,7 @@ const uploadRouter = router({
           (!session.hskVersion && input.contentHmac)
         ) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid content HMAC" });
-        } else if (session.uploadedChunks.length < session.totalChunks) {
+        } else if (session.uploadedChunks < session.totalChunks) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Upload not completed" });
         }
 
@@ -160,7 +160,7 @@ const uploadRouter = router({
         const hashStream = createHash("sha256");
         const writeStream = createWriteStream(filePath, { flags: "wx", mode: 0o600 });
 
-        for (let i = 0; i < session.totalChunks; i++) {
+        for (let i = 1; i <= session.totalChunks; i++) {
           for await (const chunk of createReadStream(`${session.path}/${i}`)) {
             hashStream.update(chunk);
             writeStream.write(chunk);
@@ -215,13 +215,13 @@ const uploadRouter = router({
         const session = await UploadRepo.getUploadSession(uploadId, ctx.session.userId);
         if (!session || session.type !== "thumbnail") {
           throw new TRPCError({ code: "NOT_FOUND", message: "Invalid upload id" });
-        } else if (session.uploadedChunks.length < session.totalChunks) {
+        } else if (session.uploadedChunks < session.totalChunks) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Upload not completed" });
         }
 
         thumbnailPath = `${env.thumbnailsPath}/${ctx.session.userId}/${uploadId}`;
         await mkdir(dirname(thumbnailPath), { recursive: true });
-        await rename(`${session.path}/0`, thumbnailPath);
+        await rename(`${session.path}/1`, thumbnailPath);
 
         const oldThumbnailPath = await db.transaction().execute(async (trx) => {
           const oldPath = await MediaRepo.updateFileThumbnail(
@@ -305,7 +305,7 @@ const uploadRouter = router({
         const session = await UploadRepo.getUploadSession(uploadId, ctx.session.userId);
         if (!session || session.type !== "migration") {
           throw new TRPCError({ code: "NOT_FOUND", message: "Invalid upload id" });
-        } else if (session.uploadedChunks.length < session.totalChunks) {
+        } else if (session.uploadedChunks < session.totalChunks) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Upload not completed" });
         }
 
@@ -315,7 +315,7 @@ const uploadRouter = router({
         const hashStream = createHash("sha256");
         const writeStream = createWriteStream(filePath, { flags: "wx", mode: 0o600 });
 
-        for (let i = 0; i < session.totalChunks; i++) {
+        for (let i = 1; i <= session.totalChunks; i++) {
           for await (const chunk of createReadStream(`${session.path}/${i}`)) {
             hashStream.update(chunk);
             writeStream.write(chunk);

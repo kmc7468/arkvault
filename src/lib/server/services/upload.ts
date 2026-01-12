@@ -8,6 +8,12 @@ import { safeRecursiveRm, safeUnlink } from "$lib/server/modules/filesystem";
 
 const chunkLocks = new Set<string>();
 
+const isChunkUploaded = (bitmap: Buffer, chunkIndex: number) => {
+  chunkIndex -= 1;
+  const byte = bitmap[Math.floor(chunkIndex / 8)];
+  return !!byte && (byte & (1 << (chunkIndex % 8))) !== 0; // Postgres sucks
+};
+
 export const uploadChunk = async (
   userId: number,
   sessionId: string,
@@ -28,13 +34,13 @@ export const uploadChunk = async (
     const session = await UploadRepo.getUploadSession(sessionId, userId);
     if (!session) {
       error(404, "Invalid upload id");
-    } else if (chunkIndex >= session.totalChunks) {
+    } else if (chunkIndex > session.totalChunks) {
       error(400, "Invalid chunk index");
-    } else if (session.uploadedChunks.includes(chunkIndex)) {
+    } else if (isChunkUploaded(session.bitmap, chunkIndex)) {
       error(409, "Chunk already uploaded");
     }
 
-    const isLastChunk = chunkIndex === session.totalChunks - 1;
+    const isLastChunk = chunkIndex === session.totalChunks;
     filePath = `${session.path}/${chunkIndex}`;
 
     const hashStream = createHash("sha256");

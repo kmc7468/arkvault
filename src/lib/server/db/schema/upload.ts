@@ -6,8 +6,9 @@ interface UploadSessionTable {
   type: "file" | "thumbnail" | "migration";
   user_id: number;
   path: string;
+  bitmap: Buffer;
   total_chunks: number;
-  uploaded_chunks: Generated<number[]>;
+  uploaded_chunks: Generated<number>;
   expires_at: Date;
 
   // For file uploads

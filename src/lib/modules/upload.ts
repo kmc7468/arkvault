@@ -80,12 +80,12 @@ export const uploadBlob = async (
   const limit = pLimit(options?.concurrency ?? 4);
 
   await Promise.all(
-    Array.from({ length: totalChunks }, (_, chunkIndex) =>
+    Array.from({ length: totalChunks }, (_, i) =>
       limit(() =>
         uploadChunk(
           uploadId,
-          chunkIndex,
-          blob.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE),
+          i + 1, // 1-based chunk index
+          blob.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE),
           dataKey,
           onChunkProgress,
         ),

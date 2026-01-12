@@ -21,8 +21,14 @@ export const up = async (db: Kysely<any>) => {
     .addColumn("type", "text", (col) => col.notNull())
     .addColumn("user_id", "integer", (col) => col.references("user.id").notNull())
     .addColumn("path", "text", (col) => col.notNull())
+    .addColumn("bitmap", "bytea", (col) => col.notNull())
     .addColumn("total_chunks", "integer", (col) => col.notNull())
-    .addColumn("uploaded_chunks", sql`integer[]`, (col) => col.notNull().defaultTo(sql`'{}'`))
+    .addColumn("uploaded_chunks", "integer", (col) =>
+      col
+        .generatedAlwaysAs(sql`bit_count(bitmap)`)
+        .stored()
+        .notNull(),
+    )
     .addColumn("expires_at", "timestamp(3)", (col) => col.notNull())
     .addColumn("parent_id", "integer", (col) => col.references("directory.id"))
     .addColumn("master_encryption_key_version", "integer")
@@ -45,6 +51,11 @@ export const up = async (db: Kysely<any>) => {
       ["user_id", "hmac_secret_key_version"],
       "hmac_secret_key",
       ["user_id", "version"],
+    )
+    .addCheckConstraint("upload_session_ck01", sql`uploaded_chunks <= total_chunks`)
+    .addCheckConstraint(
+      "upload_session_ck02",
+      sql`length(bitmap) = ceil(total_chunks / 8.0)::integer`,
     )
     .execute();
 };

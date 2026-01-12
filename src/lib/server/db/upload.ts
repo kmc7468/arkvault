@@ -7,8 +7,9 @@ interface BaseUploadSession {
   id: string;
   userId: number;
   path: string;
+  bitmap: Buffer;
   totalChunks: number;
-  uploadedChunks: number[];
+  uploadedChunks: number;
   expiresAt: Date;
 }
 
@@ -37,7 +38,7 @@ interface MigrationUploadSession extends BaseUploadSession {
 }
 
 export const createFileUploadSession = async (
-  params: Omit<FileUploadSession, "type" | "uploadedChunks">,
+  params: Omit<FileUploadSession, "type" | "bitmap" | "uploadedChunks">,
 ) => {
   await db.transaction().execute(async (trx) => {
     const mek = await trx
@@ -73,6 +74,7 @@ export const createFileUploadSession = async (
         type: "file",
         user_id: params.userId,
         path: params.path,
+        bitmap: Buffer.alloc(Math.ceil(params.totalChunks / 8)),
         total_chunks: params.totalChunks,
         expires_at: params.expiresAt,
         parent_id: params.parentId !== "root" ? params.parentId : null,
@@ -90,7 +92,7 @@ export const createFileUploadSession = async (
 };
 
 export const createThumbnailUploadSession = async (
-  params: Omit<ThumbnailUploadSession, "type" | "uploadedChunks">,
+  params: Omit<ThumbnailUploadSession, "type" | "bitmap" | "uploadedChunks">,
 ) => {
   await db.transaction().execute(async (trx) => {
     const file = await trx
@@ -114,6 +116,7 @@ export const createThumbnailUploadSession = async (
         type: "thumbnail",
         user_id: params.userId,
         path: params.path,
+        bitmap: Buffer.alloc(Math.ceil(params.totalChunks / 8)),
         total_chunks: params.totalChunks,
         expires_at: params.expiresAt,
         file_id: params.fileId,
@@ -124,7 +127,7 @@ export const createThumbnailUploadSession = async (
 };
 
 export const createMigrationUploadSession = async (
-  params: Omit<MigrationUploadSession, "type" | "uploadedChunks">,
+  params: Omit<MigrationUploadSession, "type" | "bitmap" | "uploadedChunks">,
 ) => {
   await db.transaction().execute(async (trx) => {
     const file = await trx
@@ -148,6 +151,7 @@ export const createMigrationUploadSession = async (
         type: "migration",
         user_id: params.userId,
         path: params.path,
+        bitmap: Buffer.alloc(Math.ceil(params.totalChunks / 8)),
         total_chunks: params.totalChunks,
         expires_at: params.expiresAt,
         file_id: params.fileId,
@@ -173,6 +177,7 @@ export const getUploadSession = async (sessionId: string, userId: number) => {
       id: session.id,
       userId: session.user_id,
       path: session.path,
+      bitmap: session.bitmap,
       totalChunks: session.total_chunks,
       uploadedChunks: session.uploaded_chunks,
       expiresAt: session.expires_at,
@@ -192,6 +197,7 @@ export const getUploadSession = async (sessionId: string, userId: number) => {
       id: session.id,
       userId: session.user_id,
       path: session.path,
+      bitmap: session.bitmap,
       totalChunks: session.total_chunks,
       uploadedChunks: session.uploaded_chunks,
       expiresAt: session.expires_at,
@@ -204,6 +210,7 @@ export const getUploadSession = async (sessionId: string, userId: number) => {
       id: session.id,
       userId: session.user_id,
       path: session.path,
+      bitmap: session.bitmap,
       totalChunks: session.total_chunks,
       uploadedChunks: session.uploaded_chunks,
       expiresAt: session.expires_at,
@@ -215,7 +222,9 @@ export const getUploadSession = async (sessionId: string, userId: number) => {
 export const markChunkAsUploaded = async (sessionId: string, chunkIndex: number) => {
   await db
     .updateTable("upload_session")
-    .set({ uploaded_chunks: sql`array_append(uploaded_chunks, ${chunkIndex})` })
+    .set({
+      bitmap: sql`set_bit(${sql.ref("bitmap")}, ${chunkIndex - 1}, 1)`,
+    })
     .where("id", "=", sessionId)
     .execute();
 };

@@ -1,4 +1,3 @@
-import { encryptData } from "$lib/modules/crypto";
 import { storeFileThumbnailCache } from "$lib/modules/file";
 import { prepareFileDecryption, getDecryptedFileUrl } from "$lib/serviceWorker";
 import { requestFileThumbnailUpload } from "$lib/services/file";
@@ -33,12 +32,10 @@ export const requestThumbnailUpload = async (
   dataKey: CryptoKey,
   dataKeyVersion: Date,
 ) => {
-  const thumbnailBuffer = await thumbnail.arrayBuffer();
-  const thumbnailEncrypted = await encryptData(thumbnailBuffer, dataKey);
-  const res = await requestFileThumbnailUpload(fileId, dataKeyVersion, thumbnailEncrypted);
-  if (!res.ok) return false;
+  const res = await requestFileThumbnailUpload(fileId, thumbnail, dataKey, dataKeyVersion);
+  if (!res) return false;
 
-  storeFileThumbnailCache(fileId, thumbnailBuffer); // Intended
+  void thumbnail.arrayBuffer().then((buffer) => storeFileThumbnailCache(fileId, buffer));
   return true;
 };
 
