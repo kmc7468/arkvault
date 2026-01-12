@@ -50,7 +50,14 @@ export const clearUploadedFiles = () => {
 };
 
 const requestDuplicateFileScan = limitFunction(
-  async (file: File, hmacSecret: HmacSecret, onDuplicate: () => Promise<boolean>) => {
+  async (
+    state: FileUploadState,
+    file: File,
+    hmacSecret: HmacSecret,
+    onDuplicate: () => Promise<boolean>,
+  ) => {
+    state.status = "encryption-pending";
+
     const hmacResult = await signMessageHmac(file, hmacSecret.secret);
     const fileSigned = encodeToBase64(hmacResult);
     const files = await trpc().file.listByHash.query({
@@ -98,77 +105,101 @@ const extractExifDateTime = (fileBuffer: ArrayBuffer) => {
   return new Date(utcDate - offsetMs);
 };
 
-const requestFileUpload2 = async (
-  state: FileUploadState,
-  file: Blob,
-  fileSigned: string,
-  fileMetadata: {
-    parentId: "root" | number;
-    name: string;
-    createdAt?: Date;
-    lastModifiedAt: Date;
-  },
-  masterKey: MasterKey,
-  hmacSecret: HmacSecret,
-) => {
-  state.status = "encrypting";
+interface FileMetadata {
+  parentId: "root" | number;
+  name: string;
+  createdAt?: Date;
+  lastModifiedAt: Date;
+}
 
-  const { dataKey, dataKeyVersion } = await generateDataKey();
-  const dataKeyWrapped = await wrapDataKey(dataKey, masterKey.key);
+const requestFileMetadataEncryption = limitFunction(
+  async (
+    state: FileUploadState,
+    file: Blob,
+    fileMetadata: FileMetadata,
+    masterKey: MasterKey,
+    hmacSecret: HmacSecret,
+  ) => {
+    state.status = "encrypting";
 
-  const [nameEncrypted, createdAtEncrypted, lastModifiedAtEncrypted, thumbnailBuffer] =
-    await Promise.all([
-      encryptString(fileMetadata.name, dataKey),
-      fileMetadata.createdAt && encryptString(fileMetadata.createdAt.getTime().toString(), dataKey),
-      encryptString(fileMetadata.lastModifiedAt.getTime().toString(), dataKey),
-      generateThumbnail(file).then((blob) => blob?.arrayBuffer()),
-    ]);
+    const { dataKey, dataKeyVersion } = await generateDataKey();
+    const dataKeyWrapped = await wrapDataKey(dataKey, masterKey.key);
 
-  const { uploadId } = await trpc().upload.startFileUpload.mutate({
-    chunks: Math.ceil(file.size / CHUNK_SIZE),
-    parent: fileMetadata.parentId,
-    mekVersion: masterKey.version,
-    dek: dataKeyWrapped,
-    dekVersion: dataKeyVersion,
-    hskVersion: hmacSecret.version,
-    contentType: file.type,
-    name: nameEncrypted.ciphertext,
-    nameIv: nameEncrypted.iv,
-    createdAt: createdAtEncrypted?.ciphertext,
-    createdAtIv: createdAtEncrypted?.iv,
-    lastModifiedAt: lastModifiedAtEncrypted.ciphertext,
-    lastModifiedAtIv: lastModifiedAtEncrypted.iv,
-  });
+    const [nameEncrypted, createdAtEncrypted, lastModifiedAtEncrypted, thumbnailBuffer] =
+      await Promise.all([
+        encryptString(fileMetadata.name, dataKey),
+        fileMetadata.createdAt &&
+          encryptString(fileMetadata.createdAt.getTime().toString(), dataKey),
+        encryptString(fileMetadata.lastModifiedAt.getTime().toString(), dataKey),
+        generateThumbnail(file).then((blob) => blob?.arrayBuffer()),
+      ]);
 
-  state.status = "uploading";
-
-  await uploadBlob(uploadId, file, dataKey, {
-    onProgress(s) {
-      state.progress = s.progress;
-      state.rate = s.rateBps;
-    },
-  });
-
-  const { file: fileId } = await trpc().upload.completeFileUpload.mutate({
-    uploadId,
-    contentHmac: fileSigned,
-  });
-
-  if (thumbnailBuffer) {
-    const { uploadId } = await trpc().upload.startFileThumbnailUpload.mutate({
-      file: fileId,
+    const { uploadId } = await trpc().upload.startFileUpload.mutate({
+      chunks: Math.ceil(file.size / CHUNK_SIZE),
+      parent: fileMetadata.parentId,
+      mekVersion: masterKey.version,
+      dek: dataKeyWrapped,
       dekVersion: dataKeyVersion,
+      hskVersion: hmacSecret.version,
+      contentType: file.type,
+      name: nameEncrypted.ciphertext,
+      nameIv: nameEncrypted.iv,
+      createdAt: createdAtEncrypted?.ciphertext,
+      createdAtIv: createdAtEncrypted?.iv,
+      lastModifiedAt: lastModifiedAtEncrypted.ciphertext,
+      lastModifiedAtIv: lastModifiedAtEncrypted.iv,
     });
 
-    await uploadBlob(uploadId, new Blob([thumbnailBuffer]), dataKey);
+    state.status = "upload-pending";
+    return { uploadId, thumbnailBuffer, dataKey, dataKeyVersion };
+  },
+  { concurrency: 4 },
+);
 
-    await trpc().upload.completeFileThumbnailUpload.mutate({ uploadId });
-  }
+const requestFileUpload = limitFunction(
+  async (
+    state: FileUploadState,
+    uploadId: string,
+    file: Blob,
+    fileSigned: string,
+    thumbnailBuffer: ArrayBuffer | undefined,
+    dataKey: CryptoKey,
+    dataKeyVersion: Date,
+  ) => {
+    state.status = "uploading";
 
-  state.status = "uploaded";
+    await uploadBlob(uploadId, file, dataKey, {
+      onProgress(s) {
+        state.progress = s.progress;
+        state.rate = s.rateBps;
+      },
+    });
 
-  return { fileId, thumbnailBuffer };
-};
+    const { file: fileId } = await trpc().upload.completeFileUpload.mutate({
+      uploadId,
+      contentHmac: fileSigned,
+    });
+
+    if (thumbnailBuffer) {
+      try {
+        const { uploadId } = await trpc().upload.startFileThumbnailUpload.mutate({
+          file: fileId,
+          dekVersion: dataKeyVersion,
+        });
+
+        await uploadBlob(uploadId, new Blob([thumbnailBuffer]), dataKey);
+
+        await trpc().upload.completeFileThumbnailUpload.mutate({ uploadId });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    state.status = "uploaded";
+    return { fileId };
+  },
+  { concurrency: 1 },
+);
 
 export const uploadFile = async (
   file: File,
@@ -185,51 +216,44 @@ export const uploadFile = async (
   const state = uploadingFiles.at(-1)!;
 
   return await scheduler.schedule(file.size, async () => {
-    state.status = "encryption-pending";
-
     try {
-      const { fileSigned } = await requestDuplicateFileScan(file, hmacSecret, onDuplicate);
+      const { fileSigned } = await requestDuplicateFileScan(state, file, hmacSecret, onDuplicate);
+
       if (!fileSigned) {
         state.status = "canceled";
         uploadingFiles = uploadingFiles.filter((file) => file !== state);
         return;
       }
 
+      let fileBuffer;
       const fileType = getFileType(file);
+      const fileMetadata: FileMetadata = {
+        parentId,
+        name: file.name,
+        lastModifiedAt: new Date(file.lastModified),
+      };
+
       if (fileType.startsWith("image/")) {
-        const fileBuffer = await file.arrayBuffer();
-        const fileCreatedAt = extractExifDateTime(fileBuffer);
-
-        const { fileId, thumbnailBuffer } = await requestFileUpload2(
-          state,
-          new Blob([fileBuffer], { type: fileType }),
-          fileSigned,
-          {
-            parentId,
-            name: file.name,
-            createdAt: fileCreatedAt,
-            lastModifiedAt: new Date(file.lastModified),
-          },
-          masterKey,
-          hmacSecret,
-        );
-
-        return { fileId, fileBuffer, thumbnailBuffer };
-      } else {
-        const { fileId, thumbnailBuffer } = await requestFileUpload2(
-          state,
-          file,
-          fileSigned,
-          {
-            parentId,
-            name: file.name,
-            lastModifiedAt: new Date(file.lastModified),
-          },
-          masterKey,
-          hmacSecret,
-        );
-        return { fileId, thumbnailBuffer };
+        fileBuffer = await file.arrayBuffer();
+        fileMetadata.createdAt = extractExifDateTime(fileBuffer);
       }
+
+      const blob = new Blob([file], { type: fileType });
+
+      const { uploadId, thumbnailBuffer, dataKey, dataKeyVersion } =
+        await requestFileMetadataEncryption(state, blob, fileMetadata, masterKey, hmacSecret);
+
+      const { fileId } = await requestFileUpload(
+        state,
+        uploadId,
+        blob,
+        fileSigned,
+        thumbnailBuffer,
+        dataKey,
+        dataKeyVersion,
+      );
+
+      return { fileId, fileBuffer, thumbnailBuffer };
     } catch (e) {
       state.status = "error";
       throw e;

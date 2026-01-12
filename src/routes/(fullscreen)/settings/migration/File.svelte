@@ -1,12 +1,9 @@
 <script module lang="ts">
   const subtexts = {
     queued: "대기 중",
-    "download-pending": "다운로드를 기다리는 중",
     downloading: "다운로드하는 중",
-    "encryption-pending": "암호화를 기다리는 중",
-    encrypting: "암호화하는 중",
     "upload-pending": "업로드를 기다리는 중",
-    completed: "완료",
+    uploaded: "",
     error: "실패",
   } as const;
 </script>

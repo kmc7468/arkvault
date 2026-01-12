@@ -9,13 +9,10 @@ import { trpc } from "$trpc/client";
 
 export type MigrationStatus =
   | "queued"
-  | "download-pending"
   | "downloading"
-  | "encryption-pending"
-  | "encrypting"
   | "upload-pending"
   | "uploading"
-  | "completed"
+  | "uploaded"
   | "error";
 
 export interface MigrationState {
@@ -38,13 +35,13 @@ export const getMigrationState = (fileId: number) => {
 
 export const clearMigrationStates = () => {
   for (const [id, state] of states) {
-    if (state.status === "completed" || state.status === "error") {
+    if (state.status === "uploaded" || state.status === "error") {
       states.delete(id);
     }
   }
 };
 
-const uploadMigrationChunks = limitFunction(
+const requestFileUpload = limitFunction(
   async (state: MigrationState, fileId: number, fileBuffer: ArrayBuffer, dataKey: CryptoKey) => {
     state.status = "uploading";
 
@@ -61,6 +58,7 @@ const uploadMigrationChunks = limitFunction(
     });
 
     await trpc().upload.completeMigrationUpload.mutate({ uploadId });
+    state.status = "uploaded";
   },
   { concurrency: 1 },
 );
@@ -87,18 +85,11 @@ export const requestFileMigration = async (fileInfo: FileInfo) => {
 
     await scheduler.schedule(
       async () => {
-        state.status = "download-pending";
         state.status = "downloading";
         fileBuffer = await requestFileDownload(fileInfo.id, dataKey, true);
         return fileBuffer.byteLength;
       },
-      async () => {
-        state.status = "encryption-pending";
-
-        await uploadMigrationChunks(state, fileInfo.id, fileBuffer!, dataKey);
-
-        state.status = "completed";
-      },
+      () => requestFileUpload(state, fileInfo.id, fileBuffer!, dataKey),
     );
   } catch (e) {
     state.status = "error";

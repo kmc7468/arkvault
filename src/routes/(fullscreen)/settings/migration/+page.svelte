@@ -18,7 +18,7 @@
         info,
         state: getMigrationState(info.id),
       }))
-      .filter((file) => file.state?.status !== "completed"),
+      .filter((file) => file.state?.status !== "uploaded"),
   );
 
   const migrateAllFiles = () => {

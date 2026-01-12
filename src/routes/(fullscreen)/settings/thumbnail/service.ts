@@ -35,7 +35,7 @@ const generateThumbnail = limitFunction(
   async (fileId: number, fileBuffer: ArrayBuffer, fileType: string, dataKey: CryptoKey) => {
     statuses.set(fileId, "generating");
 
-    const thumbnail = await doGenerateThumbnail(fileBuffer, fileType);
+    const thumbnail = await doGenerateThumbnail(new Blob([fileBuffer], { type: fileType }));
     if (!thumbnail) return null;
 
     const thumbnailBuffer = await thumbnail.arrayBuffer();
