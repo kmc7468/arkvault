@@ -81,11 +81,11 @@ export const requestDirectoryCreation = async (
 export const requestFileUpload = async (
   file: File,
   parentId: "root" | number,
-  hmacSecret: HmacSecret,
   masterKey: MasterKey,
+  hmacSecret: HmacSecret,
   onDuplicate: () => Promise<boolean>,
 ) => {
-  const res = await uploadFile(file, parentId, hmacSecret, masterKey, onDuplicate);
+  const res = await uploadFile(file, parentId, masterKey, hmacSecret, onDuplicate);
   if (!res) return false;
 
   if (res.fileBuffer) {

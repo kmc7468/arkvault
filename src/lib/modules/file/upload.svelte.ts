@@ -1,21 +1,18 @@
 import ExifReader from "exifreader";
-import pLimit, { limitFunction } from "p-limit";
+import { limitFunction } from "p-limit";
 import { CHUNK_SIZE } from "$lib/constants";
 import {
   encodeToBase64,
   generateDataKey,
   wrapDataKey,
-  encryptData,
   encryptString,
-  encryptChunk,
-  digestMessage,
   createHmacStream,
 } from "$lib/modules/crypto";
 import { Scheduler } from "$lib/modules/scheduler";
-import { generateThumbnail, generateThumbnailFromFile } from "$lib/modules/thumbnail";
+import { generateThumbnail } from "$lib/modules/thumbnail";
+import { uploadBlob } from "$lib/modules/upload";
 import type { MasterKey, HmacSecret } from "$lib/stores";
 import { trpc } from "$trpc/client";
-import type { RouterInputs } from "$trpc/router.server";
 
 export interface FileUploadState {
   name: string;
@@ -114,295 +111,83 @@ const extractExifDateTime = (fileBuffer: ArrayBuffer) => {
   return new Date(utcDate - offsetMs);
 };
 
-const encryptChunks = async (fileBuffer: ArrayBuffer, dataKey: CryptoKey) => {
-  const chunksEncrypted: { chunkEncrypted: ArrayBuffer; chunkEncryptedHash: string }[] = [];
-  let offset = 0;
-
-  while (offset < fileBuffer.byteLength) {
-    const nextOffset = Math.min(offset + CHUNK_SIZE, fileBuffer.byteLength);
-    const chunkEncrypted = await encryptChunk(fileBuffer.slice(offset, nextOffset), dataKey);
-    chunksEncrypted.push({
-      chunkEncrypted: chunkEncrypted,
-      chunkEncryptedHash: encodeToBase64(await digestMessage(chunkEncrypted)),
-    });
-    offset = nextOffset;
-  }
-
-  return chunksEncrypted;
-};
-
-const encryptImageFile = limitFunction(
-  async (state: FileUploadState, file: File, masterKey: MasterKey) => {
-    state.status = "encrypting";
-
-    const fileBuffer = await file.arrayBuffer();
-    const createdAt = extractExifDateTime(fileBuffer);
-
-    const { dataKey, dataKeyVersion } = await generateDataKey();
-    const dataKeyWrapped = await wrapDataKey(dataKey, masterKey.key);
-    const chunksEncrypted = await encryptChunks(fileBuffer, dataKey);
-
-    const nameEncrypted = await encryptString(file.name, dataKey);
-    const createdAtEncrypted =
-      createdAt && (await encryptString(createdAt.getTime().toString(), dataKey));
-    const lastModifiedAtEncrypted = await encryptString(file.lastModified.toString(), dataKey);
-
-    const thumbnail = await generateThumbnail(fileBuffer, getFileType(file));
-    const thumbnailBuffer = await thumbnail?.arrayBuffer();
-    const thumbnailEncrypted = thumbnailBuffer && (await encryptData(thumbnailBuffer, dataKey));
-
-    state.status = "upload-pending";
-
-    return {
-      dataKeyWrapped,
-      dataKeyVersion,
-      chunksEncrypted,
-      nameEncrypted,
-      createdAtEncrypted,
-      lastModifiedAtEncrypted,
-      thumbnail: thumbnailEncrypted && { plaintext: thumbnailBuffer, ...thumbnailEncrypted },
-    };
-  },
-  { concurrency: 4 },
-);
-
-const uploadThumbnail = async (
-  fileId: number,
-  thumbnailEncrypted: { ciphertext: ArrayBuffer; iv: ArrayBuffer },
-  dataKeyVersion: Date,
-) => {
-  const { uploadId } = await trpc().upload.startFileThumbnailUpload.mutate({
-    file: fileId,
-    dekVersion: dataKeyVersion,
-  });
-
-  const ivAndCiphertext = new Uint8Array(
-    thumbnailEncrypted.iv.byteLength + thumbnailEncrypted.ciphertext.byteLength,
-  );
-  ivAndCiphertext.set(new Uint8Array(thumbnailEncrypted.iv), 0);
-  ivAndCiphertext.set(
-    new Uint8Array(thumbnailEncrypted.ciphertext),
-    thumbnailEncrypted.iv.byteLength,
-  );
-
-  const chunkHash = encodeToBase64(await digestMessage(ivAndCiphertext));
-
-  const response = await fetch(`/api/upload/${uploadId}/chunks/0`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/octet-stream",
-      "Content-Digest": `sha-256=:${chunkHash}:`,
-    },
-    body: ivAndCiphertext,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Thumbnail upload failed: ${response.status} ${response.statusText}`);
-  }
-
-  await trpc().upload.completeFileThumbnailUpload.mutate({ uploadId });
-};
-
-const requestImageFileUpload = limitFunction(
-  async (
-    state: FileUploadState,
-    metadata: RouterInputs["upload"]["startFileUpload"],
-    chunksEncrypted: { chunkEncrypted: ArrayBuffer; chunkEncryptedHash: string }[],
-    fileSigned: string | undefined,
-    thumbnailData: { ciphertext: ArrayBuffer; iv: ArrayBuffer; plaintext: ArrayBuffer } | null,
-    dataKeyVersion: Date,
-  ) => {
-    state.status = "uploading";
-
-    const { uploadId } = await trpc().upload.startFileUpload.mutate(metadata);
-
-    const totalBytes = chunksEncrypted.reduce((sum, c) => sum + c.chunkEncrypted.byteLength, 0);
-    let uploadedBytes = 0;
-    const startTime = Date.now();
-
-    for (let i = 0; i < chunksEncrypted.length; i++) {
-      const { chunkEncrypted, chunkEncryptedHash } = chunksEncrypted[i]!;
-
-      const response = await fetch(`/api/upload/${uploadId}/chunks/${i}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/octet-stream",
-          "Content-Digest": `sha-256=:${chunkEncryptedHash}:`,
-        },
-        body: chunkEncrypted,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Chunk upload failed: ${response.status} ${response.statusText}`);
-      }
-
-      uploadedBytes += chunkEncrypted.byteLength;
-
-      const elapsed = (Date.now() - startTime) / 1000;
-      const rate = uploadedBytes / elapsed;
-      const remaining = totalBytes - uploadedBytes;
-      const estimated = rate > 0 ? remaining / rate : undefined;
-
-      state.progress = uploadedBytes / totalBytes;
-      state.rate = rate;
-      state.estimated = estimated;
-    }
-
-    const { file: fileId } = await trpc().upload.completeFileUpload.mutate({
-      uploadId,
-      contentHmac: fileSigned,
-    });
-
-    if (thumbnailData) {
-      try {
-        await uploadThumbnail(fileId, thumbnailData, dataKeyVersion);
-      } catch (e) {
-        // TODO: Error handling for thumbnail upload
-        console.error(e);
-      }
-    }
-
-    state.status = "uploaded";
-
-    return { fileId, thumbnailBuffer: thumbnailData?.plaintext };
-  },
-  { concurrency: 1 },
-);
-
-const requestFileUpload = async (
+const requestFileUpload2 = async (
   state: FileUploadState,
-  file: File,
+  file: Blob,
+  fileSigned: string,
+  fileMetadata: {
+    parentId: "root" | number;
+    name: string;
+    createdAt?: Date;
+    lastModifiedAt: Date;
+  },
   masterKey: MasterKey,
   hmacSecret: HmacSecret,
-  fileSigned: string,
-  parentId: DirectoryId,
 ) => {
-  state.status = "uploading";
+  state.status = "encrypting";
 
-  const fileType = getFileType(file);
   const { dataKey, dataKeyVersion } = await generateDataKey();
   const dataKeyWrapped = await wrapDataKey(dataKey, masterKey.key);
 
-  const nameEncrypted = await encryptString(file.name, dataKey);
-  const lastModifiedAtEncrypted = await encryptString(file.lastModified.toString(), dataKey);
+  const [nameEncrypted, createdAtEncrypted, lastModifiedAtEncrypted, thumbnailBuffer] =
+    await Promise.all([
+      encryptString(fileMetadata.name, dataKey),
+      fileMetadata.createdAt && encryptString(fileMetadata.createdAt.getTime().toString(), dataKey),
+      encryptString(fileMetadata.lastModifiedAt.getTime().toString(), dataKey),
+      generateThumbnail(file).then((blob) => blob?.arrayBuffer()),
+    ]);
 
-  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-  const metadata = {
-    chunks: totalChunks,
-    parent: parentId,
+  const { uploadId } = await trpc().upload.startFileUpload.mutate({
+    chunks: Math.ceil(file.size / CHUNK_SIZE),
+    parent: fileMetadata.parentId,
     mekVersion: masterKey.version,
     dek: dataKeyWrapped,
     dekVersion: dataKeyVersion,
     hskVersion: hmacSecret.version,
-    contentType: fileType,
+    contentType: file.type,
     name: nameEncrypted.ciphertext,
     nameIv: nameEncrypted.iv,
+    createdAt: createdAtEncrypted?.ciphertext,
+    createdAtIv: createdAtEncrypted?.iv,
     lastModifiedAt: lastModifiedAtEncrypted.ciphertext,
     lastModifiedAtIv: lastModifiedAtEncrypted.iv,
-  };
+  });
 
-  const { uploadId } = await trpc().upload.startFileUpload.mutate(metadata);
+  state.status = "uploading";
 
-  const reader = file.stream().getReader();
-  const limit = pLimit(4);
-  let buffer = new Uint8Array(0);
-  let chunkIndex = 0;
-  const uploadPromises: Promise<void>[] = [];
-
-  const totalBytes = file.size;
-  let uploadedBytes = 0;
-  const startTime = Date.now();
-
-  const uploadChunk = async (
-    index: number,
-    encryptedChunk: ArrayBuffer,
-    chunkHash: string,
-    originalChunkSize: number,
-  ) => {
-    const response = await fetch(`/api/upload/${uploadId}/chunks/${index}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/octet-stream",
-        "Content-Digest": `sha-256=:${chunkHash}:`,
-      },
-      body: encryptedChunk,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Chunk upload failed: ${response.status} ${response.statusText}`);
-    }
-
-    uploadedBytes += originalChunkSize;
-    const elapsed = (Date.now() - startTime) / 1000;
-    const rate = uploadedBytes / elapsed;
-    const remaining = totalBytes - uploadedBytes;
-    const estimated = rate > 0 ? remaining / rate : undefined;
-
-    state.progress = uploadedBytes / totalBytes;
-    state.rate = rate;
-    state.estimated = estimated;
-  };
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done && buffer.length === 0) break;
-
-    if (value) {
-      const newBuffer = new Uint8Array(buffer.length + value.length);
-      newBuffer.set(buffer);
-      newBuffer.set(value, buffer.length);
-      buffer = newBuffer;
-    }
-
-    while (buffer.length >= CHUNK_SIZE || (done && buffer.length > 0)) {
-      const chunkSize = Math.min(CHUNK_SIZE, buffer.length);
-      const chunk = buffer.slice(0, chunkSize);
-      buffer = buffer.slice(chunkSize);
-
-      const encryptedChunk = await encryptChunk(chunk.buffer.slice(0, chunk.byteLength), dataKey);
-      const chunkHash = encodeToBase64(await digestMessage(encryptedChunk));
-      const currentIndex = chunkIndex++;
-
-      uploadPromises.push(
-        limit(() => uploadChunk(currentIndex, encryptedChunk, chunkHash, chunkSize)),
-      );
-    }
-
-    if (done) break;
-  }
-
-  await Promise.all(uploadPromises);
+  await uploadBlob(uploadId, file, dataKey, {
+    onProgress(s) {
+      state.progress = s.progress;
+      state.rate = s.rateBps;
+    },
+  });
 
   const { file: fileId } = await trpc().upload.completeFileUpload.mutate({
     uploadId,
     contentHmac: fileSigned,
   });
 
-  if (fileType.startsWith("video/")) {
-    try {
-      const thumbnail = await generateThumbnailFromFile(file);
-      if (thumbnail) {
-        const thumbnailBuffer = await thumbnail.arrayBuffer();
-        const thumbnailEncrypted = await encryptData(thumbnailBuffer, dataKey);
+  if (thumbnailBuffer) {
+    const { uploadId } = await trpc().upload.startFileThumbnailUpload.mutate({
+      file: fileId,
+      dekVersion: dataKeyVersion,
+    });
 
-        await uploadThumbnail(fileId, thumbnailEncrypted, dataKeyVersion);
-      }
-    } catch (e) {
-      // Thumbnail upload failure is not critical
-      console.error(e);
-    }
+    await uploadBlob(uploadId, new Blob([thumbnailBuffer]), dataKey);
+
+    await trpc().upload.completeFileThumbnailUpload.mutate({ uploadId });
   }
 
   state.status = "uploaded";
 
-  return { fileId };
+  return { fileId, thumbnailBuffer };
 };
 
 export const uploadFile = async (
   file: File,
   parentId: "root" | number,
-  hmacSecret: HmacSecret,
   masterKey: MasterKey,
+  hmacSecret: HmacSecret,
   onDuplicate: () => Promise<boolean>,
 ) => {
   uploadingFiles.push({
@@ -426,51 +211,37 @@ export const uploadFile = async (
       const fileType = getFileType(file);
       if (fileType.startsWith("image/")) {
         const fileBuffer = await file.arrayBuffer();
-        const {
-          dataKeyWrapped,
-          dataKeyVersion,
-          chunksEncrypted,
-          nameEncrypted,
-          createdAtEncrypted,
-          lastModifiedAtEncrypted,
-          thumbnail,
-        } = await encryptImageFile(state, file, masterKey);
+        const fileCreatedAt = extractExifDateTime(fileBuffer);
 
-        const metadata = {
-          chunks: chunksEncrypted.length,
-          parent: parentId,
-          mekVersion: masterKey.version,
-          dek: dataKeyWrapped,
-          dekVersion: dataKeyVersion,
-          hskVersion: hmacSecret.version,
-          contentType: fileType,
-          name: nameEncrypted.ciphertext,
-          nameIv: nameEncrypted.iv,
-          createdAt: createdAtEncrypted?.ciphertext,
-          createdAtIv: createdAtEncrypted?.iv,
-          lastModifiedAt: lastModifiedAtEncrypted.ciphertext,
-          lastModifiedAtIv: lastModifiedAtEncrypted.iv,
-        };
-
-        const { fileId, thumbnailBuffer } = await requestImageFileUpload(
+        const { fileId, thumbnailBuffer } = await requestFileUpload2(
           state,
-          metadata,
-          chunksEncrypted,
+          new Blob([fileBuffer], { type: fileType }),
           fileSigned,
-          thumbnail ?? null,
-          dataKeyVersion,
-        );
-        return { fileId, fileBuffer, thumbnailBuffer };
-      } else {
-        const { fileId } = await requestFileUpload(
-          state,
-          file,
+          {
+            parentId,
+            name: file.name,
+            createdAt: fileCreatedAt,
+            lastModifiedAt: new Date(file.lastModified),
+          },
           masterKey,
           hmacSecret,
-          fileSigned,
-          parentId,
         );
-        return { fileId };
+
+        return { fileId, fileBuffer, thumbnailBuffer };
+      } else {
+        const { fileId, thumbnailBuffer } = await requestFileUpload2(
+          state,
+          file,
+          fileSigned,
+          {
+            parentId,
+            name: file.name,
+            lastModifiedAt: new Date(file.lastModified),
+          },
+          masterKey,
+          hmacSecret,
+        );
+        return { fileId, thumbnailBuffer };
       }
     } catch (e) {
       state.status = "error";

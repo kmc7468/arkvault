@@ -51,7 +51,7 @@
     if (!files || files.length === 0) return;
 
     for (const file of files) {
-      requestFileUpload(file, data.id, $hmacSecretStore?.get(1)!, $masterKeyStore?.get(1)!, () => {
+      requestFileUpload(file, data.id, $masterKeyStore?.get(1)!, $hmacSecretStore?.get(1)!, () => {
         return new Promise((resolve) => {
           duplicatedFile = file;
           resolveForDuplicateFileModal = resolve;

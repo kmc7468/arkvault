@@ -52,7 +52,6 @@ const generateImageThumbnail = (imageUrl: string) => {
         .catch(reject);
     };
     image.onerror = reject;
-
     image.src = imageUrl;
   });
 };
@@ -85,50 +84,30 @@ const generateVideoThumbnail = (videoUrl: string, time = 0) => {
   });
 };
 
-export const generateThumbnail = async (fileBuffer: ArrayBuffer, fileType: string) => {
+export const generateThumbnail = async (blob: Blob) => {
   let url;
   try {
-    if (fileType.startsWith("image/")) {
-      const fileBlob = new Blob([fileBuffer], { type: fileType });
-      url = URL.createObjectURL(fileBlob);
-
+    if (blob.type.startsWith("image/")) {
+      url = URL.createObjectURL(blob);
       try {
         return await generateImageThumbnail(url);
       } catch {
         URL.revokeObjectURL(url);
         url = undefined;
 
-        if (fileType === "image/heic") {
+        if (blob.type === "image/heic") {
           const { default: heic2any } = await import("heic2any");
-          url = URL.createObjectURL(
-            (await heic2any({ blob: fileBlob, toType: "image/png" })) as Blob,
-          );
+          url = URL.createObjectURL((await heic2any({ blob, toType: "image/png" })) as Blob);
           return await generateImageThumbnail(url);
         } else {
           return null;
         }
       }
-    } else if (fileType.startsWith("video/")) {
-      url = URL.createObjectURL(new Blob([fileBuffer], { type: fileType }));
+    } else if (blob.type.startsWith("video/")) {
+      url = URL.createObjectURL(blob);
       return await generateVideoThumbnail(url);
     }
     return null;
-  } catch {
-    return null;
-  } finally {
-    if (url) {
-      URL.revokeObjectURL(url);
-    }
-  }
-};
-
-export const generateThumbnailFromFile = async (file: File) => {
-  if (!file.type.startsWith("video/")) return null;
-
-  let url;
-  try {
-    url = URL.createObjectURL(file);
-    return await generateVideoThumbnail(url);
   } catch {
     return null;
   } finally {
