@@ -2,9 +2,9 @@ import { limitFunction } from "p-limit";
 import { SvelteMap } from "svelte/reactivity";
 import { CHUNK_SIZE } from "$lib/constants";
 import type { FileInfo } from "$lib/modules/filesystem";
-import { Scheduler } from "$lib/modules/scheduler";
 import { uploadBlob } from "$lib/modules/upload";
 import { requestFileDownload } from "$lib/services/file";
+import { Scheduler } from "$lib/utils";
 import { trpc } from "$trpc/client";
 
 export type MigrationStatus =

@@ -3,10 +3,10 @@ import { limitFunction } from "p-limit";
 import { CHUNK_SIZE } from "$lib/constants";
 import { encodeToBase64, generateDataKey, wrapDataKey, encryptString } from "$lib/modules/crypto";
 import { signMessageHmac } from "$lib/modules/crypto";
-import { Scheduler } from "$lib/modules/scheduler";
 import { generateThumbnail } from "$lib/modules/thumbnail";
 import { uploadBlob } from "$lib/modules/upload";
 import type { MasterKey, HmacSecret } from "$lib/stores";
+import { Scheduler } from "$lib/utils";
 import { trpc } from "$trpc/client";
 
 export interface FileUploadState {

@@ -2,9 +2,9 @@ import { limitFunction } from "p-limit";
 import { SvelteMap } from "svelte/reactivity";
 import { storeFileThumbnailCache } from "$lib/modules/file";
 import type { FileInfo } from "$lib/modules/filesystem";
-import { Scheduler } from "$lib/modules/scheduler";
 import { generateThumbnail } from "$lib/modules/thumbnail";
 import { requestFileDownload, requestFileThumbnailUpload } from "$lib/services/file";
+import { Scheduler } from "$lib/utils";
 
 export type GenerationStatus =
   | "queued"
