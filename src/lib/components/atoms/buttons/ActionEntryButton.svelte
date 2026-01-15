@@ -49,7 +49,7 @@
   </div>
 </div>
 
-<style>
+<style lang="postcss">
   #container:active:not(:has(#action-button:active)) {
     @apply bg-gray-100;
   }

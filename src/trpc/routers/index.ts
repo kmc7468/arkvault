@@ -5,5 +5,6 @@ export { default as directoryRouter } from "./directory";
 export { default as fileRouter } from "./file";
 export { default as hskRouter } from "./hsk";
 export { default as mekRouter } from "./mek";
+export { default as searchRouter } from "./search";
 export { default as uploadRouter } from "./upload";
 export { default as userRouter } from "./user";

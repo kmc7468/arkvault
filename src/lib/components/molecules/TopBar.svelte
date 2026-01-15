@@ -8,10 +8,11 @@
     children?: Snippet;
     class?: ClassValue;
     onBackClick?: () => void;
+    showBackButton?: boolean;
     title?: string;
   }
 
-  let { children, class: className, onBackClick, title }: Props = $props();
+  let { children, class: className, onBackClick, showBackButton = true, title }: Props = $props();
 </script>
 
 <div
@@ -20,12 +21,16 @@
     className,
   ]}
 >
-  <button
-    onclick={onBackClick || (() => history.back())}
-    class="w-[2.3rem] flex-shrink-0 rounded-full p-1 active:bg-black active:bg-opacity-[0.04]"
-  >
-    <IconArrowBack class="text-2xl" />
-  </button>
+  <div class="w-[2.3rem] flex-shrink-0">
+    {#if showBackButton}
+      <button
+        onclick={onBackClick ?? (() => history.back())}
+        class="w-[2.3rem] flex-shrink-0 rounded-full p-1 active:bg-black active:bg-opacity-[0.04]"
+      >
+        <IconArrowBack class="text-2xl" />
+      </button>
+    {/if}
+  </div>
   {#if title}
     <p class="flex-grow truncate text-center text-lg font-semibold">{title}</p>
   {/if}

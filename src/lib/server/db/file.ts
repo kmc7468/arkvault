@@ -101,6 +101,39 @@ export const getAllDirectoriesByParent = async (userId: number, parentId: Direct
   );
 };
 
+export const getAllRecursiveDirectoriesByParent = async (userId: number, parentId: DirectoryId) => {
+  const directories = await db
+    .withRecursive("directory_tree", (db) =>
+      db
+        .selectFrom("directory")
+        .selectAll()
+        .$if(parentId === "root", (qb) => qb.where("parent_id", "is", null))
+        .$if(parentId !== "root", (qb) => qb.where("parent_id", "=", parentId as number))
+        .where("user_id", "=", userId)
+        .unionAll((db) =>
+          db
+            .selectFrom("directory")
+            .innerJoin("directory_tree", "directory.parent_id", "directory_tree.id")
+            .selectAll("directory"),
+        ),
+    )
+    .selectFrom("directory_tree")
+    .selectAll()
+    .execute();
+  return directories.map(
+    (directory) =>
+      ({
+        id: directory.id,
+        parentId: directory.parent_id ?? "root",
+        userId: directory.user_id,
+        mekVersion: directory.master_encryption_key_version,
+        encDek: directory.encrypted_data_encryption_key,
+        dekVersion: directory.data_encryption_key_version,
+        encName: directory.encrypted_name,
+      }) satisfies Directory,
+  );
+};
+
 export const getDirectory = async (userId: number, directoryId: number) => {
   const directory = await db
     .selectFrom("directory")
@@ -431,6 +464,105 @@ export const getFilesWithCategories = async (userId: number, fileIds: number[]) 
           encName: category.encrypted_name,
         })),
       }) satisfies File & { categories: FileCategory[] },
+  );
+};
+
+export const searchFiles = async (
+  userId: number,
+  filters: {
+    parentId: DirectoryId;
+    includeCategoryIds: number[];
+    excludeCategoryIds: number[];
+  },
+) => {
+  const ctes: string[] = [];
+  const conditions: string[] = [];
+
+  if (filters.parentId === "root") {
+    conditions.push(`user_id = ${userId}`);
+  } else {
+    ctes.push(`
+      directory_tree AS (
+        SELECT id FROM directory WHERE user_id = ${userId} AND id = ${filters.parentId}
+        UNION ALL
+        SELECT d.id FROM directory d INNER JOIN directory_tree dt ON d.parent_id = dt.id
+      )`);
+    conditions.push(`parent_id IN (SELECT id FROM directory_tree)`);
+  }
+
+  filters.includeCategoryIds.forEach((categoryId, index) => {
+    ctes.push(`
+      include_category_tree_${index} AS (
+        SELECT id FROM category WHERE user_id = ${userId} AND id = ${categoryId}
+        UNION ALL
+        SELECT c.id FROM category c INNER JOIN include_category_tree_${index} ct ON c.parent_id = ct.id
+      )`);
+    conditions.push(`
+      EXISTS(
+        SELECT 1 FROM file_category
+        WHERE file_id = file.id
+        AND EXISTS (SELECT 1 FROM include_category_tree_${index} ct WHERE ct.id = category_id)
+      )`);
+  });
+
+  if (filters.excludeCategoryIds.length > 0) {
+    ctes.push(`
+      exclude_category_tree AS (
+        SELECT id FROM category WHERE user_id = ${userId} AND id IN (${filters.excludeCategoryIds.join(",")})
+        UNION ALL
+        SELECT c.id FROM category c INNER JOIN exclude_category_tree ct ON c.parent_id = ct.id
+      )`);
+    conditions.push(`
+      NOT EXISTS(
+        SELECT 1 FROM file_category
+        WHERE file_id = id
+        AND EXISTS (SELECT 1 FROM exclude_category_tree ct WHERE ct.id = category_id)
+      )`);
+  }
+
+  const query = `
+    ${ctes.length > 0 ? `WITH RECURSIVE ${ctes.join(",")}` : ""}
+    SELECT * FROM file
+    WHERE ${conditions.join(" AND ")}
+  `;
+  const { rows } = await sql
+    .raw<{
+      id: number;
+      parent_id: number | null;
+      user_id: number;
+      path: string;
+      master_encryption_key_version: number;
+      encrypted_data_encryption_key: string;
+      data_encryption_key_version: Date;
+      hmac_secret_key_version: number;
+      content_hmac: string;
+      content_type: string;
+      encrypted_content_iv: string;
+      encrypted_content_hash: string;
+      encrypted_name: Ciphertext;
+      encrypted_created_at: Ciphertext | null;
+      encrypted_last_modified_at: Ciphertext;
+    }>(query)
+    .execute(db);
+  return rows.map(
+    (file) =>
+      ({
+        id: file.id,
+        parentId: file.parent_id ?? "root",
+        userId: file.user_id,
+        path: file.path,
+        mekVersion: file.master_encryption_key_version,
+        encDek: file.encrypted_data_encryption_key,
+        dekVersion: file.data_encryption_key_version,
+        hskVersion: file.hmac_secret_key_version,
+        contentHmac: file.content_hmac,
+        contentType: file.content_type,
+        encContentIv: file.encrypted_content_iv,
+        encContentHash: file.encrypted_content_hash,
+        encName: file.encrypted_name,
+        encCreatedAt: file.encrypted_created_at,
+        encLastModifiedAt: file.encrypted_last_modified_at,
+      }) satisfies File,
   );
 };
 

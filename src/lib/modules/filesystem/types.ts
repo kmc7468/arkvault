@@ -1,7 +1,7 @@
 export type DataKey = { key: CryptoKey; version: Date };
 type AllUndefined<T> = { [K in keyof T]?: undefined };
 
-interface LocalDirectoryInfo {
+export interface LocalDirectoryInfo {
   id: number;
   parentId: DirectoryId;
   dataKey?: DataKey;
@@ -10,7 +10,7 @@ interface LocalDirectoryInfo {
   files: SummarizedFileInfo[];
 }
 
-interface RootDirectoryInfo {
+export interface RootDirectoryInfo {
   id: "root";
   parentId?: undefined;
   dataKey?: undefined;
@@ -45,7 +45,7 @@ export type MaybeFileInfo =
 export type SummarizedFileInfo = Omit<FileInfo, "categories">;
 export type CategoryFileInfo = SummarizedFileInfo & { isRecursive: boolean };
 
-interface LocalCategoryInfo {
+export interface LocalCategoryInfo {
   id: number;
   parentId: DirectoryId;
   dataKey?: DataKey;
@@ -55,7 +55,7 @@ interface LocalCategoryInfo {
   isFileRecursive: boolean;
 }
 
-interface RootCategoryInfo {
+export interface RootCategoryInfo {
   id: "root";
   parentId?: undefined;
   dataKey?: undefined;

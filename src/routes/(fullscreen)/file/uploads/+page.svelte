@@ -16,7 +16,7 @@
 <TopBar />
 <FullscreenDiv>
   <div class="space-y-2 pb-4">
-    {#each uploadingFiles as file}
+    {#each uploadingFiles as file (file.id)}
       <File state={file} />
     {/each}
   </div>

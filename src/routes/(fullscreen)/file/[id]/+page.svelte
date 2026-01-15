@@ -150,7 +150,9 @@
     </button>
     <TopBarMenu
       bind:isOpen={isMenuOpen}
-      directoryId={["category", "gallery"].includes(page.url.searchParams.get("from") ?? "")
+      directoryId={["category", "gallery", "search"].includes(
+        page.url.searchParams.get("from") ?? "",
+      )
         ? info?.parentId
         : undefined}
       {fileBlob}

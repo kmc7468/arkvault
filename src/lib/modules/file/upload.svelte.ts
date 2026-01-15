@@ -10,6 +10,7 @@ import { Scheduler } from "$lib/utils";
 import { trpc } from "$trpc/client";
 
 export interface FileUploadState {
+  id: string;
   name: string;
   parentId: DirectoryId;
   status:
@@ -208,6 +209,7 @@ export const uploadFile = async (
   onDuplicate: () => Promise<boolean>,
 ) => {
   uploadingFiles.push({
+    id: crypto.randomUUID(),
     name: file.name,
     parentId,
     status: "queued",
