@@ -1,8 +1,13 @@
-import type { DataKey, LocalCategoryInfo } from "$lib/modules/filesystem";
 import {
   decryptDirectoryMetadata,
   decryptFileMetadata,
-} from "$lib/modules/filesystem/internal.svelte";
+  getDirectoryInfo,
+  getFileInfo,
+  type LocalDirectoryInfo,
+  type FileInfo,
+  type LocalCategoryInfo,
+} from "$lib/modules/filesystem";
+import { HybridPromise } from "$lib/utils";
 import { trpc } from "$trpc/client";
 
 export interface SearchFilter {
@@ -10,28 +15,9 @@ export interface SearchFilter {
   categories: { info: LocalCategoryInfo; type: "include" | "exclude" }[];
 }
 
-interface SearchedDirectory {
-  type: "directory";
-  id: number;
-  parentId: DirectoryId;
-  dataKey?: DataKey;
-  name: string;
-}
-
-interface SearchedFile {
-  type: "file";
-  id: number;
-  parentId: DirectoryId;
-  dataKey?: DataKey;
-  contentType: string;
-  name: string;
-  createdAt?: Date;
-  lastModifiedAt: Date;
-}
-
 export interface SearchResult {
-  directories: SearchedDirectory[];
-  files: SearchedFile[];
+  directories: LocalDirectoryInfo[];
+  files: FileInfo[];
 }
 
 export const requestSearch = async (filter: SearchFilter, masterKey: CryptoKey) => {
@@ -45,51 +31,47 @@ export const requestSearch = async (filter: SearchFilter, masterKey: CryptoKey) 
       .map(({ info }) => info.id),
   });
 
-  // TODO: FIXME
-  const [directories, files] = await Promise.all([
-    Promise.all(
-      directoriesRaw.map(async (dir) => {
-        const metadata = await decryptDirectoryMetadata(
-          { dek: dir.dek, dekVersion: dir.dekVersion, name: dir.name, nameIv: dir.nameIv },
-          masterKey,
-        );
-        return {
-          type: "directory" as const,
-          id: dir.id,
-          parentId: dir.parent,
-          dataKey: metadata.dataKey,
-          name: metadata.name,
-        };
-      }),
+  const [directories, files] = await HybridPromise.all([
+    HybridPromise.all(
+      directoriesRaw.map((directory) =>
+        HybridPromise.resolve(
+          getDirectoryInfo(directory.id, masterKey, {
+            async fetchFromServer(id, cachedInfo, masterKey) {
+              const metadata = await decryptDirectoryMetadata(directory, masterKey);
+              return {
+                subDirectories: [],
+                files: [],
+                ...cachedInfo,
+                id: id as number,
+                exists: true,
+                parentId: directory.parent,
+                ...metadata,
+              };
+            },
+          }),
+        ),
+      ),
     ),
-    Promise.all(
-      filesRaw.map(async (file) => {
-        const metadata = await decryptFileMetadata(
-          {
-            dek: file.dek,
-            dekVersion: file.dekVersion,
-            name: file.name,
-            nameIv: file.nameIv,
-            createdAt: file.createdAt,
-            createdAtIv: file.createdAtIv,
-            lastModifiedAt: file.lastModifiedAt,
-            lastModifiedAtIv: file.lastModifiedAtIv,
-          },
-          masterKey,
-        );
-        return {
-          type: "file" as const,
-          id: file.id,
-          parentId: file.parent,
-          dataKey: metadata.dataKey,
-          contentType: file.contentType,
-          name: metadata.name,
-          createdAt: metadata.createdAt,
-          lastModifiedAt: metadata.lastModifiedAt,
-        };
-      }),
+    HybridPromise.all(
+      filesRaw.map((file) =>
+        HybridPromise.resolve(
+          getFileInfo(file.id, masterKey, {
+            async fetchFromServer(id, cachedInfo, masterKey) {
+              const metadata = await decryptFileMetadata(file, masterKey);
+              return {
+                categories: [],
+                ...cachedInfo,
+                id: id as number,
+                exists: true,
+                parentId: file.parent,
+                contentType: file.contentType,
+                ...metadata,
+              };
+            },
+          }),
+        ),
+      ),
     ),
   ]);
-
-  return { directories, files } satisfies SearchResult;
+  return { directories, files } as SearchResult;
 };

@@ -1,6 +1,7 @@
 import * as IndexedDB from "$lib/indexedDB";
 import { trpc, isTRPCClientError } from "$trpc/client";
-import { FilesystemCache, decryptFileMetadata, decryptCategoryMetadata } from "./internal.svelte";
+import { decryptFileMetadata, decryptCategoryMetadata } from "./common";
+import { FilesystemCache } from "./FilesystemCache.svelte";
 import type { CategoryInfo, MaybeCategoryInfo } from "./types";
 
 const cache = new FilesystemCache<CategoryId, MaybeCategoryInfo>({

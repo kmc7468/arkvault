@@ -90,4 +90,42 @@ export class HybridPromise<T> implements PromiseLike<T> {
       return HybridPromise.reject(e);
     }
   }
+
+  static all<T extends readonly unknown[] | []>(
+    maybePromises: T,
+  ): HybridPromise<{ -readonly [P in keyof T]: HybridAwaited<T[P]> }> {
+    const length = maybePromises.length;
+    if (length === 0) {
+      return HybridPromise.resolve([] as any);
+    }
+
+    const hps = Array.from(maybePromises).map((p) => HybridPromise.resolve(p));
+    if (hps.some((hp) => !hp.isSync())) {
+      return new HybridPromise({
+        mode: "async",
+        promise: Promise.all(hps.map((hp) => hp.toPromise())) as any,
+      });
+    }
+
+    try {
+      return HybridPromise.resolve(
+        Array.from(
+          hps.map((hp) => {
+            if (hp.state.mode === "sync") {
+              if (hp.state.status === "fulfilled") {
+                return hp.state.value;
+              } else {
+                throw hp.state.reason;
+              }
+            }
+          }),
+        ) as any,
+      );
+    } catch (e) {
+      return HybridPromise.reject(e);
+    }
+  }
 }
+
+export type HybridAwaited<T> =
+  T extends HybridPromise<infer U> ? U : T extends Promise<infer U> ? U : T;

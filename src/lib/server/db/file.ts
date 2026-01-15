@@ -367,14 +367,77 @@ export const getAllFileIds = async (userId: number) => {
   return files.map(({ id }) => id);
 };
 
-export const getLegacyFileIds = async (userId: number) => {
+export const getLegacyFiles = async (userId: number, limit: number = 100) => {
   const files = await db
     .selectFrom("file")
-    .select("id")
+    .selectAll()
     .where("user_id", "=", userId)
     .where("encrypted_content_iv", "is not", null)
+    .limit(limit)
     .execute();
-  return files.map(({ id }) => id);
+  return files.map(
+    (file) =>
+      ({
+        id: file.id,
+        parentId: file.parent_id ?? "root",
+        userId: file.user_id,
+        path: file.path,
+        mekVersion: file.master_encryption_key_version,
+        encDek: file.encrypted_data_encryption_key,
+        dekVersion: file.data_encryption_key_version,
+        hskVersion: file.hmac_secret_key_version,
+        contentHmac: file.content_hmac,
+        contentType: file.content_type,
+        encContentIv: file.encrypted_content_iv,
+        encContentHash: file.encrypted_content_hash,
+        encName: file.encrypted_name,
+        encCreatedAt: file.encrypted_created_at,
+        encLastModifiedAt: file.encrypted_last_modified_at,
+      }) satisfies File,
+  );
+};
+
+export const getFilesWithoutThumbnail = async (userId: number, limit: number = 100) => {
+  const files = await db
+    .selectFrom("file")
+    .selectAll()
+    .where("user_id", "=", userId)
+    .where((eb) =>
+      eb.or([eb("content_type", "like", "image/%"), eb("content_type", "like", "video/%")]),
+    )
+    .where((eb) =>
+      eb.not(
+        eb.exists(
+          eb
+            .selectFrom("thumbnail")
+            .select("thumbnail.id")
+            .whereRef("thumbnail.file_id", "=", "file.id")
+            .limit(1),
+        ),
+      ),
+    )
+    .limit(limit)
+    .execute();
+  return files.map(
+    (file) =>
+      ({
+        id: file.id,
+        parentId: file.parent_id ?? "root",
+        userId: file.user_id,
+        path: file.path,
+        mekVersion: file.master_encryption_key_version,
+        encDek: file.encrypted_data_encryption_key,
+        dekVersion: file.data_encryption_key_version,
+        hskVersion: file.hmac_secret_key_version,
+        contentHmac: file.content_hmac,
+        contentType: file.content_type,
+        encContentIv: file.encrypted_content_iv,
+        encContentHash: file.encrypted_content_hash,
+        encName: file.encrypted_name,
+        encCreatedAt: file.encrypted_created_at,
+        encLastModifiedAt: file.encrypted_last_modified_at,
+      }) satisfies File,
+  );
 };
 
 export const getAllFileIdsByContentHmac = async (

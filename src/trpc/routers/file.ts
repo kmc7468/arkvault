@@ -97,11 +97,41 @@ const fileRouter = router({
     }),
 
   listWithoutThumbnail: roleProcedure["activeClient"].query(async ({ ctx }) => {
-    return await MediaRepo.getMissingFileThumbnails(ctx.session.userId);
+    const files = await FileRepo.getFilesWithoutThumbnail(ctx.session.userId);
+    return files.map((file) => ({
+      id: file.id,
+      isLegacy: !!file.encContentIv,
+      parent: file.parentId,
+      mekVersion: file.mekVersion,
+      dek: file.encDek,
+      dekVersion: file.dekVersion,
+      contentType: file.contentType,
+      name: file.encName.ciphertext,
+      nameIv: file.encName.iv,
+      createdAt: file.encCreatedAt?.ciphertext,
+      createdAtIv: file.encCreatedAt?.iv,
+      lastModifiedAt: file.encLastModifiedAt.ciphertext,
+      lastModifiedAtIv: file.encLastModifiedAt.iv,
+    }));
   }),
 
   listLegacy: roleProcedure["activeClient"].query(async ({ ctx }) => {
-    return await FileRepo.getLegacyFileIds(ctx.session.userId);
+    const files = await FileRepo.getLegacyFiles(ctx.session.userId);
+    return files.map((file) => ({
+      id: file.id,
+      isLegacy: true,
+      parent: file.parentId,
+      mekVersion: file.mekVersion,
+      dek: file.encDek,
+      dekVersion: file.dekVersion,
+      contentType: file.contentType,
+      name: file.encName.ciphertext,
+      nameIv: file.encName.iv,
+      createdAt: file.encCreatedAt?.ciphertext,
+      createdAtIv: file.encCreatedAt?.iv,
+      lastModifiedAt: file.encLastModifiedAt.ciphertext,
+      lastModifiedAtIv: file.encLastModifiedAt.iv,
+    }));
   }),
 
   rename: roleProcedure["activeClient"]

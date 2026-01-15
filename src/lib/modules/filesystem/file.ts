@@ -1,6 +1,7 @@
 import * as IndexedDB from "$lib/indexedDB";
 import { trpc, isTRPCClientError } from "$trpc/client";
-import { FilesystemCache, decryptFileMetadata, decryptCategoryMetadata } from "./internal.svelte";
+import { decryptFileMetadata, decryptCategoryMetadata } from "./common";
+import { FilesystemCache, type FilesystemCacheOptions } from "./FilesystemCache.svelte";
 import type { FileInfo, MaybeFileInfo } from "./types";
 
 const cache = new FilesystemCache<number, MaybeFileInfo>({
@@ -168,8 +169,12 @@ const bulkStoreToIndexedDB = (infos: FileInfo[]) => {
   return infos.map((info) => [info.id, { ...info, exists: true }] as const);
 };
 
-export const getFileInfo = (id: number, masterKey: CryptoKey) => {
-  return cache.get(id, masterKey);
+export const getFileInfo = (
+  id: number,
+  masterKey: CryptoKey,
+  options?: { fetchFromServer?: FilesystemCacheOptions<number, MaybeFileInfo>["fetchFromServer"] },
+) => {
+  return cache.get(id, masterKey, options);
 };
 
 export const bulkGetFileInfo = (ids: number[], masterKey: CryptoKey) => {

@@ -58,15 +58,25 @@
       filters.includeImages || filters.includeVideos || filters.includeDirectories;
 
     const directories =
-      !hasTypeFilter || filters.includeDirectories ? serverResult.directories : [];
+      !hasTypeFilter || filters.includeDirectories
+        ? serverResult.directories.map((directory) => ({
+            type: "directory" as const,
+            ...directory,
+          }))
+        : [];
     const files =
       !hasTypeFilter || filters.includeImages || filters.includeVideos
-        ? serverResult.files.filter(
-            ({ contentType }) =>
-              !hasTypeFilter ||
-              (filters.includeImages && contentType.startsWith("image/")) ||
-              (filters.includeVideos && contentType.startsWith("video/")),
-          )
+        ? serverResult.files
+            .filter(
+              ({ contentType }) =>
+                !hasTypeFilter ||
+                (filters.includeImages && contentType.startsWith("image/")) ||
+                (filters.includeVideos && contentType.startsWith("video/")),
+            )
+            .map((file) => ({
+              type: "file" as const,
+              ...file,
+            }))
         : [];
 
     return sortEntries(

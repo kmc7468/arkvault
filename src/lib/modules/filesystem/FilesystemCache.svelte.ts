@@ -1,7 +1,6 @@
 import { untrack } from "svelte";
-import { unwrapDataKey, decryptString } from "$lib/modules/crypto";
 
-interface FilesystemCacheOptions<K, V> {
+export interface FilesystemCacheOptions<K, V> {
   fetchFromIndexedDB: (key: K) => Promise<V | undefined>;
   fetchFromServer: (key: K, cachedValue: V | undefined, masterKey: CryptoKey) => Promise<V>;
   bulkFetchFromIndexedDB?: (keys: Set<K>) => Promise<Map<K, V>>;
@@ -16,7 +15,11 @@ export class FilesystemCache<K, V extends object> {
 
   constructor(private readonly options: FilesystemCacheOptions<K, V>) {}
 
-  get(key: K, masterKey: CryptoKey) {
+  get(
+    key: K,
+    masterKey: CryptoKey,
+    options?: { fetchFromServer?: FilesystemCacheOptions<K, V>["fetchFromServer"] },
+  ) {
     return untrack(() => {
       let state = this.map.get(key);
       if (state?.promise) return state.value ?? state.promise;
@@ -39,7 +42,9 @@ export class FilesystemCache<K, V extends object> {
             return loadedInfo;
           })
       )
-        .then((cachedInfo) => this.options.fetchFromServer(key, cachedInfo, masterKey))
+        .then((cachedInfo) =>
+          (options?.fetchFromServer ?? this.options.fetchFromServer)(key, cachedInfo, masterKey),
+        )
         .then((loadedInfo) => {
           if (state.value) {
             Object.assign(state.value, loadedInfo);
@@ -121,52 +126,3 @@ export class FilesystemCache<K, V extends object> {
     });
   }
 }
-
-export const decryptDirectoryMetadata = async (
-  metadata: { dek: string; dekVersion: Date; name: string; nameIv: string },
-  masterKey: CryptoKey,
-) => {
-  const { dataKey } = await unwrapDataKey(metadata.dek, masterKey);
-  const name = await decryptString(metadata.name, metadata.nameIv, dataKey);
-
-  return {
-    dataKey: { key: dataKey, version: metadata.dekVersion },
-    name,
-  };
-};
-
-const decryptDate = async (ciphertext: string, iv: string, dataKey: CryptoKey) => {
-  return new Date(parseInt(await decryptString(ciphertext, iv, dataKey), 10));
-};
-
-export const decryptFileMetadata = async (
-  metadata: {
-    dek: string;
-    dekVersion: Date;
-    name: string;
-    nameIv: string;
-    createdAt?: string;
-    createdAtIv?: string;
-    lastModifiedAt: string;
-    lastModifiedAtIv: string;
-  },
-  masterKey: CryptoKey,
-) => {
-  const { dataKey } = await unwrapDataKey(metadata.dek, masterKey);
-  const [name, createdAt, lastModifiedAt] = await Promise.all([
-    decryptString(metadata.name, metadata.nameIv, dataKey),
-    metadata.createdAt
-      ? decryptDate(metadata.createdAt, metadata.createdAtIv!, dataKey)
-      : undefined,
-    decryptDate(metadata.lastModifiedAt, metadata.lastModifiedAtIv, dataKey),
-  ]);
-
-  return {
-    dataKey: { key: dataKey, version: metadata.dekVersion },
-    name,
-    createdAt,
-    lastModifiedAt,
-  };
-};
-
-export const decryptCategoryMetadata = decryptDirectoryMetadata;
