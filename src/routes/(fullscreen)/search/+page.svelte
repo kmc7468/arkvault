@@ -1,4 +1,7 @@
 <script lang="ts">
+  import type { Snapshot } from "@sveltejs/kit";
+  import superjson, { type SuperJSONResult } from "superjson";
+  import { untrack } from "svelte";
   import { slide } from "svelte/transition";
   import { goto } from "$app/navigation";
   import { Chip, FullscreenDiv, RowVirtualizer } from "$lib/components/atoms";
@@ -8,7 +11,7 @@
     type MaybeDirectoryInfo,
   } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
-  import { HybridPromise, sortEntries } from "$lib/utils";
+  import { HybridPromise, searchString, sortEntries } from "$lib/utils";
   import Directory from "./Directory.svelte";
   import File from "./File.svelte";
   import SearchBar from "./SearchBar.svelte";
@@ -17,15 +20,24 @@
 
   let { data } = $props();
 
+  interface SearchFilters {
+    name: string;
+    includeImages: boolean;
+    includeVideos: boolean;
+    includeDirectories: boolean;
+    searchInDirectory: boolean;
+    categories: SearchFilter["categories"];
+  }
+
   let directoryInfo: MaybeDirectoryInfo | undefined = $state();
 
-  let filters = $state({
+  let filters: SearchFilters = $state({
     name: "",
     includeImages: false,
     includeVideos: false,
     includeDirectories: false,
     searchInDirectory: false,
-    categories: [] as SearchFilter["categories"],
+    categories: [],
   });
   let hasCategoryFilter = $derived(filters.categories.length > 0);
   let hasAnyFilter = $derived(
@@ -36,11 +48,12 @@
       filters.name.trim().length > 0,
   );
 
+  let isRestoredFromSnapshot = $state(false);
   let serverResult: SearchResult | undefined = $state();
   let result = $derived.by(() => {
     if (!serverResult) return [];
 
-    const nameFilter = filters.name.trim().toLowerCase();
+    const nameFilter = filters.name.trim();
     const hasTypeFilter =
       filters.includeImages || filters.includeVideos || filters.includeDirectories;
 
@@ -58,7 +71,7 @@
 
     return sortEntries(
       [...directories, ...files].filter(
-        ({ name }) => !nameFilter || name.toLowerCase().includes(nameFilter),
+        ({ name }) => !nameFilter || searchString(name, nameFilter),
       ),
     );
   });
@@ -81,6 +94,20 @@
     }
   };
 
+  export const snapshot: Snapshot<{
+    filters: SearchFilters;
+    serverResult: SuperJSONResult;
+  }> = {
+    capture() {
+      return { filters, serverResult: superjson.serialize(serverResult) };
+    },
+    restore(value) {
+      filters = value.filters;
+      serverResult = superjson.deserialize(value.serverResult, { inPlace: true });
+      isRestoredFromSnapshot = true;
+    },
+  };
+
   $effect(() => {
     if (data.directoryId) {
       HybridPromise.resolve(getDirectoryInfo(data.directoryId, $masterKeyStore?.get(1)?.key!)).then(
@@ -96,6 +123,16 @@
   });
 
   $effect(() => {
+    // Svelte sucks
+    hasAnyFilter;
+    filters.searchInDirectory;
+    filters.categories.length;
+
+    if (untrack(() => isRestoredFromSnapshot)) {
+      isRestoredFromSnapshot = false;
+      return;
+    }
+
     if (hasAnyFilter) {
       requestSearch(
         {

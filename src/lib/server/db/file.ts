@@ -553,7 +553,7 @@ export const searchFiles = async (
       : await baseQuery.execute();
   return files.map((file) => ({
     id: file.id,
-    parentId: file.parent_id ?? "root",
+    parentId: file.parent_id ?? ("root" as const),
     userId: file.user_id,
     path: file.path,
     mekVersion: file.master_encryption_key_version,

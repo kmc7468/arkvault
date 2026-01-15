@@ -91,5 +91,5 @@ export const requestSearch = async (filter: SearchFilter, masterKey: CryptoKey) 
     ),
   ]);
 
-  return { directories, files };
+  return { directories, files } satisfies SearchResult;
 };
