@@ -475,95 +475,99 @@ export const searchFiles = async (
     excludeCategoryIds: number[];
   },
 ) => {
-  const ctes: string[] = [];
-  const conditions: string[] = [];
-
-  if (filters.parentId === "root") {
-    conditions.push(`user_id = ${userId}`);
-  } else {
-    ctes.push(`
-      directory_tree AS (
-        SELECT id FROM directory WHERE user_id = ${userId} AND id = ${filters.parentId}
-        UNION ALL
-        SELECT d.id FROM directory d INNER JOIN directory_tree dt ON d.parent_id = dt.id
-      )`);
-    conditions.push(`parent_id IN (SELECT id FROM directory_tree)`);
-  }
-
-  filters.includeCategoryIds.forEach((categoryId, index) => {
-    ctes.push(`
-      include_category_tree_${index} AS (
-        SELECT id FROM category WHERE user_id = ${userId} AND id = ${categoryId}
-        UNION ALL
-        SELECT c.id FROM category c INNER JOIN include_category_tree_${index} ct ON c.parent_id = ct.id
-      )`);
-    conditions.push(`
-      EXISTS(
-        SELECT 1 FROM file_category
-        WHERE file_id = file.id
-        AND EXISTS (SELECT 1 FROM include_category_tree_${index} ct WHERE ct.id = category_id)
-      )`);
-  });
-
-  if (filters.excludeCategoryIds.length > 0) {
-    ctes.push(`
-      exclude_category_tree AS (
-        SELECT id FROM category WHERE user_id = ${userId} AND id IN (${filters.excludeCategoryIds.join(",")})
-        UNION ALL
-        SELECT c.id FROM category c INNER JOIN exclude_category_tree ct ON c.parent_id = ct.id
-      )`);
-    conditions.push(`
-      NOT EXISTS(
-        SELECT 1 FROM file_category
-        WHERE file_id = id
-        AND EXISTS (SELECT 1 FROM exclude_category_tree ct WHERE ct.id = category_id)
-      )`);
-  }
-
-  const query = `
-    ${ctes.length > 0 ? `WITH RECURSIVE ${ctes.join(",")}` : ""}
-    SELECT * FROM file
-    WHERE ${conditions.join(" AND ")}
-  `;
-  const { rows } = await sql
-    .raw<{
-      id: number;
-      parent_id: number | null;
-      user_id: number;
-      path: string;
-      master_encryption_key_version: number;
-      encrypted_data_encryption_key: string;
-      data_encryption_key_version: Date;
-      hmac_secret_key_version: number;
-      content_hmac: string;
-      content_type: string;
-      encrypted_content_iv: string;
-      encrypted_content_hash: string;
-      encrypted_name: Ciphertext;
-      encrypted_created_at: Ciphertext | null;
-      encrypted_last_modified_at: Ciphertext;
-    }>(query)
-    .execute(db);
-  return rows.map(
-    (file) =>
-      ({
-        id: file.id,
-        parentId: file.parent_id ?? "root",
-        userId: file.user_id,
-        path: file.path,
-        mekVersion: file.master_encryption_key_version,
-        encDek: file.encrypted_data_encryption_key,
-        dekVersion: file.data_encryption_key_version,
-        hskVersion: file.hmac_secret_key_version,
-        contentHmac: file.content_hmac,
-        contentType: file.content_type,
-        encContentIv: file.encrypted_content_iv,
-        encContentHash: file.encrypted_content_hash,
-        encName: file.encrypted_name,
-        encCreatedAt: file.encrypted_created_at,
-        encLastModifiedAt: file.encrypted_last_modified_at,
-      }) satisfies File,
-  );
+  const baseQuery = db
+    .withRecursive("directory_tree", (db) =>
+      db
+        .selectFrom("directory")
+        .select("id")
+        .where("user_id", "=", userId)
+        .where((eb) => eb.val(filters.parentId !== "root")) // directory_tree will be empty if parentId is "root"
+        .$if(filters.parentId !== "root", (qb) => qb.where("id", "=", filters.parentId as number))
+        .unionAll(
+          db
+            .selectFrom("directory as d")
+            .innerJoin("directory_tree as dt", "d.parent_id", "dt.id")
+            .select("d.id"),
+        ),
+    )
+    .withRecursive("include_category_tree", (db) =>
+      db
+        .selectFrom("category")
+        .select(["id", "id as root_id"])
+        .where("id", "=", (eb) => eb.fn.any(eb.val(filters.includeCategoryIds)))
+        .where("user_id", "=", userId)
+        .unionAll(
+          db
+            .selectFrom("category as c")
+            .innerJoin("include_category_tree as ct", "c.parent_id", "ct.id")
+            .select(["c.id", "ct.root_id"]),
+        ),
+    )
+    .withRecursive("exclude_category_tree", (db) =>
+      db
+        .selectFrom("category")
+        .select("id")
+        .where("id", "=", (eb) => eb.fn.any(eb.val(filters.excludeCategoryIds)))
+        .where("user_id", "=", userId)
+        .unionAll((db) =>
+          db
+            .selectFrom("category as c")
+            .innerJoin("exclude_category_tree as ct", "c.parent_id", "ct.id")
+            .select("c.id"),
+        ),
+    )
+    .selectFrom("file")
+    .selectAll("file")
+    .$if(filters.parentId === "root", (qb) => qb.where("user_id", "=", userId)) // directory_tree isn't used if parentId is "root"
+    .$if(filters.parentId !== "root", (qb) =>
+      qb.where("parent_id", "in", (eb) => eb.selectFrom("directory_tree").select("id")),
+    )
+    .where((eb) =>
+      eb.not(
+        eb.exists(
+          eb
+            .selectFrom("file_category")
+            .whereRef("file_id", "=", "file.id")
+            .where("category_id", "in", (eb) =>
+              eb.selectFrom("exclude_category_tree").select("id"),
+            ),
+        ),
+      ),
+    );
+  const files =
+    filters.includeCategoryIds.length > 0
+      ? await baseQuery
+          .innerJoin("file_category", "file.id", "file_category.file_id")
+          .innerJoin(
+            "include_category_tree",
+            "file_category.category_id",
+            "include_category_tree.id",
+          )
+          .groupBy("file.id")
+          .having(
+            (eb) => eb.fn.count("include_category_tree.root_id").distinct(),
+            "=",
+            filters.includeCategoryIds.length,
+          )
+          .execute()
+      : await baseQuery.execute();
+  return files.map((file) => ({
+    id: file.id,
+    parentId: file.parent_id ?? "root",
+    userId: file.user_id,
+    path: file.path,
+    mekVersion: file.master_encryption_key_version,
+    encDek: file.encrypted_data_encryption_key,
+    dekVersion: file.data_encryption_key_version,
+    hskVersion: file.hmac_secret_key_version,
+    contentHmac: file.content_hmac,
+    contentType: file.content_type,
+    encContentIv: file.encrypted_content_iv,
+    encContentHash: file.encrypted_content_hash,
+    encName: file.encrypted_name,
+    encCreatedAt: file.encrypted_created_at,
+    encLastModifiedAt: file.encrypted_last_modified_at,
+  }));
 };
 
 export const setFileEncName = async (
