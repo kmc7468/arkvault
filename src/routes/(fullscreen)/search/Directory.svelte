@@ -12,5 +12,5 @@
 </script>
 
 <ActionEntryButton class="h-14" {onclick}>
-  <DirectoryEntryLabel type="directory" name={info.name} />
+  <DirectoryEntryLabel type="directory" name={info.name} isFavorite={info.isFavorite} />
 </ActionEntryButton>

@@ -46,6 +46,7 @@ export const requestSearch = async (filter: SearchFilter, masterKey: CryptoKey) 
                 exists: true,
                 parentId: directory.parent,
                 ...metadata,
+                isFavorite: !!directory.isFavorite,
               };
             },
           }),
@@ -65,6 +66,7 @@ export const requestSearch = async (filter: SearchFilter, masterKey: CryptoKey) 
                 exists: true,
                 parentId: file.parent,
                 contentType: file.contentType,
+                isFavorite: !!file.isFavorite,
                 ...metadata,
               };
             },

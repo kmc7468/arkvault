@@ -22,6 +22,7 @@ const cache = new FilesystemCache<CategoryId, MaybeCategoryInfo>({
                   name: fileInfo.name,
                   createdAt: fileInfo.createdAt,
                   lastModifiedAt: fileInfo.lastModifiedAt,
+                  isFavorite: fileInfo.isFavorite,
                   isRecursive: file.isRecursive,
                 }
               : undefined;
@@ -66,6 +67,7 @@ const cache = new FilesystemCache<CategoryId, MaybeCategoryInfo>({
               parentId: file.parent,
               contentType: file.contentType,
               isRecursive: file.isRecursive,
+              isFavorite: file.isFavorite,
               ...(await decryptFileMetadata(file, masterKey)),
             })),
           ),

@@ -31,5 +31,5 @@
   actionButtonIcon={IconMoreVert}
   onActionButtonClick={() => action(onOpenMenuClick)}
 >
-  <DirectoryEntryLabel type="directory" name={info.name} />
+  <DirectoryEntryLabel type="directory" name={info.name} isFavorite={info.isFavorite} />
 </ActionEntryButton>

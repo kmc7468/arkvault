@@ -32,6 +32,7 @@ const searchRouter = router({
           dekVersion: directory.dekVersion,
           name: directory.encName.ciphertext,
           nameIv: directory.encName.iv,
+          isFavorite: directory.isFavorite,
         })),
         files: files.map((file) => ({
           id: file.id,
@@ -46,6 +47,7 @@ const searchRouter = router({
           createdAtIv: file.encCreatedAt?.iv,
           lastModifiedAt: file.encLastModifiedAt.ciphertext,
           lastModifiedAtIv: file.encLastModifiedAt.iv,
+          isFavorite: file.isFavorite,
         })),
       };
     }),

@@ -641,6 +641,7 @@ export const searchFiles = async (
     encName: file.encrypted_name,
     encCreatedAt: file.encrypted_created_at,
     encLastModifiedAt: file.encrypted_last_modified_at,
+    isFavorite: file.is_favorite,
   }));
 };
 

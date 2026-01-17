@@ -21,5 +21,6 @@
     thumbnail={$thumbnail}
     name={info.name}
     subtext={formatDateTime(info.createdAt ?? info.lastModifiedAt)}
+    isFavorite={info.isFavorite}
   />
 </ActionEntryButton>

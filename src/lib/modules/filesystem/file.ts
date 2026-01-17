@@ -27,6 +27,7 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
         name: file.name,
         createdAt: file.createdAt,
         lastModifiedAt: file.lastModifiedAt,
+        isFavorite: file.isFavorite,
         categories: categories?.filter((category) => !!category) ?? [],
       };
     }
@@ -55,6 +56,7 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
         name: metadata.name,
         createdAt: metadata.createdAt,
         lastModifiedAt: metadata.lastModifiedAt,
+        isFavorite: file.isFavorite,
         categories,
       });
     } catch (e) {
@@ -121,6 +123,7 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
           parentId: metadataRaw.parent,
           contentType: metadataRaw.contentType,
           categories,
+          isFavorite: metadataRaw.isFavorite,
           ...metadata,
         };
       }),

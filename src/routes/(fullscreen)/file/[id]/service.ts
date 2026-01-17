@@ -48,3 +48,16 @@ export const requestFileAdditionToCategory = async (fileId: number, categoryId: 
     return false;
   }
 };
+
+export const requestFavoriteToggle = async (fileId: number, isFavorite: boolean) => {
+  try {
+    if (isFavorite) {
+      await trpc().favorites.removeFile.mutate({ id: fileId });
+    } else {
+      await trpc().favorites.addFile.mutate({ id: fileId });
+    }
+    return true;
+  } catch {
+    return false;
+  }
+};

@@ -5,9 +5,11 @@
   import IconFolder from "~icons/material-symbols/folder";
   import IconDriveFolderUpload from "~icons/material-symbols/drive-folder-upload";
   import IconDraft from "~icons/material-symbols/draft";
+  import IconFavorite from "~icons/material-symbols/favorite";
 
   interface Props {
     class?: ClassValue;
+    isFavorite?: boolean;
     name: string;
     subtext?: string;
     textClass?: ClassValue;
@@ -17,6 +19,7 @@
 
   let {
     class: className,
+    isFavorite = false,
     name,
     subtext,
     textClass: textClassName,
@@ -26,7 +29,7 @@
 </script>
 
 {#snippet iconSnippet()}
-  <div class="flex h-10 w-10 items-center justify-center text-xl">
+  <div class="relative flex h-10 w-10 items-center justify-center text-xl">
     {#if thumbnail}
       <img src={thumbnail} alt={name} loading="lazy" class="aspect-square rounded object-cover" />
     {:else if type === "directory"}
@@ -35,6 +38,14 @@
       <IconDriveFolderUpload class="text-yellow-500" />
     {:else}
       <IconDraft class="text-blue-400" />
+    {/if}
+    {#if isFavorite}
+      <div class={["absolute bottom-0 right-0", !thumbnail && "rounded-full bg-white p-0.5"]}>
+        <IconFavorite
+          class="text-xs text-red-500"
+          style="filter: drop-shadow(0 0 1px white) drop-shadow(0 0 1px white);"
+        />
+      </div>
     {/if}
   </div>
 {/snippet}

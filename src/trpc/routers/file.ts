@@ -31,6 +31,7 @@ const fileRouter = router({
         createdAtIv: file.encCreatedAt?.iv,
         lastModifiedAt: file.encLastModifiedAt.ciphertext,
         lastModifiedAtIv: file.encLastModifiedAt.iv,
+        isFavorite: file.isFavorite,
         categories: categories.map((category) => ({
           id: category.id,
           parent: category.parentId,
@@ -65,6 +66,7 @@ const fileRouter = router({
         createdAtIv: file.encCreatedAt?.iv,
         lastModifiedAt: file.encLastModifiedAt.ciphertext,
         lastModifiedAtIv: file.encLastModifiedAt.iv,
+        isFavorite: file.isFavorite,
         categories: file.categories.map((category) => ({
           id: category.id,
           parent: category.parentId,

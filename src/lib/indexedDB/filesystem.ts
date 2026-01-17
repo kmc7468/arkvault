@@ -4,6 +4,7 @@ interface DirectoryInfo {
   id: number;
   parentId: DirectoryId;
   name: string;
+  isFavorite?: boolean;
 }
 
 interface FileInfo {
@@ -14,6 +15,7 @@ interface FileInfo {
   createdAt?: Date;
   lastModifiedAt: Date;
   categoryIds?: number[];
+  isFavorite?: boolean;
 }
 
 interface CategoryInfo {
