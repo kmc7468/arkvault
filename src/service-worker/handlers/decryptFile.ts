@@ -62,9 +62,7 @@ const streamFromServer = async (
 ) => {
   const totalSize = getDecryptedSize(metadata.encContentSize, metadata.isLegacy);
   const start = range?.start ?? 0;
-  const end =
-    range?.end ??
-    (range && !metadata.isLegacy ? Math.min(start + CHUNK_SIZE, totalSize) : totalSize) - 1;
+  const end = range?.end ?? totalSize - 1;
   if (start > end || start < 0 || end >= totalSize) {
     return new Response("Invalid range", { status: 416 });
   }
