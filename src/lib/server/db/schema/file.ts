@@ -9,13 +9,14 @@ interface DirectoryTable {
   encrypted_data_encryption_key: string; // Base64
   data_encryption_key_version: Date;
   encrypted_name: Ciphertext;
+  is_favorite: Generated<boolean>;
 }
 
 interface DirectoryLogTable {
   id: Generated<number>;
   directory_id: number;
   timestamp: ColumnType<Date, Date, never>;
-  action: "create" | "rename";
+  action: "create" | "rename" | "add-to-favorites" | "remove-from-favorites";
   new_name: Ciphertext | null;
 }
 
@@ -35,13 +36,21 @@ interface FileTable {
   encrypted_name: Ciphertext;
   encrypted_created_at: Ciphertext | null;
   encrypted_last_modified_at: Ciphertext;
+  is_favorite: Generated<boolean>;
 }
 
 interface FileLogTable {
   id: Generated<number>;
   file_id: number;
   timestamp: ColumnType<Date, Date, never>;
-  action: "create" | "rename" | "migrate" | "add-to-category" | "remove-from-category";
+  action:
+    | "create"
+    | "rename"
+    | "migrate"
+    | "add-to-category"
+    | "remove-from-category"
+    | "add-to-favorites"
+    | "remove-from-favorites";
   new_name: Ciphertext | null;
   category_id: number | null;
 }

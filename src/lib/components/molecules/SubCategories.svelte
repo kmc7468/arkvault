@@ -10,9 +10,9 @@
     class?: ClassValue;
     info: CategoryInfo;
     onSubCategoryClick: (subCategory: SelectedCategory) => void;
-    onSubCategoryCreateClick: () => void;
+    onSubCategoryCreateClick?: () => void;
     onSubCategoryMenuClick?: (category: SelectedCategory) => void;
-    subCategoryCreatePosition?: "top" | "bottom";
+    subCategoryCreatePosition?: "top" | "bottom" | "none";
     subCategoryMenuIcon?: Component<SvelteHTMLElements["svg"]>;
   }
 
@@ -22,7 +22,7 @@
     onSubCategoryClick,
     onSubCategoryCreateClick,
     onSubCategoryMenuClick,
-    subCategoryCreatePosition = "bottom",
+    subCategoryCreatePosition = "none",
     subCategoryMenuIcon,
   }: Props = $props();
 </script>

@@ -46,7 +46,16 @@
 </script>
 
 {#if entries.length > 0}
-  <RowVirtualizer count={entries.length} itemHeight={() => 56} itemGap={4} class="pb-[4.5rem]">
+  <RowVirtualizer
+    count={entries.length}
+    getItemKey={(index) =>
+      entries[index]!.type !== "parent"
+        ? `${entries[index]!.type}-${entries[index]!.details.id}`
+        : entries[index]!.type!}
+    estimateItemHeight={() => 56}
+    itemGap={4}
+    class="pb-[4.5rem]"
+  >
     {#snippet item(index)}
       {@const entry = entries[index]!}
       {#if entry.type === "parent"}

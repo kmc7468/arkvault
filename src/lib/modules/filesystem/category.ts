@@ -1,6 +1,7 @@
 import * as IndexedDB from "$lib/indexedDB";
 import { trpc, isTRPCClientError } from "$trpc/client";
-import { FilesystemCache, decryptFileMetadata, decryptCategoryMetadata } from "./internal.svelte";
+import { decryptFileMetadata, decryptCategoryMetadata } from "./common";
+import { FilesystemCache } from "./FilesystemCache.svelte";
 import type { CategoryInfo, MaybeCategoryInfo } from "./types";
 
 const cache = new FilesystemCache<CategoryId, MaybeCategoryInfo>({
@@ -21,6 +22,7 @@ const cache = new FilesystemCache<CategoryId, MaybeCategoryInfo>({
                   name: fileInfo.name,
                   createdAt: fileInfo.createdAt,
                   lastModifiedAt: fileInfo.lastModifiedAt,
+                  isFavorite: fileInfo.isFavorite,
                   isRecursive: file.isRecursive,
                 }
               : undefined;
@@ -65,6 +67,7 @@ const cache = new FilesystemCache<CategoryId, MaybeCategoryInfo>({
               parentId: file.parent,
               contentType: file.contentType,
               isRecursive: file.isRecursive,
+              isFavorite: file.isFavorite,
               ...(await decryptFileMetadata(file, masterKey)),
             })),
           ),

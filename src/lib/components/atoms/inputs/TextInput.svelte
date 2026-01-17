@@ -28,7 +28,7 @@
   </div>
 </div>
 
-<style>
+<style lang="postcss">
   input:focus,
   input:not(:placeholder-shown) {
     @apply border-primary-300;

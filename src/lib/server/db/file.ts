@@ -13,6 +13,7 @@ interface Directory {
   encDek: string;
   dekVersion: Date;
   encName: Ciphertext;
+  isFavorite: boolean;
 }
 
 interface File {
@@ -31,6 +32,7 @@ interface File {
   encName: Ciphertext;
   encCreatedAt: Ciphertext | null;
   encLastModifiedAt: Ciphertext;
+  isFavorite: boolean;
 }
 
 interface FileCategory {
@@ -42,7 +44,7 @@ interface FileCategory {
   encName: Ciphertext;
 }
 
-export const registerDirectory = async (params: Omit<Directory, "id">) => {
+export const registerDirectory = async (params: Omit<Directory, "id" | "isFavorite">) => {
   await db.transaction().execute(async (trx) => {
     const mek = await trx
       .selectFrom("master_encryption_key")
@@ -97,6 +99,41 @@ export const getAllDirectoriesByParent = async (userId: number, parentId: Direct
         encDek: directory.encrypted_data_encryption_key,
         dekVersion: directory.data_encryption_key_version,
         encName: directory.encrypted_name,
+        isFavorite: directory.is_favorite,
+      }) satisfies Directory,
+  );
+};
+
+export const getAllRecursiveDirectoriesByParent = async (userId: number, parentId: DirectoryId) => {
+  const directories = await db
+    .withRecursive("directory_tree", (db) =>
+      db
+        .selectFrom("directory")
+        .selectAll()
+        .$if(parentId === "root", (qb) => qb.where("parent_id", "is", null))
+        .$if(parentId !== "root", (qb) => qb.where("parent_id", "=", parentId as number))
+        .where("user_id", "=", userId)
+        .unionAll((db) =>
+          db
+            .selectFrom("directory")
+            .innerJoin("directory_tree", "directory.parent_id", "directory_tree.id")
+            .selectAll("directory"),
+        ),
+    )
+    .selectFrom("directory_tree")
+    .selectAll()
+    .execute();
+  return directories.map(
+    (directory) =>
+      ({
+        id: directory.id,
+        parentId: directory.parent_id ?? "root",
+        userId: directory.user_id,
+        mekVersion: directory.master_encryption_key_version,
+        encDek: directory.encrypted_data_encryption_key,
+        dekVersion: directory.data_encryption_key_version,
+        encName: directory.encrypted_name,
+        isFavorite: directory.is_favorite,
       }) satisfies Directory,
   );
 };
@@ -118,6 +155,7 @@ export const getDirectory = async (userId: number, directoryId: number) => {
         encDek: directory.encrypted_data_encryption_key,
         dekVersion: directory.data_encryption_key_version,
         encName: directory.encrypted_name,
+        isFavorite: directory.is_favorite,
       } satisfies Directory)
     : null;
 };
@@ -210,7 +248,7 @@ export const unregisterDirectory = async (userId: number, directoryId: number) =
     });
 };
 
-export const registerFile = async (trx: typeof db, params: Omit<File, "id">) => {
+export const registerFile = async (trx: typeof db, params: Omit<File, "id" | "isFavorite">) => {
   if ((params.hskVersion && !params.contentHmac) || (!params.hskVersion && params.contentHmac)) {
     throw new Error("Invalid arguments");
   }
@@ -272,6 +310,7 @@ export const getAllFilesByParent = async (userId: number, parentId: DirectoryId)
         encName: file.encrypted_name,
         encCreatedAt: file.encrypted_created_at,
         encLastModifiedAt: file.encrypted_last_modified_at,
+        isFavorite: file.is_favorite,
       }) satisfies File,
   );
 };
@@ -324,6 +363,7 @@ export const getAllFilesByCategory = async (
         encName: file.encrypted_name,
         encCreatedAt: file.encrypted_created_at,
         encLastModifiedAt: file.encrypted_last_modified_at,
+        isFavorite: file.is_favorite,
         isRecursive: file.depth > 0,
       }) satisfies File & { isRecursive: boolean },
   );
@@ -334,14 +374,79 @@ export const getAllFileIds = async (userId: number) => {
   return files.map(({ id }) => id);
 };
 
-export const getLegacyFileIds = async (userId: number) => {
+export const getLegacyFiles = async (userId: number, limit: number = 100) => {
   const files = await db
     .selectFrom("file")
-    .select("id")
+    .selectAll()
     .where("user_id", "=", userId)
     .where("encrypted_content_iv", "is not", null)
+    .limit(limit)
     .execute();
-  return files.map(({ id }) => id);
+  return files.map(
+    (file) =>
+      ({
+        id: file.id,
+        parentId: file.parent_id ?? "root",
+        userId: file.user_id,
+        path: file.path,
+        mekVersion: file.master_encryption_key_version,
+        encDek: file.encrypted_data_encryption_key,
+        dekVersion: file.data_encryption_key_version,
+        hskVersion: file.hmac_secret_key_version,
+        contentHmac: file.content_hmac,
+        contentType: file.content_type,
+        encContentIv: file.encrypted_content_iv,
+        encContentHash: file.encrypted_content_hash,
+        encName: file.encrypted_name,
+        encCreatedAt: file.encrypted_created_at,
+        encLastModifiedAt: file.encrypted_last_modified_at,
+        isFavorite: file.is_favorite,
+      }) satisfies File,
+  );
+};
+
+export const getFilesWithoutThumbnail = async (userId: number, limit: number = 100) => {
+  const files = await db
+    .selectFrom("file")
+    .selectAll()
+    .where("user_id", "=", userId)
+    .where((eb) =>
+      eb.or([eb("content_type", "like", "image/%"), eb("content_type", "like", "video/%")]),
+    )
+    .where((eb) =>
+      eb.not(
+        eb.exists(
+          eb
+            .selectFrom("thumbnail")
+            .select("thumbnail.id")
+            .whereRef("thumbnail.file_id", "=", "file.id")
+            .limit(1),
+        ),
+      ),
+    )
+    .limit(limit)
+    .execute();
+  return files.map(
+    (file) =>
+      ({
+        id: file.id,
+        parentId: file.parent_id ?? "root",
+        userId: file.user_id,
+        path: file.path,
+        mekVersion: file.master_encryption_key_version,
+        encDek: file.encrypted_data_encryption_key,
+        dekVersion: file.data_encryption_key_version,
+        hskVersion: file.hmac_secret_key_version,
+        contentHmac: file.content_hmac,
+        contentType: file.content_type,
+        encContentIv: file.encrypted_content_iv,
+        encContentHash: file.encrypted_content_hash,
+        encName: file.encrypted_name,
+        encCreatedAt: file.encrypted_created_at,
+        encLastModifiedAt: file.encrypted_last_modified_at,
+        isFavorite: file.is_favorite,
+      }) satisfies File,
+  );
 };
 
 export const getAllFileIdsByContentHmac = async (
@@ -384,6 +489,7 @@ export const getFile = async (userId: number, fileId: number) => {
         encName: file.encrypted_name,
         encCreatedAt: file.encrypted_created_at,
         encLastModifiedAt: file.encrypted_last_modified_at,
+        isFavorite: file.is_favorite,
       } satisfies File)
     : null;
 };
@@ -422,6 +528,7 @@ export const getFilesWithCategories = async (userId: number, fileIds: number[]) 
         encName: file.encrypted_name,
         encCreatedAt: file.encrypted_created_at,
         encLastModifiedAt: file.encrypted_last_modified_at,
+        isFavorite: file.is_favorite,
         categories: file.categories.map((category) => ({
           id: category.id,
           parentId: category.parent_id ?? "root",
@@ -432,6 +539,110 @@ export const getFilesWithCategories = async (userId: number, fileIds: number[]) 
         })),
       }) satisfies File & { categories: FileCategory[] },
   );
+};
+
+export const searchFiles = async (
+  userId: number,
+  filters: {
+    parentId: DirectoryId;
+    includeCategoryIds: number[];
+    excludeCategoryIds: number[];
+  },
+) => {
+  const baseQuery = db
+    .withRecursive("directory_tree", (db) =>
+      db
+        .selectFrom("directory")
+        .select("id")
+        .where("user_id", "=", userId)
+        .where((eb) => eb.val(filters.parentId !== "root")) // directory_tree will be empty if parentId is "root"
+        .$if(filters.parentId !== "root", (qb) => qb.where("id", "=", filters.parentId as number))
+        .unionAll(
+          db
+            .selectFrom("directory as d")
+            .innerJoin("directory_tree as dt", "d.parent_id", "dt.id")
+            .select("d.id"),
+        ),
+    )
+    .withRecursive("include_category_tree", (db) =>
+      db
+        .selectFrom("category")
+        .select(["id", "id as root_id"])
+        .where("id", "=", (eb) => eb.fn.any(eb.val(filters.includeCategoryIds)))
+        .where("user_id", "=", userId)
+        .unionAll(
+          db
+            .selectFrom("category as c")
+            .innerJoin("include_category_tree as ct", "c.parent_id", "ct.id")
+            .select(["c.id", "ct.root_id"]),
+        ),
+    )
+    .withRecursive("exclude_category_tree", (db) =>
+      db
+        .selectFrom("category")
+        .select("id")
+        .where("id", "=", (eb) => eb.fn.any(eb.val(filters.excludeCategoryIds)))
+        .where("user_id", "=", userId)
+        .unionAll((db) =>
+          db
+            .selectFrom("category as c")
+            .innerJoin("exclude_category_tree as ct", "c.parent_id", "ct.id")
+            .select("c.id"),
+        ),
+    )
+    .selectFrom("file")
+    .selectAll("file")
+    .$if(filters.parentId === "root", (qb) => qb.where("user_id", "=", userId)) // directory_tree isn't used if parentId is "root"
+    .$if(filters.parentId !== "root", (qb) =>
+      qb.where("parent_id", "in", (eb) => eb.selectFrom("directory_tree").select("id")),
+    )
+    .where((eb) =>
+      eb.not(
+        eb.exists(
+          eb
+            .selectFrom("file_category")
+            .whereRef("file_id", "=", "file.id")
+            .where("category_id", "in", (eb) =>
+              eb.selectFrom("exclude_category_tree").select("id"),
+            ),
+        ),
+      ),
+    );
+  const files =
+    filters.includeCategoryIds.length > 0
+      ? await baseQuery
+          .innerJoin("file_category", "file.id", "file_category.file_id")
+          .innerJoin(
+            "include_category_tree",
+            "file_category.category_id",
+            "include_category_tree.id",
+          )
+          .groupBy("file.id")
+          .having(
+            (eb) => eb.fn.count("include_category_tree.root_id").distinct(),
+            "=",
+            filters.includeCategoryIds.length,
+          )
+          .execute()
+      : await baseQuery.execute();
+  return files.map((file) => ({
+    id: file.id,
+    parentId: file.parent_id ?? ("root" as const),
+    userId: file.user_id,
+    path: file.path,
+    mekVersion: file.master_encryption_key_version,
+    encDek: file.encrypted_data_encryption_key,
+    dekVersion: file.data_encryption_key_version,
+    hskVersion: file.hmac_secret_key_version,
+    contentHmac: file.content_hmac,
+    contentType: file.content_type,
+    encContentIv: file.encrypted_content_iv,
+    encContentHash: file.encrypted_content_hash,
+    encName: file.encrypted_name,
+    encCreatedAt: file.encrypted_created_at,
+    encLastModifiedAt: file.encrypted_last_modified_at,
+    isFavorite: file.is_favorite,
+  }));
 };
 
 export const setFileEncName = async (
@@ -603,4 +814,128 @@ export const removeFileFromCategory = async (fileId: number, categoryId: number)
       })
       .execute();
   });
+};
+
+export const setFileFavorite = async (userId: number, fileId: number, isFavorite: boolean) => {
+  await db.transaction().execute(async (trx) => {
+    const file = await trx
+      .selectFrom("file")
+      .select("is_favorite")
+      .where("id", "=", fileId)
+      .where("user_id", "=", userId)
+      .limit(1)
+      .forUpdate()
+      .executeTakeFirst();
+    if (!file) {
+      throw new IntegrityError("File not found");
+    } else if (file.is_favorite === isFavorite) {
+      throw new IntegrityError(isFavorite ? "File already favorited" : "File not favorited");
+    }
+
+    await trx
+      .updateTable("file")
+      .set({ is_favorite: isFavorite })
+      .where("id", "=", fileId)
+      .where("user_id", "=", userId)
+      .execute();
+    await trx
+      .insertInto("file_log")
+      .values({
+        file_id: fileId,
+        timestamp: new Date(),
+        action: isFavorite ? "add-to-favorites" : "remove-from-favorites",
+      })
+      .execute();
+  });
+};
+
+export const setDirectoryFavorite = async (
+  userId: number,
+  directoryId: number,
+  isFavorite: boolean,
+) => {
+  await db.transaction().execute(async (trx) => {
+    const directory = await trx
+      .selectFrom("directory")
+      .select("is_favorite")
+      .where("id", "=", directoryId)
+      .where("user_id", "=", userId)
+      .limit(1)
+      .forUpdate()
+      .executeTakeFirst();
+    if (!directory) {
+      throw new IntegrityError("Directory not found");
+    } else if (directory.is_favorite === isFavorite) {
+      throw new IntegrityError(
+        isFavorite ? "Directory already favorited" : "Directory not favorited",
+      );
+    }
+
+    await trx
+      .updateTable("directory")
+      .set({ is_favorite: isFavorite })
+      .where("id", "=", directoryId)
+      .where("user_id", "=", userId)
+      .execute();
+    await trx
+      .insertInto("directory_log")
+      .values({
+        directory_id: directoryId,
+        timestamp: new Date(),
+        action: isFavorite ? "add-to-favorites" : "remove-from-favorites",
+      })
+      .execute();
+  });
+};
+
+export const getAllFavoriteFiles = async (userId: number) => {
+  const files = await db
+    .selectFrom("file")
+    .selectAll()
+    .where("user_id", "=", userId)
+    .where("is_favorite", "=", true)
+    .execute();
+  return files.map(
+    (file) =>
+      ({
+        id: file.id,
+        parentId: file.parent_id ?? "root",
+        userId: file.user_id,
+        path: file.path,
+        mekVersion: file.master_encryption_key_version,
+        encDek: file.encrypted_data_encryption_key,
+        dekVersion: file.data_encryption_key_version,
+        hskVersion: file.hmac_secret_key_version,
+        contentHmac: file.content_hmac,
+        contentType: file.content_type,
+        encContentIv: file.encrypted_content_iv,
+        encContentHash: file.encrypted_content_hash,
+        encName: file.encrypted_name,
+        encCreatedAt: file.encrypted_created_at,
+        encLastModifiedAt: file.encrypted_last_modified_at,
+        isFavorite: file.is_favorite,
+      }) satisfies File,
+  );
+};
+
+export const getAllFavoriteDirectories = async (userId: number) => {
+  const directories = await db
+    .selectFrom("directory")
+    .selectAll()
+    .where("user_id", "=", userId)
+    .where("is_favorite", "=", true)
+    .execute();
+  return directories.map(
+    (directory) =>
+      ({
+        id: directory.id,
+        parentId: directory.parent_id ?? "root",
+        userId: directory.user_id,
+        mekVersion: directory.master_encryption_key_version,
+        encDek: directory.encrypted_data_encryption_key,
+        dekVersion: directory.data_encryption_key_version,
+        encName: directory.encrypted_name,
+        isFavorite: directory.is_favorite,
+      }) satisfies Directory,
+  );
 };

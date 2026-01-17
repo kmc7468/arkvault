@@ -12,7 +12,7 @@
   const pages = [
     { path: "/home", label: "홈", icon: IconHome },
     { path: "/directory", label: "파일", icon: IconFolder },
-    { path: "/favorite", label: "즐겨찾기", icon: IconFavorite },
+    { path: "/favorites", label: "즐겨찾기", icon: IconFavorite },
     { path: "/category", label: "카테고리", icon: IconCategory },
     { path: "/menu", label: "전체", icon: IconMenu },
   ];

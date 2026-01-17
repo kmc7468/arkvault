@@ -83,27 +83,3 @@ export const getFileThumbnail = async (userId: number, fileId: number) => {
       } satisfies FileThumbnail)
     : null;
 };
-
-export const getMissingFileThumbnails = async (userId: number, limit: number = 100) => {
-  const files = await db
-    .selectFrom("file")
-    .select("id")
-    .where("user_id", "=", userId)
-    .where((eb) =>
-      eb.or([eb("content_type", "like", "image/%"), eb("content_type", "like", "video/%")]),
-    )
-    .where((eb) =>
-      eb.not(
-        eb.exists(
-          eb
-            .selectFrom("thumbnail")
-            .select("thumbnail.id")
-            .whereRef("thumbnail.file_id", "=", "file.id")
-            .limit(1),
-        ),
-      ),
-    )
-    .limit(limit)
-    .execute();
-  return files.map(({ id }) => id);
-};

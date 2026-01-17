@@ -1,10 +1,16 @@
 import { limitFunction } from "p-limit";
 import { SvelteMap } from "svelte/reactivity";
 import { storeFileThumbnailCache } from "$lib/modules/file";
-import type { FileInfo } from "$lib/modules/filesystem";
+import {
+  decryptFileMetadata,
+  getFileInfo,
+  type FileInfo,
+  type MaybeFileInfo,
+} from "$lib/modules/filesystem";
 import { generateThumbnail } from "$lib/modules/thumbnail";
 import { requestFileDownload, requestFileThumbnailUpload } from "$lib/services/file";
-import { Scheduler } from "$lib/utils";
+import { HybridPromise, Scheduler } from "$lib/utils";
+import type { RouterOutputs } from "$trpc/router.server";
 
 export type GenerationStatus =
   | "queued"
@@ -27,6 +33,35 @@ export const clearThumbnailGenerationStatuses = () => {
       statuses.delete(id);
     }
   }
+};
+
+export const requestMissingThumbnailFiles = async (
+  filesRaw: RouterOutputs["file"]["listWithoutThumbnail"],
+  masterKey: CryptoKey,
+) => {
+  const files = await HybridPromise.all(
+    filesRaw.map((file) =>
+      HybridPromise.resolve(
+        getFileInfo(file.id, masterKey, {
+          async fetchFromServer(id, cachedInfo, masterKey) {
+            const metadata = await decryptFileMetadata(file, masterKey);
+            return {
+              categories: [],
+              ...cachedInfo,
+              id: id as number,
+              exists: true,
+              isLegacy: file.isLegacy,
+              parentId: file.parent,
+              contentType: file.contentType,
+              ...metadata,
+            };
+          },
+        }),
+      ),
+    ),
+  );
+
+  return files as MaybeFileInfo[];
 };
 
 const requestThumbnailUpload = limitFunction(

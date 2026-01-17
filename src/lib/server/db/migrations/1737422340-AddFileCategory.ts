@@ -53,9 +53,7 @@ export const up = async (db: Kysely<any>) => {
 export const down = async (db: Kysely<any>) => {
   await db
     .deleteFrom("file_log")
-    .where((eb) =>
-      eb.or([eb("action", "=", "add-to-category"), eb("action", "=", "remove-from-category")]),
-    )
+    .where("action", "in", ["add-to-category", "remove-from-category"])
     .execute();
 
   await db.schema.dropTable("file_category").execute();
