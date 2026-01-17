@@ -6,6 +6,7 @@ export interface LocalDirectoryInfo {
   parentId: DirectoryId;
   dataKey?: DataKey;
   name: string;
+  isFavorite?: boolean;
   subDirectories: SubDirectoryInfo[];
   files: SummarizedFileInfo[];
 }
@@ -36,6 +37,7 @@ export interface FileInfo {
   createdAt?: Date;
   lastModifiedAt: Date;
   categories: FileCategoryInfo[];
+  isFavorite?: boolean;
 }
 
 export type MaybeFileInfo =

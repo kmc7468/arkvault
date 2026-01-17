@@ -150,7 +150,7 @@
     </button>
     <TopBarMenu
       bind:isOpen={isMenuOpen}
-      directoryId={["category", "gallery", "search"].includes(
+      directoryId={["category", "gallery", "search", "favorite"].includes(
         page.url.searchParams.get("from") ?? "",
       )
         ? info?.parentId

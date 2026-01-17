@@ -39,6 +39,7 @@ const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>({
           directory.subDirectories.map(async (directory) => ({
             id: directory.id,
             parentId: id,
+            isFavorite: directory.isFavorite,
             ...(await decryptDirectoryMetadata(directory, masterKey)),
           })),
         ),
@@ -47,6 +48,7 @@ const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>({
             id: file.id,
             parentId: id,
             contentType: file.contentType,
+            isFavorite: file.isFavorite,
             ...(await decryptFileMetadata(file, masterKey)),
           })),
         ),

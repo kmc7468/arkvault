@@ -23,6 +23,7 @@
     requestFileUpload,
     requestEntryRename,
     requestEntryDeletion,
+    requestFavoriteToggle,
   } from "./service.svelte";
 
   import IconSearch from "~icons/material-symbols/search";
@@ -45,7 +46,7 @@
   let isEntryDeleteModalOpen = $state(false);
 
   let showParentEntry = $derived(
-    ["file", "search"].includes(page.url.searchParams.get("from") ?? ""),
+    ["file", "search", "favorite"].includes(page.url.searchParams.get("from") ?? ""),
   );
   let showBackButton = $derived(data.id !== "root" || showParentEntry);
 
@@ -193,6 +194,12 @@
   onDeleteClick={() => {
     isEntryMenuBottomSheetOpen = false;
     isEntryDeleteModalOpen = true;
+  }}
+  onFavoriteClick={async () => {
+    if (await requestFavoriteToggle(context.selectedEntry!)) {
+      isEntryMenuBottomSheetOpen = false;
+      void getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+    }
   }}
 />
 <EntryRenameModal

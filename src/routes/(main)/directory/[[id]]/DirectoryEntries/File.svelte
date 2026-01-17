@@ -19,7 +19,13 @@
   let thumbnail = $derived(getFileThumbnail(info));
 
   const action = (callback: typeof onclick) => {
-    callback({ type: "file", id: info.id, dataKey: info.dataKey, name: info.name });
+    callback({
+      type: "file",
+      id: info.id,
+      dataKey: info.dataKey,
+      name: info.name,
+      isFavorite: info.isFavorite ?? false,
+    });
   };
 </script>
 

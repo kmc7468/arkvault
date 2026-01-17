@@ -13,6 +13,7 @@ interface Directory {
   encDek: string;
   dekVersion: Date;
   encName: Ciphertext;
+  isFavorite: boolean;
 }
 
 interface File {
@@ -31,6 +32,7 @@ interface File {
   encName: Ciphertext;
   encCreatedAt: Ciphertext | null;
   encLastModifiedAt: Ciphertext;
+  isFavorite: boolean;
 }
 
 interface FileCategory {
@@ -42,7 +44,7 @@ interface FileCategory {
   encName: Ciphertext;
 }
 
-export const registerDirectory = async (params: Omit<Directory, "id">) => {
+export const registerDirectory = async (params: Omit<Directory, "id" | "isFavorite">) => {
   await db.transaction().execute(async (trx) => {
     const mek = await trx
       .selectFrom("master_encryption_key")
@@ -97,6 +99,7 @@ export const getAllDirectoriesByParent = async (userId: number, parentId: Direct
         encDek: directory.encrypted_data_encryption_key,
         dekVersion: directory.data_encryption_key_version,
         encName: directory.encrypted_name,
+        isFavorite: directory.is_favorite,
       }) satisfies Directory,
   );
 };
@@ -130,6 +133,7 @@ export const getAllRecursiveDirectoriesByParent = async (userId: number, parentI
         encDek: directory.encrypted_data_encryption_key,
         dekVersion: directory.data_encryption_key_version,
         encName: directory.encrypted_name,
+        isFavorite: directory.is_favorite,
       }) satisfies Directory,
   );
 };
@@ -151,6 +155,7 @@ export const getDirectory = async (userId: number, directoryId: number) => {
         encDek: directory.encrypted_data_encryption_key,
         dekVersion: directory.data_encryption_key_version,
         encName: directory.encrypted_name,
+        isFavorite: directory.is_favorite,
       } satisfies Directory)
     : null;
 };
@@ -243,7 +248,7 @@ export const unregisterDirectory = async (userId: number, directoryId: number) =
     });
 };
 
-export const registerFile = async (trx: typeof db, params: Omit<File, "id">) => {
+export const registerFile = async (trx: typeof db, params: Omit<File, "id" | "isFavorite">) => {
   if ((params.hskVersion && !params.contentHmac) || (!params.hskVersion && params.contentHmac)) {
     throw new Error("Invalid arguments");
   }
@@ -305,6 +310,7 @@ export const getAllFilesByParent = async (userId: number, parentId: DirectoryId)
         encName: file.encrypted_name,
         encCreatedAt: file.encrypted_created_at,
         encLastModifiedAt: file.encrypted_last_modified_at,
+        isFavorite: file.is_favorite,
       }) satisfies File,
   );
 };
@@ -357,6 +363,7 @@ export const getAllFilesByCategory = async (
         encName: file.encrypted_name,
         encCreatedAt: file.encrypted_created_at,
         encLastModifiedAt: file.encrypted_last_modified_at,
+        isFavorite: file.is_favorite,
         isRecursive: file.depth > 0,
       }) satisfies File & { isRecursive: boolean },
   );
@@ -393,6 +400,7 @@ export const getLegacyFiles = async (userId: number, limit: number = 100) => {
         encName: file.encrypted_name,
         encCreatedAt: file.encrypted_created_at,
         encLastModifiedAt: file.encrypted_last_modified_at,
+        isFavorite: file.is_favorite,
       }) satisfies File,
   );
 };
@@ -436,6 +444,7 @@ export const getFilesWithoutThumbnail = async (userId: number, limit: number = 1
         encName: file.encrypted_name,
         encCreatedAt: file.encrypted_created_at,
         encLastModifiedAt: file.encrypted_last_modified_at,
+        isFavorite: file.is_favorite,
       }) satisfies File,
   );
 };
@@ -480,6 +489,7 @@ export const getFile = async (userId: number, fileId: number) => {
         encName: file.encrypted_name,
         encCreatedAt: file.encrypted_created_at,
         encLastModifiedAt: file.encrypted_last_modified_at,
+        isFavorite: file.is_favorite,
       } satisfies File)
     : null;
 };
@@ -518,6 +528,7 @@ export const getFilesWithCategories = async (userId: number, fileIds: number[]) 
         encName: file.encrypted_name,
         encCreatedAt: file.encrypted_created_at,
         encLastModifiedAt: file.encrypted_last_modified_at,
+        isFavorite: file.is_favorite,
         categories: file.categories.map((category) => ({
           id: category.id,
           parentId: category.parent_id ?? "root",
@@ -802,4 +813,128 @@ export const removeFileFromCategory = async (fileId: number, categoryId: number)
       })
       .execute();
   });
+};
+
+export const setFileFavorite = async (userId: number, fileId: number, isFavorite: boolean) => {
+  await db.transaction().execute(async (trx) => {
+    const file = await trx
+      .selectFrom("file")
+      .select("is_favorite")
+      .where("id", "=", fileId)
+      .where("user_id", "=", userId)
+      .limit(1)
+      .forUpdate()
+      .executeTakeFirst();
+    if (!file) {
+      throw new IntegrityError("File not found");
+    } else if (file.is_favorite === isFavorite) {
+      throw new IntegrityError(isFavorite ? "File already favorited" : "File not favorited");
+    }
+
+    await trx
+      .updateTable("file")
+      .set({ is_favorite: isFavorite })
+      .where("id", "=", fileId)
+      .where("user_id", "=", userId)
+      .execute();
+    await trx
+      .insertInto("file_log")
+      .values({
+        file_id: fileId,
+        timestamp: new Date(),
+        action: isFavorite ? "add-to-favorites" : "remove-from-favorites",
+      })
+      .execute();
+  });
+};
+
+export const setDirectoryFavorite = async (
+  userId: number,
+  directoryId: number,
+  isFavorite: boolean,
+) => {
+  await db.transaction().execute(async (trx) => {
+    const directory = await trx
+      .selectFrom("directory")
+      .select("is_favorite")
+      .where("id", "=", directoryId)
+      .where("user_id", "=", userId)
+      .limit(1)
+      .forUpdate()
+      .executeTakeFirst();
+    if (!directory) {
+      throw new IntegrityError("Directory not found");
+    } else if (directory.is_favorite === isFavorite) {
+      throw new IntegrityError(
+        isFavorite ? "Directory already favorited" : "Directory not favorited",
+      );
+    }
+
+    await trx
+      .updateTable("directory")
+      .set({ is_favorite: isFavorite })
+      .where("id", "=", directoryId)
+      .where("user_id", "=", userId)
+      .execute();
+    await trx
+      .insertInto("directory_log")
+      .values({
+        directory_id: directoryId,
+        timestamp: new Date(),
+        action: isFavorite ? "add-to-favorites" : "remove-from-favorites",
+      })
+      .execute();
+  });
+};
+
+export const getAllFavoriteFiles = async (userId: number) => {
+  const files = await db
+    .selectFrom("file")
+    .selectAll()
+    .where("user_id", "=", userId)
+    .where("is_favorite", "=", true)
+    .execute();
+  return files.map(
+    (file) =>
+      ({
+        id: file.id,
+        parentId: file.parent_id ?? "root",
+        userId: file.user_id,
+        path: file.path,
+        mekVersion: file.master_encryption_key_version,
+        encDek: file.encrypted_data_encryption_key,
+        dekVersion: file.data_encryption_key_version,
+        hskVersion: file.hmac_secret_key_version,
+        contentHmac: file.content_hmac,
+        contentType: file.content_type,
+        encContentIv: file.encrypted_content_iv,
+        encContentHash: file.encrypted_content_hash,
+        encName: file.encrypted_name,
+        encCreatedAt: file.encrypted_created_at,
+        encLastModifiedAt: file.encrypted_last_modified_at,
+        isFavorite: file.is_favorite,
+      }) satisfies File,
+  );
+};
+
+export const getAllFavoriteDirectories = async (userId: number) => {
+  const directories = await db
+    .selectFrom("directory")
+    .selectAll()
+    .where("user_id", "=", userId)
+    .where("is_favorite", "=", true)
+    .execute();
+  return directories.map(
+    (directory) =>
+      ({
+        id: directory.id,
+        parentId: directory.parent_id ?? "root",
+        userId: directory.user_id,
+        mekVersion: directory.master_encryption_key_version,
+        encDek: directory.encrypted_data_encryption_key,
+        dekVersion: directory.data_encryption_key_version,
+        encName: directory.encrypted_name,
+        isFavorite: directory.is_favorite,
+      }) satisfies Directory,
+  );
 };

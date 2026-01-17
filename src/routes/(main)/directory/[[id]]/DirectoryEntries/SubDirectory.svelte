@@ -15,7 +15,13 @@
   let { info, onclick, onOpenMenuClick }: Props = $props();
 
   const action = (callback: typeof onclick) => {
-    callback({ type: "directory", id: info.id, dataKey: info.dataKey, name: info.name });
+    callback({
+      type: "directory",
+      id: info.id,
+      dataKey: info.dataKey,
+      name: info.name,
+      isFavorite: info.isFavorite ?? false,
+    });
   };
 </script>
 

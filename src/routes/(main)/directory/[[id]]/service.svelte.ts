@@ -17,6 +17,7 @@ export interface SelectedEntry {
   id: number;
   dataKey: DataKey | undefined;
   name: string;
+  isFavorite: boolean;
 }
 
 export const createContext = () => {
@@ -142,6 +143,28 @@ export const requestEntryDeletion = async (entry: SelectedEntry) => {
     } else {
       await trpc().file.delete.mutate({ id: entry.id });
       await Promise.all([deleteFileCache(entry.id), deleteFileThumbnailCache(entry.id)]);
+    }
+    return true;
+  } catch {
+    // TODO: Error Handling
+    return false;
+  }
+};
+
+export const requestFavoriteToggle = async (entry: SelectedEntry) => {
+  try {
+    if (entry.type === "directory") {
+      if (entry.isFavorite) {
+        await trpc().favorites.removeDirectory.mutate({ id: entry.id });
+      } else {
+        await trpc().favorites.addDirectory.mutate({ id: entry.id });
+      }
+    } else {
+      if (entry.isFavorite) {
+        await trpc().favorites.removeFile.mutate({ id: entry.id });
+      } else {
+        await trpc().favorites.addFile.mutate({ id: entry.id });
+      }
     }
     return true;
   } catch {
