@@ -1,5 +1,6 @@
 export * as CategoryRepo from "./category";
 export * as ClientRepo from "./client";
+export * as DirectoryRepo from "./directory";
 export * as FileRepo from "./file";
 export * as HskRepo from "./hsk";
 export * as MediaRepo from "./media";

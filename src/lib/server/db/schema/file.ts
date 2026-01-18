@@ -1,26 +1,7 @@
 import type { ColumnType, Generated } from "kysely";
 import type { Ciphertext } from "./utils";
 
-interface DirectoryTable {
-  id: Generated<number>;
-  parent_id: number | null;
-  user_id: number;
-  master_encryption_key_version: number;
-  encrypted_data_encryption_key: string; // Base64
-  data_encryption_key_version: Date;
-  encrypted_name: Ciphertext;
-  is_favorite: Generated<boolean>;
-}
-
-interface DirectoryLogTable {
-  id: Generated<number>;
-  directory_id: number;
-  timestamp: ColumnType<Date, Date, never>;
-  action: "create" | "rename" | "add-to-favorites" | "remove-from-favorites";
-  new_name: Ciphertext | null;
-}
-
-interface FileTable {
+export interface FileTable {
   id: Generated<number>;
   parent_id: number | null;
   user_id: number;
@@ -39,7 +20,7 @@ interface FileTable {
   is_favorite: Generated<boolean>;
 }
 
-interface FileLogTable {
+export interface FileLogTable {
   id: Generated<number>;
   file_id: number;
   timestamp: ColumnType<Date, Date, never>;
@@ -55,15 +36,13 @@ interface FileLogTable {
   category_id: number | null;
 }
 
-interface FileCategoryTable {
+export interface FileCategoryTable {
   file_id: number;
   category_id: number;
 }
 
 declare module "./index" {
   interface Database {
-    directory: DirectoryTable;
-    directory_log: DirectoryLogTable;
     file: FileTable;
     file_log: FileLogTable;
     file_category: FileCategoryTable;

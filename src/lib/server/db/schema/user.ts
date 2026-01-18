@@ -1,6 +1,6 @@
 import type { Generated } from "kysely";
 
-interface UserTable {
+export interface UserTable {
   id: Generated<number>;
   email: string;
   nickname: string;

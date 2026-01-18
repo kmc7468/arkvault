@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { DirectoryIdSchema } from "$lib/schemas";
-import { FileRepo, IntegrityError } from "$lib/server/db";
+import { DirectoryRepo, FileRepo, IntegrityError } from "$lib/server/db";
 import { safeUnlink } from "$lib/server/modules/filesystem";
 import { router, roleProcedure } from "../init.server";
 
@@ -14,13 +14,15 @@ const directoryRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const directory =
-        input.id !== "root" ? await FileRepo.getDirectory(ctx.session.userId, input.id) : undefined;
+        input.id !== "root"
+          ? await DirectoryRepo.getDirectory(ctx.session.userId, input.id)
+          : undefined;
       if (directory === null) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Invalid directory id" });
       }
 
       const [directories, files] = await Promise.all([
-        FileRepo.getAllDirectoriesByParent(ctx.session.userId, input.id),
+        DirectoryRepo.getAllDirectoriesByParent(ctx.session.userId, input.id),
         FileRepo.getAllFilesByParent(ctx.session.userId, input.id),
       ]);
       return {
@@ -78,7 +80,7 @@ const directoryRouter = router({
       }
 
       try {
-        await FileRepo.registerDirectory({
+        await DirectoryRepo.registerDirectory({
           parentId: input.parent,
           userId: ctx.session.userId,
           mekVersion: input.mekVersion,
@@ -105,7 +107,7 @@ const directoryRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        await FileRepo.setDirectoryEncName(ctx.session.userId, input.id, input.dekVersion, {
+        await DirectoryRepo.setDirectoryEncName(ctx.session.userId, input.id, input.dekVersion, {
           ciphertext: input.name,
           iv: input.nameIv,
         });
@@ -129,7 +131,7 @@ const directoryRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const files = await FileRepo.unregisterDirectory(ctx.session.userId, input.id);
+        const files = await DirectoryRepo.unregisterDirectory(ctx.session.userId, input.id);
         return {
           deletedFiles: files.map((file) => {
             safeUnlink(file.path); // Intended

@@ -1,7 +1,7 @@
 import type { Generated } from "kysely";
 import type { Ciphertext } from "./utils";
 
-interface UploadSessionTable {
+export interface UploadSessionTable {
   id: string;
   type: "file" | "thumbnail" | "migration";
   user_id: number;

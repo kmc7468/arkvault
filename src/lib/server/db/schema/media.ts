@@ -1,6 +1,6 @@
 import type { Generated } from "kysely";
 
-interface ThumbnailTable {
+export interface ThumbnailTable {
   id: Generated<number>;
   directory_id: number | null;
   file_id: number | null;

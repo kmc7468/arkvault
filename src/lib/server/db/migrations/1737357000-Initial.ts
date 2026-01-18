@@ -135,7 +135,7 @@ export const up = async (db: Kysely<any>) => {
     )
     .execute();
 
-  // file.ts
+  // directory.ts
   await db.schema
     .createTable("directory")
     .addColumn("id", "integer", (col) => col.primaryKey().generatedAlwaysAsIdentity())
@@ -162,6 +162,8 @@ export const up = async (db: Kysely<any>) => {
     .addColumn("action", "text", (col) => col.notNull())
     .addColumn("new_name", "json")
     .execute();
+
+  // file.ts
   await db.schema
     .createTable("file")
     .addColumn("id", "integer", (col) => col.primaryKey().generatedAlwaysAsIdentity())

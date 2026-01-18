@@ -2,13 +2,13 @@ import type { ColumnType, Generated } from "kysely";
 
 export type MekState = "active" | "retired" | "dead";
 
-interface MekTable {
+export interface MekTable {
   user_id: number;
   version: number;
   state: MekState;
 }
 
-interface MekLogTable {
+export interface MekLogTable {
   id: Generated<number>;
   user_id: number;
   master_encryption_key_version: number;
@@ -17,7 +17,7 @@ interface MekLogTable {
   action_by: number | null;
 }
 
-interface ClientMekTable {
+export interface ClientMekTable {
   user_id: number;
   client_id: number;
   version: number;

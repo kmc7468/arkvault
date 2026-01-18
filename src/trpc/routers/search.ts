@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { DirectoryIdSchema } from "$lib/schemas";
-import { FileRepo } from "$lib/server/db";
+import { DirectoryRepo, FileRepo } from "$lib/server/db";
 import { router, roleProcedure } from "../init.server";
 
 const searchRouter = router({
@@ -15,7 +15,7 @@ const searchRouter = router({
     .query(async ({ ctx, input }) => {
       const [directories, files] = await Promise.all([
         input.includeCategories.length === 0 && input.excludeCategories.length === 0
-          ? FileRepo.getAllRecursiveDirectoriesByParent(ctx.session.userId, input.ancestor)
+          ? DirectoryRepo.getAllRecursiveDirectoriesByParent(ctx.session.userId, input.ancestor)
           : [],
         FileRepo.searchFiles(ctx.session.userId, {
           parentId: input.ancestor,

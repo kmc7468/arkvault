@@ -2,11 +2,13 @@ import { Kysely } from "kysely";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const up = async (db: Kysely<any>) => {
-  // file.ts
+  // directory.ts
   await db.schema
     .alterTable("directory")
     .addColumn("is_favorite", "boolean", (col) => col.notNull().defaultTo(false))
     .execute();
+
+  // file.ts
   await db.schema
     .alterTable("file")
     .addColumn("is_favorite", "boolean", (col) => col.notNull().defaultTo(false))
