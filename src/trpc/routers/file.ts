@@ -114,6 +114,7 @@ const fileRouter = router({
       createdAtIv: file.encCreatedAt?.iv,
       lastModifiedAt: file.encLastModifiedAt.ciphertext,
       lastModifiedAtIv: file.encLastModifiedAt.iv,
+      isFavorite: file.isFavorite,
     }));
   }),
 
@@ -133,6 +134,7 @@ const fileRouter = router({
       createdAtIv: file.encCreatedAt?.iv,
       lastModifiedAt: file.encLastModifiedAt.ciphertext,
       lastModifiedAtIv: file.encLastModifiedAt.iv,
+      isFavorite: file.isFavorite,
     }));
   }),
 

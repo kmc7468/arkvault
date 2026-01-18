@@ -43,7 +43,7 @@
       <div class={["absolute bottom-0 right-0", !thumbnail && "rounded-full bg-white p-0.5"]}>
         <IconFavorite
           class="text-xs text-red-500"
-          style="filter: drop-shadow(0 0 1px white) drop-shadow(0 0 1px white);"
+          style="filter: drop-shadow(0 0 1px white) drop-shadow(0 0 1px white)"
         />
       </div>
     {/if}

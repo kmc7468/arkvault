@@ -53,6 +53,7 @@ export const requestMissingThumbnailFiles = async (
               isLegacy: file.isLegacy,
               parentId: file.parent,
               contentType: file.contentType,
+              isFavorite: file.isFavorite,
               ...metadata,
             };
           },

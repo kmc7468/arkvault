@@ -27,6 +27,7 @@ const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>({
         name: directory.name,
         subDirectories,
         files,
+        isFavorite: directory.isFavorite,
       };
     }
   },
@@ -62,6 +63,7 @@ const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>({
               parentId: directory.metadata!.parent,
               subDirectories,
               files,
+              isFavorite: directory.metadata!.isFavorite,
               ...metadata!,
             }
           : { id, subDirectories, files },

@@ -1,14 +1,13 @@
 export type DataKey = { key: CryptoKey; version: Date };
-type AllUndefined<T> = { [K in keyof T]?: undefined };
 
 export interface LocalDirectoryInfo {
   id: number;
   parentId: DirectoryId;
   dataKey?: DataKey;
   name: string;
-  isFavorite?: boolean;
   subDirectories: SubDirectoryInfo[];
   files: SummarizedFileInfo[];
+  isFavorite: boolean;
 }
 
 export interface RootDirectoryInfo {
@@ -18,6 +17,7 @@ export interface RootDirectoryInfo {
   name?: undefined;
   subDirectories: SubDirectoryInfo[];
   files: SummarizedFileInfo[];
+  isFavorite?: undefined;
 }
 
 export type DirectoryInfo = LocalDirectoryInfo | RootDirectoryInfo;
@@ -37,7 +37,7 @@ export interface FileInfo {
   createdAt?: Date;
   lastModifiedAt: Date;
   categories: FileCategoryInfo[];
-  isFavorite?: boolean;
+  isFavorite: boolean;
 }
 
 export type MaybeFileInfo =

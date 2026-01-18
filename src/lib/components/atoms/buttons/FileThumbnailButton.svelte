@@ -24,10 +24,10 @@
     <div class="h-full w-full bg-gray-100"></div>
   {/if}
   {#if info.isFavorite}
-    <div class={["absolute bottom-0 right-0", !thumbnail && "rounded-full bg-white p-0.5"]}>
+    <div class={["absolute bottom-0.5 right-0.5", !thumbnail && "rounded-full bg-white p-0.5"]}>
       <IconFavorite
         class="text-sm text-red-500"
-        style="filter: drop-shadow(0 0 1px white) drop-shadow(0 0 1px white);"
+        style="filter: drop-shadow(0 0 1px white) drop-shadow(0 0 1px white)"
       />
     </div>
   {/if}

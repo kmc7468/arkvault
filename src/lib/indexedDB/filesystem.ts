@@ -4,7 +4,7 @@ interface DirectoryInfo {
   id: number;
   parentId: DirectoryId;
   name: string;
-  isFavorite?: boolean;
+  isFavorite: boolean;
 }
 
 interface FileInfo {
@@ -15,7 +15,7 @@ interface FileInfo {
   createdAt?: Date;
   lastModifiedAt: Date;
   categoryIds?: number[];
-  isFavorite?: boolean;
+  isFavorite: boolean;
 }
 
 interface CategoryInfo {
@@ -47,6 +47,23 @@ filesystem
         category.isFileRecursive = false;
       });
   });
+
+filesystem.version(4).upgrade(async (trx) => {
+  await Promise.all([
+    trx
+      .table("directory")
+      .toCollection()
+      .modify((directory) => {
+        directory.isFavorite = false;
+      }),
+    trx
+      .table("file")
+      .toCollection()
+      .modify((file) => {
+        file.isFavorite = false;
+      }),
+  ]);
+});
 
 export const getDirectoryInfos = async (parentId: DirectoryId) => {
   return await filesystem.directory.where({ parentId }).toArray();

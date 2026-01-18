@@ -27,8 +27,8 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
         name: file.name,
         createdAt: file.createdAt,
         lastModifiedAt: file.lastModifiedAt,
-        isFavorite: file.isFavorite,
         categories: categories?.filter((category) => !!category) ?? [],
+        isFavorite: file.isFavorite,
       };
     }
   },
@@ -56,8 +56,8 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
         name: metadata.name,
         createdAt: metadata.createdAt,
         lastModifiedAt: metadata.lastModifiedAt,
-        isFavorite: file.isFavorite,
         categories,
+        isFavorite: file.isFavorite,
       });
     } catch (e) {
       if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
