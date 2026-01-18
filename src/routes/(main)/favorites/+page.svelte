@@ -44,52 +44,50 @@
   <title>즐겨찾기</title>
 </svelte:head>
 
-<TopBar title="즐겨찾기" showBackButton={false}>
-  <button
-    onclick={() => goto("/search?from=favorites")}
-    class="w-full rounded-full p-1 text-2xl active:bg-black active:bg-opacity-[0.04]"
-  >
-    <IconSearch />
-  </button>
-</TopBar>
-<div class="flex h-full flex-col p-4 !pt-0">
-  {#if isLoading}
-    <div class="flex flex-grow items-center justify-center">
-      <p class="text-gray-500">
-        {#if data.favorites.files.length === 0 && data.favorites.directories.length === 0}
-          즐겨찾기한 항목이 없어요.
-        {:else}
-          즐겨찾기 목록을 불러오고 있어요.
-        {/if}
-      </p>
-    </div>
-  {:else if entries.length === 0}
-    <div class="flex flex-grow items-center justify-center">
-      <p class="text-gray-500">즐겨찾기한 항목이 없어요.</p>
-    </div>
-  {:else}
-    <RowVirtualizer
-      count={entries.length}
-      getItemKey={(index) => `${entries[index]!.type}-${entries[index]!.details.id}`}
-      estimateItemHeight={() => 56}
-      itemGap={4}
+<div class="flex h-full flex-col">
+  <TopBar title="즐겨찾기" showBackButton={false}>
+    <button
+      onclick={() => goto("/search?from=favorites")}
+      class="w-full rounded-full p-1 text-2xl active:bg-black active:bg-opacity-[0.04]"
     >
-      {#snippet item(index)}
-        {@const entry = entries[index]!}
-        {#if entry.type === "directory"}
-          <Directory
-            info={entry.details}
-            onclick={() => handleClick(entry)}
-            onRemoveClick={() => handleRemove(entry)}
-          />
-        {:else}
-          <File
-            info={entry.details}
-            onclick={() => handleClick(entry)}
-            onRemoveClick={() => handleRemove(entry)}
-          />
-        {/if}
-      {/snippet}
-    </RowVirtualizer>
-  {/if}
+      <IconSearch />
+    </button>
+  </TopBar>
+  <div class="flex flex-grow flex-col px-4 pb-4">
+    {#if entries.length > 0}
+      <RowVirtualizer
+        count={entries.length}
+        getItemKey={(index) => `${entries[index]!.type}-${entries[index]!.details.id}`}
+        estimateItemHeight={() => 56}
+        itemGap={4}
+      >
+        {#snippet item(index)}
+          {@const entry = entries[index]!}
+          {#if entry.type === "directory"}
+            <Directory
+              info={entry.details}
+              onclick={() => handleClick(entry)}
+              onRemoveClick={() => handleRemove(entry)}
+            />
+          {:else}
+            <File
+              info={entry.details}
+              onclick={() => handleClick(entry)}
+              onRemoveClick={() => handleRemove(entry)}
+            />
+          {/if}
+        {/snippet}
+      </RowVirtualizer>
+    {:else}
+      <div class="flex flex-grow items-center justify-center">
+        <p class="text-gray-500">
+          {#if isLoading}
+            즐겨찾기 목록을 불러오고 있어요.
+          {:else}
+            즐겨찾기한 항목이 없어요.
+          {/if}
+        </p>
+      </div>
+    {/if}
+  </div>
 </div>

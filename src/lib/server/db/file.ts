@@ -248,6 +248,7 @@ export const searchFiles = async (
   userId: number,
   filters: {
     parentId: DirectoryId;
+    inFavorites: boolean;
     includeCategoryIds: number[];
     excludeCategoryIds: number[];
   },
@@ -258,12 +259,26 @@ export const searchFiles = async (
         .selectFrom("directory")
         .select("id")
         .where("user_id", "=", userId)
-        .where((eb) => eb.val(filters.parentId !== "root")) // directory_tree will be empty if parentId is "root"
+        .$if(filters.parentId === "root", (qb) => qb.where((eb) => eb.lit(false))) // directory_tree will be empty if parentId is "root"
         .$if(filters.parentId !== "root", (qb) => qb.where("id", "=", filters.parentId as number))
         .unionAll(
           db
             .selectFrom("directory as d")
             .innerJoin("directory_tree as dt", "d.parent_id", "dt.id")
+            .select("d.id"),
+        ),
+    )
+    .withRecursive("favorite_directory_tree", (db) =>
+      db
+        .selectFrom("directory")
+        .select("id")
+        .where("user_id", "=", userId)
+        .$if(!filters.inFavorites, (qb) => qb.where((eb) => eb.lit(false))) // favorite_directory_tree will be empty if inFavorites is false
+        .$if(filters.inFavorites, (qb) => qb.where("is_favorite", "=", true))
+        .unionAll((db) =>
+          db
+            .selectFrom("directory as d")
+            .innerJoin("favorite_directory_tree as dt", "d.parent_id", "dt.id")
             .select("d.id"),
         ),
     )
@@ -295,19 +310,31 @@ export const searchFiles = async (
     )
     .selectFrom("file")
     .selectAll("file")
-    .$if(filters.parentId === "root", (qb) => qb.where("user_id", "=", userId)) // directory_tree isn't used if parentId is "root"
+    .where("user_id", "=", userId)
     .$if(filters.parentId !== "root", (qb) =>
-      qb.where("parent_id", "in", (eb) => eb.selectFrom("directory_tree").select("id")),
+      qb.where((eb) =>
+        eb.exists(eb.selectFrom("directory_tree as dt").whereRef("dt.id", "=", "file.parent_id")),
+      ),
     )
-    .where((eb) =>
-      eb.not(
-        eb.exists(
-          eb
-            .selectFrom("file_category")
-            .whereRef("file_id", "=", "file.id")
-            .where("category_id", "in", (eb) =>
-              eb.selectFrom("exclude_category_tree").select("id"),
-            ),
+    .$if(filters.inFavorites, (qb) =>
+      qb.where((eb) =>
+        eb.or([
+          eb("is_favorite", "=", true),
+          eb.exists(
+            eb.selectFrom("favorite_directory_tree as dt").whereRef("dt.id", "=", "file.parent_id"),
+          ),
+        ]),
+      ),
+    )
+    .$if(filters.excludeCategoryIds.length > 0, (qb) =>
+      qb.where((eb) =>
+        eb.not(
+          eb.exists(
+            eb
+              .selectFrom("file_category")
+              .innerJoin("exclude_category_tree", "category_id", "exclude_category_tree.id")
+              .whereRef("file_id", "=", "file.id"),
+          ),
         ),
       ),
     );

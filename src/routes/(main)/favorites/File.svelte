@@ -3,6 +3,7 @@
   import { DirectoryEntryLabel } from "$lib/components/molecules";
   import { getFileThumbnail } from "$lib/modules/file";
   import type { SummarizedFileInfo } from "$lib/modules/filesystem";
+  import { formatDateTime } from "$lib/utils";
 
   import IconClose from "~icons/material-symbols/close";
 
@@ -23,5 +24,11 @@
   actionButtonIcon={IconClose}
   onActionButtonClick={onRemoveClick}
 >
-  <DirectoryEntryLabel type="file" thumbnail={$thumbnail} name={info.name} isFavorite />
+  <DirectoryEntryLabel
+    type="file"
+    thumbnail={$thumbnail}
+    name={info.name}
+    subtext={formatDateTime(info.createdAt ?? info.lastModifiedAt)}
+    isFavorite
+  />
 </ActionEntryButton>

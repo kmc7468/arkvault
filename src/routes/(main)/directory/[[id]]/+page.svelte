@@ -103,7 +103,7 @@
 </script>
 
 <svelte:head>
-  <title>파일</title>
+  <title>내 파일</title>
 </svelte:head>
 
 <input bind:this={fileInput} onchange={uploadFile} type="file" multiple class="hidden" />
