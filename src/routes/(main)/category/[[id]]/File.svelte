@@ -3,6 +3,7 @@
   import { DirectoryEntryLabel } from "$lib/components/molecules";
   import { getFileThumbnail } from "$lib/modules/file";
   import type { CategoryFileInfo } from "$lib/modules/filesystem";
+  import { formatDateTime } from "$lib/utils";
   import type { SelectedFile } from "./service.svelte";
 
   import IconClose from "~icons/material-symbols/close";
@@ -19,7 +20,7 @@
 </script>
 
 <ActionEntryButton
-  class="h-12"
+  class="h-14"
   onclick={() => onclick(info)}
   actionButtonIcon={onRemoveClick && IconClose}
   onActionButtonClick={() => onRemoveClick?.(info)}
@@ -28,6 +29,7 @@
     type="file"
     thumbnail={$thumbnail}
     name={info.name}
+    subtext={formatDateTime(info.createdAt ?? info.lastModifiedAt)}
     isFavorite={info.isFavorite}
   />
 </ActionEntryButton>
