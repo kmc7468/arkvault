@@ -34,7 +34,7 @@ export class FilesystemCache<K, V extends object> {
       }
 
       (state.value
-        ? Promise.resolve(state.value)
+        ? Promise.resolve($state.snapshot(state.value) as V)
         : this.options.fetchFromIndexedDB(key).then((loadedInfo) => {
             if (loadedInfo) {
               state.value = loadedInfo;
