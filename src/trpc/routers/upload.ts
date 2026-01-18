@@ -6,11 +6,13 @@ import mime from "mime";
 import { dirname } from "path";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
+import { MAX_CHUNKS } from "$lib/constants";
 import { DirectoryIdSchema } from "$lib/schemas";
 import { FileRepo, MediaRepo, UploadRepo, IntegrityError } from "$lib/server/db";
 import db from "$lib/server/db/kysely";
 import env from "$lib/server/loadenv";
 import { safeRecursiveRm, safeUnlink } from "$lib/server/modules/filesystem";
+import { demoLogger } from "$lib/server/modules/logger";
 import { router, roleProcedure } from "../init.server";
 
 const UPLOADS_EXPIRES = 24 * 3600 * 1000; // 24 hours
@@ -28,7 +30,7 @@ const uploadRouter = router({
   startFileUpload: roleProcedure["activeClient"]
     .input(
       z.object({
-        chunks: z.int().positive(),
+        chunks: z.int().positive().max(MAX_CHUNKS),
         parent: DirectoryIdSchema,
         mekVersion: z.int().positive(),
         dek: z.base64().nonempty(),
@@ -76,6 +78,7 @@ const uploadRouter = router({
               : null,
           encLastModifiedAt: { ciphertext: input.lastModifiedAt, iv: input.lastModifiedAtIv },
         });
+        demoLogger.log("upload:start", { ip: ctx.locals.ip, uploadId: id });
         return { uploadId: id };
       } catch (e) {
         await safeRecursiveRm(path);
@@ -153,6 +156,7 @@ const uploadRouter = router({
         });
 
         await safeRecursiveRm(session.path);
+        demoLogger.log("upload:complete", { ip: ctx.locals.ip, uploadId, fileId });
         return { file: fileId };
       } catch (e) {
         await safeUnlink(filePath);
@@ -183,6 +187,7 @@ const uploadRouter = router({
           fileId: input.file,
           dekVersion: input.dekVersion,
         });
+        demoLogger.log("thumbnail:start", { ip: ctx.locals.ip, uploadId: id });
         return { uploadId: id };
       } catch (e) {
         await safeRecursiveRm(path);
@@ -237,6 +242,11 @@ const uploadRouter = router({
           );
           await UploadRepo.deleteUploadSession(trx, uploadId);
           return oldPath;
+        });
+        demoLogger.log("thumbnail:complete", {
+          ip: ctx.locals.ip,
+          uploadId,
+          fileId: session.fileId,
         });
         await Promise.all([safeUnlink(oldThumbnailPath), safeRecursiveRm(session.path)]);
       } catch (e) {

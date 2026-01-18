@@ -11,6 +11,7 @@ node_modules
 /library
 /thumbnails
 /uploads
+/log
 
 # OS
 .DS_Store

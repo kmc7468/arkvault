@@ -5,6 +5,7 @@ import { ClientRepo, SessionRepo, UserRepo, IntegrityError } from "$lib/server/d
 import env from "$lib/server/loadenv";
 import { cookieOptions } from "$lib/server/modules/auth";
 import { generateChallenge, verifySignature, issueSessionId } from "$lib/server/modules/crypto";
+import { demoLogger } from "$lib/server/modules/logger";
 import { router, publicProcedure, roleProcedure } from "../init.server";
 
 const authRouter = router({
@@ -24,6 +25,10 @@ const authRouter = router({
       const { sessionId, sessionIdSigned } = await issueSessionId(32, env.session.secret);
       await SessionRepo.createSession(user.id, sessionId, ctx.locals.ip, ctx.locals.userAgent);
       ctx.cookies.set("sessionId", sessionIdSigned, cookieOptions);
+
+      if (input.email === "arkvault-demo@minchan.me") {
+        demoLogger.log("demo:login", { ip: ctx.locals.ip, sessionId });
+      }
     }),
 
   logout: roleProcedure["any"].mutation(async ({ ctx }) => {
@@ -38,22 +43,8 @@ const authRouter = router({
         newPassword: z.string().nonempty(),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      if (input.oldPassword === input.newPassword) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Same passwords" });
-      } else if (input.newPassword.length < 8) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Too short password" });
-      }
-
-      const user = await UserRepo.getUser(ctx.session.userId);
-      if (!user) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Invalid session id" });
-      } else if (!(await argon2.verify(user.password, input.oldPassword))) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Invalid password" });
-      }
-
-      await UserRepo.setUserPassword(ctx.session.userId, await argon2.hash(input.newPassword));
-      await SessionRepo.deleteAllOtherSessions(ctx.session.userId, ctx.session.sessionId);
+    .mutation(() => {
+      throw new TRPCError({ code: "NOT_IMPLEMENTED" });
     }),
 
   upgrade: roleProcedure["notClient"]

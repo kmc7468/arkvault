@@ -10,6 +10,7 @@ services:
       - ./data/library:/app/data/library
       - ./data/thumbnails:/app/data/thumbnails
       - ./data/uploads:/app/data/uploads
+      - ./data/log:/app/data/log
     environment:
       # ArkVault
       - DATABASE_HOST=database
@@ -22,6 +23,7 @@ services:
       - LIBRARY_PATH=/app/data/library
       - THUMBNAILS_PATH=/app/data/thumbnails
       - UPLOADS_PATH=/app/data/uploads
+      - LOG_DIR=/app/data/log
       # SvelteKit
       - ADDRESS_HEADER=${TRUST_PROXY:+X-Forwarded-For}
       - XFF_DEPTH=${TRUST_PROXY:-}

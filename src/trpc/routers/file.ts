@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { FileRepo, MediaRepo, IntegrityError } from "$lib/server/db";
 import { safeUnlink } from "$lib/server/modules/filesystem";
+import { demoLogger } from "$lib/server/modules/logger";
 import { router, roleProcedure } from "../init.server";
 
 const fileRouter = router({
@@ -174,6 +175,7 @@ const fileRouter = router({
     .mutation(async ({ ctx, input }) => {
       try {
         const { path, thumbnailPath } = await FileRepo.unregisterFile(ctx.session.userId, input.id);
+        demoLogger.log("file:delete", { ip: ctx.locals.ip, fileId: input.id });
         safeUnlink(path); // Intended
         safeUnlink(thumbnailPath); // Intended
       } catch (e) {

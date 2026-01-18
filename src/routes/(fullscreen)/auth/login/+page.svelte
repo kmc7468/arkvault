@@ -14,8 +14,8 @@
 
   let { data } = $props();
 
-  let email = $state("");
-  let password = $state("");
+  let email = $state("arkvault-demo@minchan.me");
+  let password = $state("arkvault-demo");
 
   let isForceLoginModalOpen = $state(false);
 

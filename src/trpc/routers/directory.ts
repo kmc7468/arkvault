@@ -3,6 +3,7 @@ import { z } from "zod";
 import { DirectoryIdSchema } from "$lib/schemas";
 import { DirectoryRepo, FileRepo, IntegrityError } from "$lib/server/db";
 import { safeUnlink } from "$lib/server/modules/filesystem";
+import { demoLogger } from "$lib/server/modules/logger";
 import { router, roleProcedure } from "../init.server";
 
 const directoryRouter = router({
@@ -134,6 +135,7 @@ const directoryRouter = router({
         const files = await DirectoryRepo.unregisterDirectory(ctx.session.userId, input.id);
         return {
           deletedFiles: files.map((file) => {
+            demoLogger.log("file:delete", { ip: ctx.locals.ip, fileId: file.id, recursive: true });
             safeUnlink(file.path); // Intended
             safeUnlink(file.thumbnailPath); // Intended
             return file.id;

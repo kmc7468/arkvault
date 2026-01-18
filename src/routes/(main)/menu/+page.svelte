@@ -52,13 +52,6 @@
   </div>
   <div class="space-y-2">
     <p class="font-semibold">보안</p>
-    <MenuEntryButton
-      onclick={() => goto("/auth/changePassword")}
-      icon={IconPassword}
-      iconColor="text-blue-500"
-    >
-      비밀번호 바꾸기
-    </MenuEntryButton>
     <MenuEntryButton onclick={logout} icon={IconLogout} iconColor="text-red-500">
       로그아웃
     </MenuEntryButton>
