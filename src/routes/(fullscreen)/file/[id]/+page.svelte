@@ -77,12 +77,8 @@
   };
 
   const toggleFavorite = async () => {
-    if (!info?.exists) return;
-    const isFavorite = !!info.isFavorite;
-    const success = await requestFavoriteToggle(data.id, isFavorite);
-    if (success) {
-      info.isFavorite = !isFavorite;
-    }
+    await requestFavoriteToggle(data.id, !!info?.isFavorite);
+    void getFileInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
   };
 
   $effect(() => {
@@ -154,9 +150,9 @@
   <div onclick={(e) => e.stopPropagation()}>
     <button
       onclick={() => (isMenuOpen = !isMenuOpen)}
-      class="w-[2.3rem] flex-shrink-0 rounded-full p-1 active:bg-black active:bg-opacity-[0.04]"
+      class="w-full rounded-full p-1 text-2xl active:bg-black active:bg-opacity-[0.04]"
     >
-      <IconMoreVert class="text-2xl" />
+      <IconMoreVert />
     </button>
     <TopBarMenu
       bind:isOpen={isMenuOpen}

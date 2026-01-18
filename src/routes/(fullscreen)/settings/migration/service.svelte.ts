@@ -56,8 +56,7 @@ export const requestLegacyFiles = async (
       ),
     ),
   );
-
-  return files as MaybeFileInfo[];
+  return files;
 };
 
 const createState = (status: MigrationStatus): MigrationState => {

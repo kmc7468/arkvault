@@ -25,9 +25,9 @@
     {#if showBackButton}
       <button
         onclick={onBackClick ?? (() => history.back())}
-        class="w-[2.3rem] flex-shrink-0 rounded-full p-1 active:bg-black active:bg-opacity-[0.04]"
+        class="w-full rounded-full p-1 text-2xl active:bg-black active:bg-opacity-[0.04]"
       >
-        <IconArrowBack class="text-2xl" />
+        <IconArrowBack />
       </button>
     {/if}
   </div>

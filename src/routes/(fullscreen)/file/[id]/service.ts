@@ -58,6 +58,7 @@ export const requestFavoriteToggle = async (fileId: number, isFavorite: boolean)
     }
     return true;
   } catch {
+    // TODO: Error Handling
     return false;
   }
 };

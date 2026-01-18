@@ -61,8 +61,7 @@ export const requestMissingThumbnailFiles = async (
       ),
     ),
   );
-
-  return files as MaybeFileInfo[];
+  return files;
 };
 
 const requestThumbnailUpload = limitFunction(

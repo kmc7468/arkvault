@@ -20,7 +20,7 @@
       id: info.id,
       dataKey: info.dataKey,
       name: info.name,
-      isFavorite: info.isFavorite ?? false,
+      isFavorite: info.isFavorite,
     });
   };
 </script>

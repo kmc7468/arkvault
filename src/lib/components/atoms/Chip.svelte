@@ -9,8 +9,8 @@
     class?: ClassValue;
     onclick?: () => void;
     onRemoveClick?: () => void;
-    selected?: boolean;
     removable?: boolean;
+    selected?: boolean;
   }
 
   let {
@@ -38,7 +38,7 @@
   <span>
     {@render children()}
   </span>
-  {#if selected && removable}
+  {#if removable && selected}
     <button
       onclick={(e) => {
         e.stopPropagation();
