@@ -1,7 +1,7 @@
 import type { Generated } from "kysely";
 import type { Ciphertext } from "./utils";
 
-interface CategoryTable {
+export interface CategoryTable {
   id: Generated<number>;
   parent_id: number | null;
   user_id: number;
@@ -11,7 +11,7 @@ interface CategoryTable {
   encrypted_name: Ciphertext;
 }
 
-interface CategoryLogTable {
+export interface CategoryLogTable {
   id: Generated<number>;
   category_id: number;
   timestamp: Date;

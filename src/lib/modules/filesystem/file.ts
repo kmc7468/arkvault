@@ -27,6 +27,7 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
         createdAt: file.createdAt,
         lastModifiedAt: file.lastModifiedAt,
         categories: categories?.filter((category) => !!category) ?? [],
+        isFavorite: file.isFavorite,
       };
     }
   },
@@ -55,6 +56,7 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
         createdAt: metadata.createdAt,
         lastModifiedAt: metadata.lastModifiedAt,
         categories,
+        isFavorite: file.isFavorite,
       });
     } catch (e) {
       if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
@@ -120,6 +122,7 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
           parentId: metadataRaw.parent,
           contentType: metadataRaw.contentType,
           categories,
+          isFavorite: metadataRaw.isFavorite,
           ...metadata,
         };
       }),
@@ -168,8 +171,41 @@ const bulkStoreToIndexedDB = (infos: FileInfo[]) => {
   return infos.map((info) => [info.id, { ...info, exists: true }] as const);
 };
 
-export const getFileInfo = (id: number, masterKey: CryptoKey) => {
-  return cache.get(id, masterKey);
+export const getFileInfo = (
+  id: number,
+  masterKey: CryptoKey,
+  options?: {
+    serverResponse?: {
+      parent: DirectoryId;
+      dek: string;
+      dekVersion: Date;
+      contentType: string;
+      name: string;
+      nameIv: string;
+      createdAt?: string;
+      createdAtIv?: string;
+      lastModifiedAt: string;
+      lastModifiedAtIv: string;
+      isFavorite: boolean;
+    };
+  },
+) => {
+  return cache.get(id, masterKey, {
+    fetchFromServer:
+      options?.serverResponse &&
+      (async (cachedValue) => {
+        const metadata = await decryptFileMetadata(options!.serverResponse!, masterKey);
+        return storeToIndexedDB({
+          categories: [],
+          ...cachedValue,
+          id,
+          parentId: options!.serverResponse!.parent,
+          contentType: options!.serverResponse!.contentType,
+          isFavorite: options!.serverResponse!.isFavorite,
+          ...metadata,
+        });
+      }),
+  });
 };
 
 export const bulkGetFileInfo = (ids: number[], masterKey: CryptoKey) => {

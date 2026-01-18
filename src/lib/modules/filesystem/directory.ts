@@ -26,6 +26,7 @@ const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>({
         name: directory.name,
         subDirectories,
         files,
+        isFavorite: directory.isFavorite,
       };
     }
   },
@@ -38,6 +39,7 @@ const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>({
           directory.subDirectories.map(async (directory) => ({
             id: directory.id,
             parentId: id,
+            isFavorite: directory.isFavorite,
             ...(await decryptDirectoryMetadata(directory, masterKey)),
           })),
         ),
@@ -46,6 +48,7 @@ const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>({
             id: file.id,
             parentId: id,
             contentType: file.contentType,
+            isFavorite: file.isFavorite,
             ...(await decryptFileMetadata(file, masterKey)),
           })),
         ),
@@ -59,6 +62,7 @@ const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>({
               parentId: directory.metadata!.parent,
               subDirectories,
               files,
+              isFavorite: directory.metadata!.isFavorite,
               ...metadata!,
             }
           : { id, subDirectories, files },
@@ -97,6 +101,34 @@ const storeToIndexedDB = (info: DirectoryInfo) => {
   return { ...info, exists: true as const };
 };
 
-export const getDirectoryInfo = (id: DirectoryId, masterKey: CryptoKey) => {
-  return cache.get(id, masterKey);
+export const getDirectoryInfo = (
+  id: DirectoryId,
+  masterKey: CryptoKey,
+  options?: {
+    serverResponse?: {
+      parent: DirectoryId;
+      dek: string;
+      dekVersion: Date;
+      name: string;
+      nameIv: string;
+      isFavorite: boolean;
+    };
+  },
+) => {
+  return cache.get(id, masterKey, {
+    fetchFromServer:
+      options?.serverResponse &&
+      (async (cachedValue) => {
+        const metadata = await decryptDirectoryMetadata(options!.serverResponse!, masterKey);
+        return storeToIndexedDB({
+          subDirectories: [],
+          files: [],
+          ...cachedValue,
+          id: id as number,
+          parentId: options!.serverResponse!.parent,
+          isFavorite: options!.serverResponse!.isFavorite,
+          ...metadata,
+        });
+      }),
+  });
 };

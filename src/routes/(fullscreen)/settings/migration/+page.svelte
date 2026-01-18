@@ -3,11 +3,16 @@
   import { goto } from "$app/navigation";
   import { BottomDiv, Button, FullscreenDiv } from "$lib/components/atoms";
   import { TopBar } from "$lib/components/molecules";
-  import { bulkGetFileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
+  import type { MaybeFileInfo } from "$lib/modules/filesystem";
   import { masterKeyStore } from "$lib/stores";
   import { sortEntries } from "$lib/utils";
   import File from "./File.svelte";
-  import { getMigrationState, clearMigrationStates, requestFileMigration } from "./service.svelte";
+  import {
+    getMigrationState,
+    clearMigrationStates,
+    requestLegacyFiles,
+    requestFileMigration,
+  } from "./service.svelte";
 
   let { data } = $props();
 
@@ -30,9 +35,7 @@
   };
 
   onMount(async () => {
-    fileInfos = sortEntries(
-      Array.from((await bulkGetFileInfo(data.files, $masterKeyStore?.get(1)?.key!)).values()),
-    );
+    fileInfos = sortEntries(await requestLegacyFiles(data.files, $masterKeyStore?.get(1)?.key!));
   });
 
   $effect(() => clearMigrationStates);

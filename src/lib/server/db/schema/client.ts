@@ -1,6 +1,6 @@
 import type { ColumnType, Generated } from "kysely";
 
-interface ClientTable {
+export interface ClientTable {
   id: Generated<number>;
   encryption_public_key: string; // Base64
   signature_public_key: string; // Base64
@@ -8,13 +8,13 @@ interface ClientTable {
 
 export type UserClientState = "challenging" | "pending" | "active";
 
-interface UserClientTable {
+export interface UserClientTable {
   user_id: number;
   client_id: number;
   state: ColumnType<UserClientState, UserClientState | undefined>;
 }
 
-interface UserClientChallengeTable {
+export interface UserClientChallengeTable {
   id: Generated<number>;
   user_id: number;
   client_id: number;

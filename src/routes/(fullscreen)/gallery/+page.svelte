@@ -63,7 +63,7 @@
 <FullscreenDiv>
   <RowVirtualizer
     count={rows.length}
-    itemHeight={(index) =>
+    estimateItemHeight={(index) =>
       rows[index]!.type === "header" ? 28 : 181 + (rows[index]!.isLast ? 16 : 4)}
     class="flex flex-grow flex-col"
   >

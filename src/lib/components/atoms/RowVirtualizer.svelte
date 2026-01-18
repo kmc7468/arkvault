@@ -6,13 +6,22 @@
   interface Props {
     class?: ClassValue;
     count: number;
+    estimateItemHeight: (index: number) => number;
+    getItemKey?: (index: number) => string | number;
     item: Snippet<[index: number]>;
-    itemHeight: (index: number) => number;
     itemGap?: number;
     placeholder?: Snippet;
   }
 
-  let { class: className, count, item, itemHeight, itemGap, placeholder }: Props = $props();
+  let {
+    class: className,
+    count,
+    estimateItemHeight,
+    getItemKey,
+    item,
+    itemGap,
+    placeholder,
+  }: Props = $props();
 
   let element: HTMLElement | undefined = $state();
   let scrollMargin = $state(0);
@@ -20,8 +29,9 @@
   let virtualizer = $derived(
     createWindowVirtualizer({
       count,
-      estimateSize: itemHeight,
+      estimateSize: estimateItemHeight,
       gap: itemGap,
+      getItemKey: getItemKey,
       scrollMargin,
     }),
   );

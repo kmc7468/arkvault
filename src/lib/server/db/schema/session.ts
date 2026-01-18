@@ -1,6 +1,6 @@
 import type { ColumnType, Generated } from "kysely";
 
-interface SessionTable {
+export interface SessionTable {
   id: string;
   user_id: number;
   client_id: number | null;
@@ -10,7 +10,7 @@ interface SessionTable {
   last_used_by_agent: string | null;
 }
 
-interface SessionUpgradeChallengeTable {
+export interface SessionUpgradeChallengeTable {
   id: Generated<number>;
   session_id: string;
   client_id: number;

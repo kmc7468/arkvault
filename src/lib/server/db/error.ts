@@ -8,10 +8,14 @@ type IntegrityErrorMessages =
   | "User client already exists"
   // File
   | "Directory not found"
+  | "Directory already favorited"
+  | "Directory not favorited"
   | "File not found"
   | "File is not legacy"
   | "File not found in category"
   | "File already added to category"
+  | "File already favorited"
+  | "File not favorited"
   | "Invalid DEK version"
   // HSK
   | "HSK already registered"

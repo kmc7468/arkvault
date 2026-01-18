@@ -76,7 +76,7 @@
 <div class="min-h-full bg-gray-100 pb-[5.5em]">
   {#if info?.exists}
     <div class="space-y-4">
-      <div class="space-y-4 bg-white p-4">
+      <div class="space-y-2 bg-white p-4">
         {#if info.id !== "root"}
           <p class="text-lg font-bold text-gray-800">하위 카테고리</p>
         {/if}
@@ -84,6 +84,7 @@
           {info}
           onSubCategoryClick={({ id }) => goto(`/category/${id}`)}
           onSubCategoryCreateClick={() => (isCategoryCreateModalOpen = true)}
+          subCategoryCreatePosition="bottom"
           onSubCategoryMenuClick={(subCategory) => {
             context.selectedCategory = subCategory;
             isCategoryMenuBottomSheetOpen = true;
@@ -92,14 +93,19 @@
         />
       </div>
       {#if info.id !== "root"}
-        <div class="space-y-4 bg-white p-4">
+        <div class="space-y-2 bg-white p-4">
           <div class="flex items-center justify-between">
             <p class="text-lg font-bold text-gray-800">파일</p>
             <CheckBox bind:checked={info.isFileRecursive}>
               <p class="font-medium">하위 카테고리의 파일</p>
             </CheckBox>
           </div>
-          <RowVirtualizer count={files.length} itemHeight={() => 48} itemGap={4}>
+          <RowVirtualizer
+            count={files.length}
+            getItemKey={(index) => files[index]!.details.id}
+            estimateItemHeight={() => 48}
+            itemGap={4}
+          >
             {#snippet item(index)}
               {@const { details } = files[index]!}
               <File

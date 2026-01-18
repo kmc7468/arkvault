@@ -18,6 +18,7 @@
     requestThumbnailUpload,
     requestFileAdditionToCategory,
     requestVideoStream,
+    requestFavoriteToggle,
   } from "./service";
   import TopBarMenu from "./TopBarMenu.svelte";
 
@@ -72,6 +73,11 @@
 
   const removeFromCategory = async (categoryId: number) => {
     await requestFileRemovalFromCategory(data.id, categoryId);
+    void getFileInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+  };
+
+  const toggleFavorite = async () => {
+    await requestFavoriteToggle(data.id, !!info?.isFavorite);
     void getFileInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
   };
 
@@ -144,18 +150,22 @@
   <div onclick={(e) => e.stopPropagation()}>
     <button
       onclick={() => (isMenuOpen = !isMenuOpen)}
-      class="w-[2.3rem] flex-shrink-0 rounded-full p-1 active:bg-black active:bg-opacity-[0.04]"
+      class="w-full rounded-full p-1 text-2xl active:bg-black active:bg-opacity-[0.04]"
     >
-      <IconMoreVert class="text-2xl" />
+      <IconMoreVert />
     </button>
     <TopBarMenu
       bind:isOpen={isMenuOpen}
-      directoryId={["category", "gallery"].includes(page.url.searchParams.get("from") ?? "")
+      directoryId={["category", "gallery", "search", "favorite"].includes(
+        page.url.searchParams.get("from") ?? "",
+      )
         ? info?.parentId
         : undefined}
       {fileBlob}
       downloadUrl={videoStreamUrl}
       filename={info?.name}
+      isFavorite={info?.isFavorite}
+      onToggleFavorite={toggleFavorite}
     />
   </div>
 </TopBar>

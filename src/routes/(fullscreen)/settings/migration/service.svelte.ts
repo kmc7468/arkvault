@@ -1,11 +1,12 @@
 import { limitFunction } from "p-limit";
 import { SvelteMap } from "svelte/reactivity";
 import { CHUNK_SIZE } from "$lib/constants";
-import type { FileInfo } from "$lib/modules/filesystem";
+import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
 import { uploadBlob } from "$lib/modules/upload";
 import { requestFileDownload } from "$lib/services/file";
-import { Scheduler } from "$lib/utils";
+import { HybridPromise, Scheduler } from "$lib/utils";
 import { trpc } from "$trpc/client";
+import type { RouterOutputs } from "$trpc/router.server";
 
 export type MigrationStatus =
   | "queued"
@@ -23,6 +24,16 @@ export interface MigrationState {
 
 const scheduler = new Scheduler();
 const states = new SvelteMap<number, MigrationState>();
+
+export const requestLegacyFiles = async (
+  filesRaw: RouterOutputs["file"]["listLegacy"],
+  masterKey: CryptoKey,
+) => {
+  const files = await HybridPromise.all(
+    filesRaw.map((file) => getFileInfo(file.id, masterKey, { serverResponse: file })),
+  );
+  return files;
+};
 
 const createState = (status: MigrationStatus): MigrationState => {
   const state = $state({ status });

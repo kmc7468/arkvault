@@ -16,7 +16,11 @@ export class FilesystemCache<K, V extends object> {
 
   constructor(private readonly options: FilesystemCacheOptions<K, V>) {}
 
-  get(key: K, masterKey: CryptoKey) {
+  get(
+    key: K,
+    masterKey: CryptoKey,
+    options?: { fetchFromServer?: (cachedValue: V | undefined) => Promise<V> },
+  ) {
     return untrack(() => {
       let state = this.map.get(key);
       if (state?.promise) return state.value ?? state.promise;
@@ -39,7 +43,11 @@ export class FilesystemCache<K, V extends object> {
             return loadedInfo;
           })
       )
-        .then((cachedInfo) => this.options.fetchFromServer(key, cachedInfo, masterKey))
+        .then(
+          (cachedInfo) =>
+            options?.fetchFromServer?.(cachedInfo) ??
+            this.options.fetchFromServer(key, cachedInfo, masterKey),
+        )
         .then((loadedInfo) => {
           if (state.value) {
             Object.assign(state.value, loadedInfo);

@@ -2,7 +2,7 @@ import type { ColumnType, Generated } from "kysely";
 
 export type HskState = "active";
 
-interface HskTable {
+export interface HskTable {
   user_id: number;
   version: number;
   state: HskState;
@@ -10,7 +10,7 @@ interface HskTable {
   encrypted_key: string; // Base64
 }
 
-interface HskLogTable {
+export interface HskLogTable {
   id: Generated<number>;
   user_id: number;
   hmac_secret_key_version: number;

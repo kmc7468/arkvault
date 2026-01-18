@@ -5,6 +5,8 @@
   import { fly } from "svelte/transition";
   import { goto } from "$app/navigation";
 
+  import IconFavorite from "~icons/material-symbols/favorite";
+  import IconFavoriteOutline from "~icons/material-symbols/favorite-outline";
   import IconFolderOpen from "~icons/material-symbols/folder-open";
   import IconCloudDownload from "~icons/material-symbols/cloud-download";
 
@@ -13,10 +15,20 @@
     downloadUrl?: string;
     fileBlob?: Blob;
     filename?: string;
+    isFavorite?: boolean;
     isOpen: boolean;
+    onToggleFavorite?: () => void;
   }
 
-  let { directoryId, downloadUrl, fileBlob, filename, isOpen = $bindable() }: Props = $props();
+  let {
+    directoryId,
+    downloadUrl,
+    fileBlob,
+    filename,
+    isFavorite,
+    isOpen = $bindable(),
+    onToggleFavorite,
+  }: Props = $props();
 
   const handleDownload = () => {
     if (fileBlob && filename) {
@@ -34,7 +46,7 @@
 
 {#if isOpen && (directoryId || downloadUrl || fileBlob)}
   <div
-    class="absolute right-2 top-full z-20 space-y-1 rounded-lg bg-white px-1 py-2 shadow-2xl"
+    class="absolute right-2 top-full z-20 min-w-40 space-y-1 rounded-lg bg-white px-1 py-2 shadow-2xl"
     transition:fly={{ y: -8, duration: 200 }}
   >
     <p class="px-3 pt-2 text-sm font-semibold text-gray-600">더보기</p>
@@ -45,15 +57,20 @@
         onclick: () => void,
       )}
         <button {onclick} class="rounded-xl active:bg-gray-100">
-          <div
-            class="flex items-center gap-x-3 px-3 py-2 text-lg text-gray-700 transition active:scale-95"
-          >
+          <div class="flex items-center gap-x-3 px-3 py-2 text-gray-700 transition active:scale-95">
             <Icon />
             <p class="font-medium">{text}</p>
           </div>
         </button>
       {/snippet}
 
+      {#if isFavorite !== undefined}
+        {@render menuButton(
+          isFavorite ? IconFavorite : IconFavoriteOutline,
+          isFavorite ? "즐겨찾기 해제" : "즐겨찾기",
+          onToggleFavorite ?? (() => {}),
+        )}
+      {/if}
       {#if directoryId}
         {@render menuButton(IconFolderOpen, "폴더에서 보기", () =>
           goto(

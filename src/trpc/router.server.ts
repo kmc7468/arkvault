@@ -6,9 +6,11 @@ import {
   categoryRouter,
   clientRouter,
   directoryRouter,
+  favoritesRouter,
   fileRouter,
   hskRouter,
   mekRouter,
+  searchRouter,
   uploadRouter,
   userRouter,
 } from "./routers";
@@ -18,9 +20,11 @@ export const appRouter = router({
   category: categoryRouter,
   client: clientRouter,
   directory: directoryRouter,
+  favorites: favoritesRouter,
   file: fileRouter,
   hsk: hskRouter,
   mek: mekRouter,
+  search: searchRouter,
   upload: uploadRouter,
   user: userRouter,
 });

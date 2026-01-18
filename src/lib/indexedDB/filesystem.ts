@@ -4,6 +4,7 @@ interface DirectoryInfo {
   id: number;
   parentId: DirectoryId;
   name: string;
+  isFavorite: boolean;
 }
 
 interface FileInfo {
@@ -14,6 +15,7 @@ interface FileInfo {
   createdAt?: Date;
   lastModifiedAt: Date;
   categoryIds?: number[];
+  isFavorite: boolean;
 }
 
 interface CategoryInfo {
@@ -46,6 +48,23 @@ filesystem
       });
   });
 
+filesystem.version(4).upgrade(async (trx) => {
+  await Promise.all([
+    trx
+      .table("directory")
+      .toCollection()
+      .modify((directory) => {
+        directory.isFavorite = false;
+      }),
+    trx
+      .table("file")
+      .toCollection()
+      .modify((file) => {
+        file.isFavorite = false;
+      }),
+  ]);
+});
+
 export const getDirectoryInfos = async (parentId: DirectoryId) => {
   return await filesystem.directory.where({ parentId }).toArray();
 };
@@ -55,7 +74,11 @@ export const getDirectoryInfo = async (id: number) => {
 };
 
 export const storeDirectoryInfo = async (directoryInfo: DirectoryInfo) => {
-  await filesystem.directory.upsert(directoryInfo.id, { ...directoryInfo });
+  await filesystem.directory.upsert(directoryInfo.id, {
+    parentId: directoryInfo.parentId,
+    name: directoryInfo.name,
+    isFavorite: directoryInfo.isFavorite,
+  });
 };
 
 export const deleteDirectoryInfo = async (id: number) => {
@@ -89,7 +112,15 @@ export const bulkGetFileInfos = async (ids: number[]) => {
 };
 
 export const storeFileInfo = async (fileInfo: FileInfo) => {
-  await filesystem.file.upsert(fileInfo.id, { ...fileInfo });
+  await filesystem.file.upsert(fileInfo.id, {
+    parentId: fileInfo.parentId,
+    name: fileInfo.name,
+    contentType: fileInfo.contentType,
+    createdAt: fileInfo.createdAt,
+    lastModifiedAt: fileInfo.lastModifiedAt,
+    categoryIds: fileInfo.categoryIds,
+    isFavorite: fileInfo.isFavorite,
+  });
 };
 
 export const deleteFileInfo = async (id: number) => {
@@ -116,7 +147,12 @@ export const getCategoryInfo = async (id: number) => {
 };
 
 export const storeCategoryInfo = async (categoryInfo: CategoryInfo) => {
-  await filesystem.category.upsert(categoryInfo.id, { ...categoryInfo });
+  await filesystem.category.upsert(categoryInfo.id, {
+    parentId: categoryInfo.parentId,
+    name: categoryInfo.name,
+    files: categoryInfo.files,
+    isFileRecursive: categoryInfo.isFileRecursive,
+  });
 };
 
 export const updateCategoryInfo = async (id: number, changes: { isFileRecursive?: boolean }) => {

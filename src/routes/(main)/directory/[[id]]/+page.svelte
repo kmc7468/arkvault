@@ -23,8 +23,10 @@
     requestFileUpload,
     requestEntryRename,
     requestEntryDeletion,
+    requestFavoriteToggle,
   } from "./service.svelte";
 
+  import IconSearch from "~icons/material-symbols/search";
   import IconAdd from "~icons/material-symbols/add";
 
   let { data } = $props();
@@ -43,8 +45,19 @@
   let isEntryRenameModalOpen = $state(false);
   let isEntryDeleteModalOpen = $state(false);
 
-  let isFromFilePage = $derived(page.url.searchParams.get("from") === "file");
-  let showTopBar = $derived(data.id !== "root" || isFromFilePage);
+  let showParentEntry = $derived(
+    ["file", "search", "favorite"].includes(page.url.searchParams.get("from") ?? ""),
+  );
+  let showBackButton = $derived(data.id !== "root" || showParentEntry);
+
+  const onSearchClick = async () => {
+    const params = new URLSearchParams();
+    if (data.id !== "root") {
+      params.set("directoryId", data.id.toString());
+    }
+    const query = params.toString();
+    await goto(`/search${query ? `?${query}` : ""}`);
+  };
 
   const uploadFile = () => {
     const files = fileInput?.files;
@@ -96,11 +109,16 @@
 <input bind:this={fileInput} onchange={uploadFile} type="file" multiple class="hidden" />
 
 <div class="flex h-full flex-col">
-  {#if showTopBar}
-    <TopBar title={info?.name} class="flex-shrink-0" />
-  {/if}
+  <TopBar title={info?.name ?? "내 파일"} {showBackButton} class="flex-shrink-0">
+    <button
+      onclick={onSearchClick}
+      class="w-[2.3rem] flex-shrink-0 rounded-full p-1 active:bg-black active:bg-opacity-[0.04]"
+    >
+      <IconSearch class="text-2xl" />
+    </button>
+  </TopBar>
   {#if info?.exists}
-    <div class={["flex flex-grow flex-col px-4 pb-4", !showTopBar && "pt-4"]}>
+    <div class="flex flex-grow flex-col px-4 pb-4">
       <div class="flex gap-x-2">
         <UploadStatusCard onclick={() => goto("/file/uploads")} />
         <DownloadStatusCard onclick={() => goto("/file/downloads")} />
@@ -113,12 +131,12 @@
             context.selectedEntry = entry;
             isEntryMenuBottomSheetOpen = true;
           }}
-          showParentEntry={isFromFilePage && info.parentId !== undefined}
+          showParentEntry={showParentEntry && data.id !== "root"}
           onParentClick={() =>
             goto(
               info!.parentId === "root"
-                ? "/directory?from=file"
-                : `/directory/${info!.parentId}?from=file`,
+                ? `/directory?from=${page.url.searchParams.get("from")}`
+                : `/directory/${info!.parentId}?from=${page.url.searchParams.get("from")}`,
             )}
         />
       {/key}
@@ -176,6 +194,12 @@
   onDeleteClick={() => {
     isEntryMenuBottomSheetOpen = false;
     isEntryDeleteModalOpen = true;
+  }}
+  onFavoriteClick={async () => {
+    if (await requestFavoriteToggle(context.selectedEntry!)) {
+      isEntryMenuBottomSheetOpen = false;
+      void getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+    }
   }}
 />
 <EntryRenameModal

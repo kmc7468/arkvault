@@ -62,6 +62,8 @@ export const up = async (db: Kysely<any>) => {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const down = async (db: Kysely<any>) => {
+  await db.deleteFrom("file_log").where("action", "=", "migrate").execute();
+
   await db.schema.dropTable("upload_session").execute();
   await db.schema
     .alterTable("thumbnail")
