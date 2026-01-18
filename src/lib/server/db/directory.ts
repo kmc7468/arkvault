@@ -74,28 +74,6 @@ export const getAllDirectoriesByParent = async (userId: number, parentId: Direct
   return directories.map(toDirectory);
 };
 
-export const getAllRecursiveDirectoriesByParent = async (userId: number, parentId: DirectoryId) => {
-  const directories = await db
-    .withRecursive("directory_tree", (db) =>
-      db
-        .selectFrom("directory")
-        .selectAll()
-        .$if(parentId === "root", (qb) => qb.where("parent_id", "is", null))
-        .$if(parentId !== "root", (qb) => qb.where("parent_id", "=", parentId as number))
-        .where("user_id", "=", userId)
-        .unionAll((db) =>
-          db
-            .selectFrom("directory")
-            .innerJoin("directory_tree", "directory.parent_id", "directory_tree.id")
-            .selectAll("directory"),
-        ),
-    )
-    .selectFrom("directory_tree")
-    .selectAll()
-    .execute();
-  return directories.map(toDirectory);
-};
-
 export const getAllFavoriteDirectories = async (userId: number) => {
   const directories = await db
     .selectFrom("directory")
@@ -115,6 +93,61 @@ export const getDirectory = async (userId: number, directoryId: number) => {
     .limit(1)
     .executeTakeFirst();
   return directory ? toDirectory(directory) : null;
+};
+
+export const searchDirectories = async (
+  userId: number,
+  filters: {
+    parentId: DirectoryId;
+    inFavorites: boolean;
+  },
+) => {
+  const directories = await db
+    .withRecursive("directory_tree", (db) =>
+      db
+        .selectFrom("directory")
+        .select("id")
+        .where("user_id", "=", userId)
+        .$if(filters.parentId === "root", (qb) => qb.where((eb) => eb.lit(false))) // directory_tree will be empty if parentId is "root"
+        .$if(filters.parentId !== "root", (qb) => qb.where("id", "=", filters.parentId as number))
+        .unionAll(
+          db
+            .selectFrom("directory as d")
+            .innerJoin("directory_tree as dt", "d.parent_id", "dt.id")
+            .select("d.id"),
+        ),
+    )
+    .withRecursive("favorite_directory_tree", (db) =>
+      db
+        .selectFrom("directory")
+        .select("id")
+        .where("user_id", "=", userId)
+        .$if(!filters.inFavorites, (qb) => qb.where((eb) => eb.lit(false))) // favorite_directory_tree will be empty if inFavorites is false
+        .$if(filters.inFavorites, (qb) => qb.where("is_favorite", "=", true))
+        .unionAll((db) =>
+          db
+            .selectFrom("directory as d")
+            .innerJoin("favorite_directory_tree as dt", "d.parent_id", "dt.id")
+            .select("d.id"),
+        ),
+    )
+    .selectFrom("directory")
+    .selectAll()
+    .where("user_id", "=", userId)
+    .$if(filters.parentId !== "root", (qb) =>
+      qb.where((eb) =>
+        eb.exists(eb.selectFrom("directory_tree as dt").whereRef("dt.id", "=", "parent_id")),
+      ),
+    )
+    .$if(filters.inFavorites, (qb) =>
+      qb.where((eb) =>
+        eb.exists(
+          eb.selectFrom("favorite_directory_tree as dt").whereRef("dt.id", "=", "directory.id"),
+        ),
+      ),
+    )
+    .execute();
+  return directories.map(toDirectory);
 };
 
 export const setDirectoryEncName = async (

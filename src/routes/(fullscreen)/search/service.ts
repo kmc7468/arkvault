@@ -10,6 +10,7 @@ import { trpc } from "$trpc/client";
 
 export interface SearchFilter {
   ancestorId: DirectoryId;
+  inFavorites: boolean;
   categories: { info: LocalCategoryInfo; type: "include" | "exclude" }[];
 }
 
@@ -21,6 +22,7 @@ export interface SearchResult {
 export const requestSearch = async (filter: SearchFilter, masterKey: CryptoKey) => {
   const { directories: directoriesRaw, files: filesRaw } = await trpc().search.search.query({
     ancestor: filter.ancestorId,
+    inFavorites: filter.inFavorites,
     includeCategories: filter.categories
       .filter(({ type }) => type === "include")
       .map(({ info }) => info.id),

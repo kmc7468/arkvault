@@ -37,8 +37,8 @@
     includeImages: false,
     includeVideos: false,
     includeDirectories: false,
-    searchInFavorites: false,
     searchInDirectory: false,
+    searchInFavorites: false,
     categories: [],
   });
   let hasCategoryFilter = $derived(filters.categories.length > 0);
@@ -47,7 +47,6 @@
       filters.includeImages ||
       filters.includeVideos ||
       filters.includeDirectories ||
-      filters.searchInFavorites ||
       filters.name.trim().length > 0,
   );
 
@@ -84,9 +83,7 @@
 
     return sortEntries(
       [...directories, ...files].filter(
-        (entry) =>
-          (!nameFilter || searchString(entry.name, nameFilter)) &&
-          (!filters.searchInFavorites || entry.isFavorite),
+        (entry) => !nameFilter || searchString(entry.name, nameFilter),
       ),
     );
   });
@@ -145,6 +142,7 @@
     // Svelte sucks
     hasAnyFilter;
     filters.searchInDirectory;
+    filters.searchInFavorites;
     filters.categories.length;
 
     if (untrack(() => isRestoredFromSnapshot)) {
@@ -156,6 +154,7 @@
       requestSearch(
         {
           ancestorId: filters.searchInDirectory ? data.directoryId! : "root",
+          inFavorites: filters.searchInFavorites,
           categories: filters.categories,
         },
         $masterKeyStore?.get(1)?.key!,
@@ -216,7 +215,12 @@
     </div>
     {#if hasAnyFilter}
       <div class="flex flex-grow flex-col space-y-2 bg-white p-4">
-        <p class="text-lg font-bold text-gray-800">검색 결과</p>
+        <p class="text-lg font-bold text-gray-800">
+          검색 결과
+          {#if result.length > 0}
+            {" "}({result.length}개)
+          {/if}
+        </p>
         {#if result.length > 0}
           <RowVirtualizer
             count={result.length}

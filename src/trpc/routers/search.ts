@@ -8,6 +8,7 @@ const searchRouter = router({
     .input(
       z.object({
         ancestor: DirectoryIdSchema.default("root"),
+        inFavorites: z.boolean().default(false),
         includeCategories: z.number().positive().array().default([]),
         excludeCategories: z.number().positive().array().default([]),
       }),
@@ -15,10 +16,14 @@ const searchRouter = router({
     .query(async ({ ctx, input }) => {
       const [directories, files] = await Promise.all([
         input.includeCategories.length === 0 && input.excludeCategories.length === 0
-          ? DirectoryRepo.getAllRecursiveDirectoriesByParent(ctx.session.userId, input.ancestor)
+          ? DirectoryRepo.searchDirectories(ctx.session.userId, {
+              parentId: input.ancestor,
+              inFavorites: input.inFavorites,
+            })
           : [],
         FileRepo.searchFiles(ctx.session.userId, {
           parentId: input.ancestor,
+          inFavorites: input.inFavorites,
           includeCategoryIds: input.includeCategories,
           excludeCategoryIds: input.excludeCategories,
         }),
