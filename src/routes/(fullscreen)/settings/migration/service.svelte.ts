@@ -1,12 +1,7 @@
 import { limitFunction } from "p-limit";
 import { SvelteMap } from "svelte/reactivity";
 import { CHUNK_SIZE } from "$lib/constants";
-import {
-  decryptFileMetadata,
-  getFileInfo,
-  type FileInfo,
-  type MaybeFileInfo,
-} from "$lib/modules/filesystem";
+import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
 import { uploadBlob } from "$lib/modules/upload";
 import { requestFileDownload } from "$lib/services/file";
 import { HybridPromise, Scheduler } from "$lib/utils";
@@ -35,26 +30,7 @@ export const requestLegacyFiles = async (
   masterKey: CryptoKey,
 ) => {
   const files = await HybridPromise.all(
-    filesRaw.map((file) =>
-      HybridPromise.resolve(
-        getFileInfo(file.id, masterKey, {
-          async fetchFromServer(id, cachedInfo, masterKey) {
-            const metadata = await decryptFileMetadata(file, masterKey);
-            return {
-              categories: [],
-              ...cachedInfo,
-              id: id as number,
-              exists: true,
-              isLegacy: file.isLegacy,
-              parentId: file.parent,
-              contentType: file.contentType,
-              isFavorite: file.isFavorite,
-              ...metadata,
-            };
-          },
-        }),
-      ),
-    ),
+    filesRaw.map((file) => getFileInfo(file.id, masterKey, { serverResponse: file })),
   );
   return files;
 };

@@ -1,9 +1,9 @@
 import {
-  decryptDirectoryMetadata,
-  decryptFileMetadata,
+  getDirectoryInfo,
   getFileInfo,
   type SummarizedFileInfo,
   type SubDirectoryInfo,
+  type LocalDirectoryInfo,
 } from "$lib/modules/filesystem";
 import { HybridPromise, sortEntries } from "$lib/utils";
 import { trpc } from "$trpc/client";
@@ -16,59 +16,41 @@ export type FavoriteEntry =
 export const requestFavoriteEntries = async (
   favorites: RouterOutputs["favorites"]["get"],
   masterKey: CryptoKey,
-): Promise<FavoriteEntry[]> => {
-  const directories: FavoriteEntry[] = await Promise.all(
-    favorites.directories.map(async (dir) => {
-      const metadata = await decryptDirectoryMetadata(dir, masterKey);
-      return {
-        type: "directory" as const,
-        name: metadata.name,
-        details: {
-          id: dir.id,
-          parentId: dir.parent,
-          isFavorite: true,
-          dataKey: metadata.dataKey,
-          name: metadata.name,
-        } as SubDirectoryInfo,
-      };
-    }),
-  );
-
-  const fileResults = await Promise.all(
-    favorites.files.map(async (file) => {
-      const result = await HybridPromise.resolve(
-        getFileInfo(file.id, masterKey, {
-          async fetchFromServer(id, cachedInfo) {
-            const metadata = await decryptFileMetadata(file, masterKey);
-            return {
-              categories: [],
-              ...cachedInfo,
-              id: id as number,
-              exists: true,
-              parentId: file.parent,
-              contentType: file.contentType,
-              isFavorite: true,
-              ...metadata,
-            };
-          },
+) => {
+  const [directories, files] = await HybridPromise.all([
+    HybridPromise.all(
+      favorites.directories.map((directory) =>
+        getDirectoryInfo(directory.id, masterKey, {
+          serverResponse: { ...directory, isFavorite: true },
         }),
-      );
-      if (result?.exists) {
-        return {
-          type: "file" as const,
-          name: result.name,
-          details: result as SummarizedFileInfo,
-        };
-      }
-      return null;
-    }),
-  );
-
-  const files = fileResults.filter(
-    (f): f is { type: "file"; name: string; details: SummarizedFileInfo } => f !== null,
-  );
-
-  return [...sortEntries(directories), ...sortEntries(files)];
+      ),
+    ),
+    HybridPromise.all(
+      favorites.files.map((file) =>
+        getFileInfo(file.id, masterKey, { serverResponse: { ...file, isFavorite: true } }),
+      ),
+    ),
+  ]);
+  return [
+    ...sortEntries(
+      directories.map(
+        (directory): FavoriteEntry => ({
+          type: "directory",
+          name: directory.name!,
+          details: directory as LocalDirectoryInfo,
+        }),
+      ),
+    ),
+    ...sortEntries(
+      files.map(
+        (file): FavoriteEntry => ({
+          type: "file",
+          name: file.name!,
+          details: file as SummarizedFileInfo,
+        }),
+      ),
+    ),
+  ];
 };
 
 export const requestRemoveFavorite = async (type: "file" | "directory", id: number) => {

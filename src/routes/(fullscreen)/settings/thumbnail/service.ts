@@ -1,12 +1,7 @@
 import { limitFunction } from "p-limit";
 import { SvelteMap } from "svelte/reactivity";
 import { storeFileThumbnailCache } from "$lib/modules/file";
-import {
-  decryptFileMetadata,
-  getFileInfo,
-  type FileInfo,
-  type MaybeFileInfo,
-} from "$lib/modules/filesystem";
+import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
 import { generateThumbnail } from "$lib/modules/thumbnail";
 import { requestFileDownload, requestFileThumbnailUpload } from "$lib/services/file";
 import { HybridPromise, Scheduler } from "$lib/utils";
@@ -40,26 +35,7 @@ export const requestMissingThumbnailFiles = async (
   masterKey: CryptoKey,
 ) => {
   const files = await HybridPromise.all(
-    filesRaw.map((file) =>
-      HybridPromise.resolve(
-        getFileInfo(file.id, masterKey, {
-          async fetchFromServer(id, cachedInfo, masterKey) {
-            const metadata = await decryptFileMetadata(file, masterKey);
-            return {
-              categories: [],
-              ...cachedInfo,
-              id: id as number,
-              exists: true,
-              isLegacy: file.isLegacy,
-              parentId: file.parent,
-              contentType: file.contentType,
-              isFavorite: file.isFavorite,
-              ...metadata,
-            };
-          },
-        }),
-      ),
-    ),
+    filesRaw.map((file) => getFileInfo(file.id, masterKey, { serverResponse: file })),
   );
   return files;
 };

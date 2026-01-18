@@ -1,6 +1,4 @@
 import {
-  decryptDirectoryMetadata,
-  decryptFileMetadata,
   getDirectoryInfo,
   getFileInfo,
   type LocalDirectoryInfo,
@@ -30,49 +28,14 @@ export const requestSearch = async (filter: SearchFilter, masterKey: CryptoKey) 
       .filter(({ type }) => type === "exclude")
       .map(({ info }) => info.id),
   });
-
   const [directories, files] = await HybridPromise.all([
     HybridPromise.all(
       directoriesRaw.map((directory) =>
-        HybridPromise.resolve(
-          getDirectoryInfo(directory.id, masterKey, {
-            async fetchFromServer(id, cachedInfo, masterKey) {
-              const metadata = await decryptDirectoryMetadata(directory, masterKey);
-              return {
-                subDirectories: [],
-                files: [],
-                ...cachedInfo,
-                id: id as number,
-                exists: true,
-                parentId: directory.parent,
-                ...metadata,
-                isFavorite: !!directory.isFavorite,
-              };
-            },
-          }),
-        ),
+        getDirectoryInfo(directory.id, masterKey, { serverResponse: directory }),
       ),
     ),
     HybridPromise.all(
-      filesRaw.map((file) =>
-        HybridPromise.resolve(
-          getFileInfo(file.id, masterKey, {
-            async fetchFromServer(id, cachedInfo, masterKey) {
-              const metadata = await decryptFileMetadata(file, masterKey);
-              return {
-                categories: [],
-                ...cachedInfo,
-                id: id as number,
-                exists: true,
-                parentId: file.parent,
-                contentType: file.contentType,
-                isFavorite: !!file.isFavorite,
-                ...metadata,
-              };
-            },
-          }),
-        ),
-      ),
+      filesRaw.map((file) => getFileInfo(file.id, masterKey, { serverResponse: file })),
     ),
   ]);
   return { directories, files } as SearchResult;

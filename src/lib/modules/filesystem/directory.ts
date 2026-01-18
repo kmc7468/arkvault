@@ -1,7 +1,6 @@
 import * as IndexedDB from "$lib/indexedDB";
 import { trpc, isTRPCClientError } from "$trpc/client";
-import { decryptDirectoryMetadata, decryptFileMetadata } from "./common";
-import { FilesystemCache, type FilesystemCacheOptions } from "./FilesystemCache.svelte";
+import { FilesystemCache, decryptDirectoryMetadata, decryptFileMetadata } from "./internal.svelte";
 import type { DirectoryInfo, MaybeDirectoryInfo } from "./types";
 
 const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>({
@@ -106,8 +105,30 @@ export const getDirectoryInfo = (
   id: DirectoryId,
   masterKey: CryptoKey,
   options?: {
-    fetchFromServer?: FilesystemCacheOptions<DirectoryId, MaybeDirectoryInfo>["fetchFromServer"];
+    serverResponse?: {
+      parent: DirectoryId;
+      dek: string;
+      dekVersion: Date;
+      name: string;
+      nameIv: string;
+      isFavorite: boolean;
+    };
   },
 ) => {
-  return cache.get(id, masterKey, options);
+  return cache.get(id, masterKey, {
+    fetchFromServer:
+      options?.serverResponse &&
+      (async (cachedValue) => {
+        const metadata = await decryptDirectoryMetadata(options!.serverResponse!, masterKey);
+        return storeToIndexedDB({
+          subDirectories: [],
+          files: [],
+          ...cachedValue,
+          id: id as number,
+          parentId: options!.serverResponse!.parent,
+          isFavorite: options!.serverResponse!.isFavorite,
+          ...metadata,
+        });
+      }),
+  });
 };

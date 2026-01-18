@@ -1,7 +1,6 @@
 import * as IndexedDB from "$lib/indexedDB";
 import { trpc, isTRPCClientError } from "$trpc/client";
-import { decryptFileMetadata, decryptCategoryMetadata } from "./common";
-import { FilesystemCache, type FilesystemCacheOptions } from "./FilesystemCache.svelte";
+import { FilesystemCache, decryptFileMetadata, decryptCategoryMetadata } from "./internal.svelte";
 import type { FileInfo, MaybeFileInfo } from "./types";
 
 const cache = new FilesystemCache<number, MaybeFileInfo>({
@@ -175,9 +174,38 @@ const bulkStoreToIndexedDB = (infos: FileInfo[]) => {
 export const getFileInfo = (
   id: number,
   masterKey: CryptoKey,
-  options?: { fetchFromServer?: FilesystemCacheOptions<number, MaybeFileInfo>["fetchFromServer"] },
+  options?: {
+    serverResponse?: {
+      parent: DirectoryId;
+      dek: string;
+      dekVersion: Date;
+      contentType: string;
+      name: string;
+      nameIv: string;
+      createdAt?: string;
+      createdAtIv?: string;
+      lastModifiedAt: string;
+      lastModifiedAtIv: string;
+      isFavorite: boolean;
+    };
+  },
 ) => {
-  return cache.get(id, masterKey, options);
+  return cache.get(id, masterKey, {
+    fetchFromServer:
+      options?.serverResponse &&
+      (async (cachedValue) => {
+        const metadata = await decryptFileMetadata(options!.serverResponse!, masterKey);
+        return storeToIndexedDB({
+          categories: [],
+          ...cachedValue,
+          id,
+          parentId: options!.serverResponse!.parent,
+          contentType: options!.serverResponse!.contentType,
+          isFavorite: options!.serverResponse!.isFavorite,
+          ...metadata,
+        });
+      }),
+  });
 };
 
 export const bulkGetFileInfo = (ids: number[], masterKey: CryptoKey) => {
