@@ -25,6 +25,7 @@
     includeImages: boolean;
     includeVideos: boolean;
     includeDirectories: boolean;
+    searchInFavorites: boolean;
     searchInDirectory: boolean;
     categories: SearchFilter["categories"];
   }
@@ -36,6 +37,7 @@
     includeImages: false,
     includeVideos: false,
     includeDirectories: false,
+    searchInFavorites: false,
     searchInDirectory: false,
     categories: [],
   });
@@ -45,6 +47,7 @@
       filters.includeImages ||
       filters.includeVideos ||
       filters.includeDirectories ||
+      filters.searchInFavorites ||
       filters.name.trim().length > 0,
   );
 
@@ -81,7 +84,9 @@
 
     return sortEntries(
       [...directories, ...files].filter(
-        ({ name }) => !nameFilter || searchString(name, nameFilter),
+        (entry) =>
+          (!nameFilter || searchString(entry.name, nameFilter)) &&
+          (!filters.searchInFavorites || entry.isFavorite),
       ),
     );
   });
@@ -118,7 +123,7 @@
     },
   };
 
-  $effect(() => {
+  $effect.pre(() => {
     if (data.directoryId) {
       HybridPromise.resolve(getDirectoryInfo(data.directoryId, $masterKeyStore?.get(1)?.key!)).then(
         (res) => {
@@ -130,6 +135,10 @@
       directoryInfo = undefined;
       filters.searchInDirectory = false;
     }
+  });
+
+  $effect.pre(() => {
+    filters.searchInFavorites = data.fromFavorites;
   });
 
   $effect(() => {
@@ -172,6 +181,7 @@
           {#if !hasCategoryFilter}
             <Chip bind:selected={filters.includeDirectories}>폴더</Chip>
           {/if}
+          <Chip bind:selected={filters.searchInFavorites}>즐겨찾기</Chip>
           {#if directoryInfo?.exists}
             <Chip bind:selected={filters.searchInDirectory}>
               위치: {directoryInfo.name}

@@ -20,5 +20,5 @@
   actionButtonIcon={IconClose}
   onActionButtonClick={onRemoveClick}
 >
-  <DirectoryEntryLabel type="directory" name={info.name} />
+  <DirectoryEntryLabel type="directory" name={info.name} isFavorite />
 </ActionEntryButton>

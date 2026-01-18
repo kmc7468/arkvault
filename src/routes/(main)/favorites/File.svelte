@@ -23,5 +23,5 @@
   actionButtonIcon={IconClose}
   onActionButtonClick={onRemoveClick}
 >
-  <DirectoryEntryLabel type="file" thumbnail={$thumbnail} name={info.name} />
+  <DirectoryEntryLabel type="file" thumbnail={$thumbnail} name={info.name} isFavorite />
 </ActionEntryButton>

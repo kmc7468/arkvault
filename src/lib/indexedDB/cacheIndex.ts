@@ -20,7 +20,12 @@ export const getFileCacheIndex = async () => {
 };
 
 export const storeFileCacheIndex = async (fileCacheIndex: FileCacheIndex) => {
-  await cacheIndex.fileCache.put(fileCacheIndex);
+  await cacheIndex.fileCache.put({
+    fileId: fileCacheIndex.fileId,
+    cachedAt: fileCacheIndex.cachedAt,
+    lastRetrievedAt: fileCacheIndex.lastRetrievedAt,
+    size: fileCacheIndex.size,
+  });
 };
 
 export const deleteFileCacheIndex = async (fileId: number) => {
