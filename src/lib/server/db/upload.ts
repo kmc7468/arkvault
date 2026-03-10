@@ -26,8 +26,8 @@ interface FileUploadSession extends BaseUploadSession {
   encLastModifiedAt: Ciphertext;
 }
 
-interface ThumbnailOrMigrationUploadSession extends BaseUploadSession {
-  type: "thumbnail" | "migration";
+interface ThumbnailUploadSession extends BaseUploadSession {
+  type: "thumbnail";
   fileId: number;
   dekVersion: Date;
 }
@@ -86,8 +86,8 @@ export const createFileUploadSession = async (
   });
 };
 
-export const createThumbnailOrMigrationUploadSession = async (
-  params: Omit<ThumbnailOrMigrationUploadSession, "bitmap" | "uploadedChunks">,
+export const createThumbnailUploadSession = async (
+  params: Omit<ThumbnailUploadSession, "bitmap" | "uploadedChunks">,
 ) => {
   await db.transaction().execute(async (trx) => {
     const file = await trx
@@ -164,7 +164,7 @@ export const getUploadSession = async (sessionId: string, userId: number) => {
       expiresAt: session.expires_at,
       fileId: session.file_id!,
       dekVersion: session.data_encryption_key_version!,
-    } satisfies ThumbnailOrMigrationUploadSession;
+    } satisfies ThumbnailUploadSession;
   }
 };
 

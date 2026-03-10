@@ -118,26 +118,6 @@ const fileRouter = router({
     }));
   }),
 
-  listLegacy: roleProcedure["activeClient"].query(async ({ ctx }) => {
-    const files = await FileRepo.getLegacyFiles(ctx.session.userId);
-    return files.map((file) => ({
-      id: file.id,
-      isLegacy: true,
-      parent: file.parentId,
-      mekVersion: file.mekVersion,
-      dek: file.encDek,
-      dekVersion: file.dekVersion,
-      contentType: file.contentType,
-      name: file.encName.ciphertext,
-      nameIv: file.encName.iv,
-      createdAt: file.encCreatedAt?.ciphertext,
-      createdAtIv: file.encCreatedAt?.iv,
-      lastModifiedAt: file.encLastModifiedAt.ciphertext,
-      lastModifiedAtIv: file.encLastModifiedAt.iv,
-      isFavorite: file.isFavorite,
-    }));
-  }),
-
   rename: roleProcedure["activeClient"]
     .input(
       z.object({

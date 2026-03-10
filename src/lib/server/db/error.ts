@@ -11,7 +11,6 @@ type IntegrityErrorMessages =
   | "Directory already favorited"
   | "Directory not favorited"
   | "File not found"
-  | "File is not legacy"
   | "File not found in category"
   | "File already added to category"
   | "File already favorited"

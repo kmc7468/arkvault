@@ -141,17 +141,6 @@ export const getAllFileIds = async (userId: number) => {
   return files.map(({ id }) => id);
 };
 
-export const getLegacyFiles = async (userId: number, limit: number = 100) => {
-  const files = await db
-    .selectFrom("file")
-    .selectAll()
-    .where("user_id", "=", userId)
-    .where("encrypted_content_iv", "is not", null)
-    .limit(limit)
-    .execute();
-  return files.map(toFile);
-};
-
 export const getFilesWithoutThumbnail = async (userId: number, limit: number = 100) => {
   const files = await db
     .selectFrom("file")
@@ -414,51 +403,6 @@ export const unregisterFile = async (userId: number, fileId: number) => {
     await trx.deleteFrom("file").where("id", "=", fileId).execute();
     return file;
   });
-};
-
-export const migrateFileContent = async (
-  trx: typeof db,
-  userId: number,
-  fileId: number,
-  newPath: string,
-  dekVersion: Date,
-  encContentHash: string,
-) => {
-  const file = await trx
-    .selectFrom("file")
-    .select(["path", "data_encryption_key_version", "encrypted_content_iv"])
-    .where("id", "=", fileId)
-    .where("user_id", "=", userId)
-    .limit(1)
-    .forUpdate()
-    .executeTakeFirst();
-  if (!file) {
-    throw new IntegrityError("File not found");
-  } else if (file.data_encryption_key_version.getTime() !== dekVersion.getTime()) {
-    throw new IntegrityError("Invalid DEK version");
-  } else if (!file.encrypted_content_iv) {
-    throw new IntegrityError("File is not legacy");
-  }
-
-  await trx
-    .updateTable("file")
-    .set({
-      path: newPath,
-      encrypted_content_iv: null,
-      encrypted_content_hash: encContentHash,
-    })
-    .where("id", "=", fileId)
-    .where("user_id", "=", userId)
-    .execute();
-  await trx
-    .insertInto("file_log")
-    .values({
-      file_id: fileId,
-      timestamp: new Date(),
-      action: "migrate",
-    })
-    .execute();
-  return { oldPath: file.path };
 };
 
 export const addFileToCategory = async (fileId: number, categoryId: number) => {
