@@ -1,7 +1,8 @@
+import { sha256 } from "@noble/hashes/sha2.js";
 import axios from "axios";
 import pLimit from "p-limit";
 import { ENCRYPTION_OVERHEAD, CHUNK_SIZE } from "$lib/constants";
-import { encryptChunk, digestMessage, encodeToBase64 } from "$lib/modules/crypto";
+import { encodeToBase64, encryptChunk } from "$lib/modules/crypto";
 import { BoundedQueue } from "$lib/utils";
 
 interface UploadStats {
@@ -12,7 +13,6 @@ interface UploadStats {
 interface EncryptedChunk {
   index: number;
   data: ArrayBuffer;
-  hash: string;
 }
 
 const createSpeedMeter = (timeWindow = 3000, minInterval = 200, warmupPeriod = 500) => {
@@ -68,27 +68,18 @@ const createSpeedMeter = (timeWindow = 3000, minInterval = 200, warmupPeriod = 5
   };
 };
 
-const encryptChunkData = async (
-  chunk: Blob,
-  dataKey: CryptoKey,
-): Promise<{ data: ArrayBuffer; hash: string }> => {
-  const encrypted = await encryptChunk(await chunk.arrayBuffer(), dataKey);
-  const hash = encodeToBase64(await digestMessage(encrypted));
-  return { data: encrypted, hash };
+const encryptChunkData = async (chunk: Blob, dataKey: CryptoKey): Promise<ArrayBuffer> => {
+  return await encryptChunk(await chunk.arrayBuffer(), dataKey);
 };
 
 const uploadEncryptedChunk = async (
   uploadId: string,
   chunkIndex: number,
   encrypted: ArrayBuffer,
-  hash: string,
   onChunkProgress: (chunkIndex: number, loaded: number) => void,
 ) => {
   await axios.post(`/api/upload/${uploadId}/chunks/${chunkIndex + 1}`, encrypted, {
-    headers: {
-      "Content-Type": "application/octet-stream",
-      "Content-Digest": `sha-256=:${hash}:`,
-    },
+    headers: { "Content-Type": "application/octet-stream" },
     onUploadProgress(e) {
       onChunkProgress(chunkIndex, e.loaded ?? 0);
     },
@@ -112,6 +103,7 @@ export const uploadBlob = async (
 
   const uploadedByChunk = new Array<number>(totalChunks).fill(0);
   const speedMeter = createSpeedMeter(3000, 200);
+  const hash = sha256.create();
 
   const emit = () => {
     if (!onProgress) return;
@@ -136,8 +128,9 @@ export const uploadBlob = async (
     try {
       for (let i = 0; i < totalChunks; i++) {
         const chunk = blob.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-        const { data, hash } = await encryptChunkData(chunk, dataKey);
-        await queue.push({ index: i, data, hash });
+        const data = await encryptChunkData(chunk, dataKey);
+        hash.update(new Uint8Array(data));
+        await queue.push({ index: i, data });
       }
     } catch (e) {
       encryptionError = e instanceof Error ? e : new Error(String(e));
@@ -158,7 +151,7 @@ export const uploadBlob = async (
 
       const task = limit(async () => {
         try {
-          await uploadEncryptedChunk(uploadId, item.index, item.data, item.hash, onChunkProgress);
+          await uploadEncryptedChunk(uploadId, item.index, item.data, onChunkProgress);
         } finally {
           // @ts-ignore
           item.data = null;
@@ -180,4 +173,5 @@ export const uploadBlob = async (
   await Promise.all([encryptionProducer(), uploadConsumer()]);
 
   onProgress?.({ progress: 1, rate: speedMeter() });
+  return { encContentHash: encodeToBase64(hash.digest()) };
 };

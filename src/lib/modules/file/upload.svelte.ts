@@ -168,7 +168,7 @@ const requestFileUpload = limitFunction(
   ) => {
     state.status = "uploading";
 
-    await uploadBlob(uploadId, file, dataKey, {
+    const { encContentHash } = await uploadBlob(uploadId, file, dataKey, {
       onProgress(s) {
         state.progress = s.progress;
         state.rate = s.rate;
@@ -178,6 +178,7 @@ const requestFileUpload = limitFunction(
     const { file: fileId } = await trpc().upload.completeFileUpload.mutate({
       uploadId,
       contentHmac: fileSigned,
+      encContentHash,
     });
 
     if (thumbnailBuffer) {

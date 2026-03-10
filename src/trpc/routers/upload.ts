@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { createHash } from "crypto";
-import { createReadStream, createWriteStream } from "fs";
-import { copyFile, mkdir } from "fs/promises";
+import { createReadStream } from "fs";
+import { mkdir, open } from "fs/promises";
 import mime from "mime";
 import { dirname } from "path";
 import { v4 as uuidv4 } from "uuid";
@@ -10,17 +10,30 @@ import { DirectoryIdSchema } from "$lib/schemas";
 import { FileRepo, MediaRepo, UploadRepo, IntegrityError } from "$lib/server/db";
 import db from "$lib/server/db/kysely";
 import env from "$lib/server/loadenv";
-import { safeRecursiveRm, safeUnlink } from "$lib/server/modules/filesystem";
+import { safeUnlink } from "$lib/server/modules/filesystem";
 import { router, roleProcedure } from "../init.server";
 
 const UPLOADS_EXPIRES = 24 * 3600 * 1000; // 24 hours
 
 const sessionLocks = new Set<string>();
 
-const generateSessionId = async () => {
+const reserveUploadPath = async (path: string) => {
+  await mkdir(dirname(path), { recursive: true });
+  const file = await open(path, "wx", 0o600);
+  await file.close();
+};
+
+const generateFileUploadSession = async (userId: number) => {
   const id = uuidv4();
-  const path = `${env.uploadsPath}/${id}`;
-  await mkdir(path, { recursive: true });
+  const path = `${env.libraryPath}/${userId}/${uuidv4()}`;
+  await reserveUploadPath(path);
+  return { id, path };
+};
+
+const generateThumbnailUploadSession = async (userId: number) => {
+  const id = uuidv4();
+  const path = `${env.thumbnailsPath}/${userId}/${id}`;
+  await reserveUploadPath(path);
   return { id, path };
 };
 
@@ -54,7 +67,7 @@ const uploadRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid DEK version" });
       }
 
-      const { id, path } = await generateSessionId();
+      const { id, path } = await generateFileUploadSession(ctx.session.userId);
 
       try {
         await UploadRepo.createFileUploadSession({
@@ -78,7 +91,7 @@ const uploadRouter = router({
         });
         return { uploadId: id };
       } catch (e) {
-        await safeRecursiveRm(path);
+        await safeUnlink(path);
 
         if (e instanceof IntegrityError) {
           if (e.message === "Inactive MEK version") {
@@ -96,6 +109,7 @@ const uploadRouter = router({
       z.object({
         uploadId: z.uuidv4(),
         contentHmac: z.base64().nonempty().optional(),
+        encContentHash: z.base64().nonempty(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -105,8 +119,6 @@ const uploadRouter = router({
       } else {
         sessionLocks.add(uploadId);
       }
-
-      let filePath = "";
 
       try {
         const session = await UploadRepo.getUploadSession(uploadId, ctx.session.userId);
@@ -121,29 +133,24 @@ const uploadRouter = router({
           throw new TRPCError({ code: "BAD_REQUEST", message: "Upload not completed" });
         }
 
-        filePath = `${env.libraryPath}/${ctx.session.userId}/${uuidv4()}`;
-        await mkdir(dirname(filePath), { recursive: true });
-
         const hashStream = createHash("sha256");
-        const writeStream = createWriteStream(filePath, { flags: "wx", mode: 0o600 });
 
-        for (let i = 1; i <= session.totalChunks; i++) {
-          for await (const chunk of createReadStream(`${session.path}/${i}`)) {
-            hashStream.update(chunk);
-            writeStream.write(chunk);
-          }
+        for await (const chunk of createReadStream(session.path)) {
+          hashStream.update(chunk);
         }
 
-        await new Promise<void>((resolve, reject) => {
-          writeStream.end((e: any) => (e ? reject(e) : resolve()));
-        });
-
         const hash = hashStream.digest("base64");
+        if (hash !== input.encContentHash) {
+          await UploadRepo.deleteUploadSession(db, uploadId);
+          await safeUnlink(session.path);
+          throw new TRPCError({ code: "CONFLICT", message: "Uploaded file corrupted" });
+        }
+
         const fileId = await db.transaction().execute(async (trx) => {
           const { id: fileId } = await FileRepo.registerFile(trx, {
             ...session,
             userId: ctx.session.userId,
-            path: filePath,
+            path: session.path,
             contentHmac: input.contentHmac ?? null,
             encContentHash: hash,
             encContentIv: null,
@@ -152,11 +159,7 @@ const uploadRouter = router({
           return fileId;
         });
 
-        await safeRecursiveRm(session.path);
         return { file: fileId };
-      } catch (e) {
-        await safeUnlink(filePath);
-        throw e;
       } finally {
         sessionLocks.delete(uploadId);
       }
@@ -170,7 +173,7 @@ const uploadRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { id, path } = await generateSessionId();
+      const { id, path } = await generateThumbnailUploadSession(ctx.session.userId);
 
       try {
         await UploadRepo.createThumbnailUploadSession({
@@ -185,7 +188,7 @@ const uploadRouter = router({
         });
         return { uploadId: id };
       } catch (e) {
-        await safeRecursiveRm(path);
+        await safeUnlink(path);
 
         if (e instanceof IntegrityError) {
           if (e.message === "File not found") {
@@ -212,8 +215,6 @@ const uploadRouter = router({
         sessionLocks.add(uploadId);
       }
 
-      let thumbnailPath = "";
-
       try {
         const session = await UploadRepo.getUploadSession(uploadId, ctx.session.userId);
         if (session?.type !== "thumbnail") {
@@ -222,26 +223,20 @@ const uploadRouter = router({
           throw new TRPCError({ code: "BAD_REQUEST", message: "Upload not completed" });
         }
 
-        thumbnailPath = `${env.thumbnailsPath}/${ctx.session.userId}/${uploadId}`;
-        await mkdir(dirname(thumbnailPath), { recursive: true });
-        await copyFile(`${session.path}/1`, thumbnailPath);
-
         const oldThumbnailPath = await db.transaction().execute(async (trx) => {
           const oldPath = await MediaRepo.updateFileThumbnail(
             trx,
             ctx.session.userId,
             session.fileId,
             session.dekVersion,
-            thumbnailPath,
+            session.path,
             null,
           );
           await UploadRepo.deleteUploadSession(trx, uploadId);
           return oldPath;
         });
-        await Promise.all([safeUnlink(oldThumbnailPath), safeRecursiveRm(session.path)]);
+        await safeUnlink(oldThumbnailPath);
       } catch (e) {
-        await safeUnlink(thumbnailPath);
-
         if (e instanceof IntegrityError && e.message === "Invalid DEK version") {
           // DEK rotated after this upload started
           throw new TRPCError({ code: "CONFLICT", message: e.message });
