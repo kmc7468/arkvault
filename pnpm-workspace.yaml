@@ -1,0 +1,4 @@
+onlyBuiltDependencies:
+  - argon2
+  - esbuild
+  - exifreader

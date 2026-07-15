@@ -153,7 +153,7 @@ export const uploadBlob = async (
         try {
           await uploadEncryptedChunk(uploadId, item.index, item.data, onChunkProgress);
         } finally {
-          // @ts-ignore
+          // @ts-expect-error
           item.data = null;
         }
       });

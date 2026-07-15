@@ -14,11 +14,7 @@ export interface ClientSession extends Session {
 }
 
 export type SessionPermission =
-  | "any"
-  | "notClient"
-  | "anyClient"
-  | "pendingClient"
-  | "activeClient";
+  "any" | "notClient" | "anyClient" | "pendingClient" | "activeClient";
 
 export class AuthenticationError extends Error {
   constructor(

@@ -8,12 +8,7 @@ import { HybridPromise, Scheduler } from "$lib/utils";
 import type { RouterOutputs } from "$trpc/router.server";
 
 export type GenerationStatus =
-  | "queued"
-  | "generation-pending"
-  | "generating"
-  | "uploading"
-  | "uploaded"
-  | "error";
+  "queued" | "generation-pending" | "generating" | "uploading" | "uploaded" | "error";
 
 const scheduler = new Scheduler();
 const statuses = new SvelteMap<number, GenerationStatus>();

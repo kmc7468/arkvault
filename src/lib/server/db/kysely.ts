@@ -1,4 +1,5 @@
-import { Kysely, PostgresDialect, Migrator } from "kysely";
+import { Kysely, PostgresDialect } from "kysely";
+import { Migrator } from "kysely/migration";
 import pg from "pg";
 import env from "$lib/server/loadenv";
 import migrations from "./migrations";

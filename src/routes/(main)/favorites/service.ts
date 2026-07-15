@@ -33,22 +33,18 @@ export const requestFavoriteEntries = async (
   ]);
   return [
     ...sortEntries(
-      directories.map(
-        (directory): FavoriteEntry => ({
-          type: "directory",
-          name: directory.name!,
-          details: directory as LocalDirectoryInfo,
-        }),
-      ),
+      directories.map((directory): FavoriteEntry => ({
+        type: "directory",
+        name: directory.name!,
+        details: directory as LocalDirectoryInfo,
+      })),
     ),
     ...sortEntries(
-      files.map(
-        (file): FavoriteEntry => ({
-          type: "file",
-          name: file.name!,
-          details: file as SummarizedFileInfo,
-        }),
-      ),
+      files.map((file): FavoriteEntry => ({
+        type: "file",
+        name: file.name!,
+        details: file as SummarizedFileInfo,
+      })),
     ),
   ];
 };
