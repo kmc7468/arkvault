@@ -74,3 +74,7 @@ export const verifyClient = async (
   const client = await verifyChallengeAnswer(challenge, answerSig);
   await ClientRepo.setUserClientStateToPending(userId, client.id);
 };
+
+export const cleanupExpiredChallenges = async () => {
+  await ClientRepo.cleanupExpiredUserClientChallenges();
+};

@@ -3,6 +3,7 @@ import { observable } from "@trpc/server/observable";
 import superjson from "superjson";
 import { goto } from "$app/navigation";
 import { navigating } from "$app/state";
+import { withRedirectPath } from "#lib/shared/redirect.ts";
 import type { AppRouter } from "./router.server.ts";
 
 // Procedures that report invalid credentials as UNAUTHORIZED, not an expired session
@@ -21,7 +22,7 @@ const sessionExpiryLink: TRPCLink<AppRouter> = () => {
             !CREDENTIAL_PROCEDURES.has(op.path) &&
             url.pathname !== "/auth/login"
           ) {
-            void goto(`/auth/login?redirect=${encodeURIComponent(url.pathname + url.search)}`);
+            void goto(withRedirectPath("/auth/login", url.pathname + url.search));
           }
           observer.error(err);
         },

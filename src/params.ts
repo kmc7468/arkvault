@@ -1,9 +1,10 @@
 import { defineParams } from "@sveltejs/kit/params";
 
-const matchThumbnail = (param: string) => {
-  return param === "thumbnail";
-};
-
 export const params = defineParams({
-  thumbnail: (param) => (matchThumbnail(param) ? param : undefined),
+  // Positive integers such as the ids of files, directories, and categories
+  int: (param) => {
+    const value = Number(param);
+    return /^[1-9]\d*$/.test(param) && Number.isSafeInteger(value) ? value : undefined;
+  },
+  thumbnail: (param) => (param === "thumbnail" ? param : undefined),
 });

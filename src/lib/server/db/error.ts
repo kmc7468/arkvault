@@ -26,7 +26,7 @@ const errorCodes = {
   "Inactive MEK version": "BAD_REQUEST",
   // Session
   "Session not found": "UNAUTHORIZED",
-  "Session already exists": "CONFLICT",
+  "Already logged in": "CONFLICT",
   // Upload
   "Upload session not found": "NOT_FOUND",
 } as const satisfies Record<string, ErrorCode>;

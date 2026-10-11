@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import type { ClassValue } from "svelte/elements";
+  import { afterPress } from "../press.ts";
 
   import IconChevronRight from "~icons/material-symbols/chevron-right";
 
@@ -13,10 +14,7 @@
   let { children, class: className, onclick }: Props = $props();
 </script>
 
-<button
-  onclick={onclick && (() => setTimeout(onclick, 100))}
-  class={["rounded-xl active:bg-gray-100", className]}
->
+<button onclick={afterPress(onclick)} class={["rounded-xl active:bg-gray-100", className]}>
   <div class="flex h-full items-center gap-x-4 p-2 transition active:scale-95">
     <div class="grow">
       {@render children()}

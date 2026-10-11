@@ -1,6 +1,8 @@
-import type { Category } from "#lib/server/db/repositories/category.ts";
-import type { Directory } from "#lib/server/db/repositories/directory.ts";
-import type { File } from "#lib/server/db/repositories/file.ts";
+import type { CategoryRepo, DirectoryRepo, FileRepo } from "#lib/server/db/index.ts";
+
+type Category = CategoryRepo.Category;
+type Directory = DirectoryRepo.Directory;
+type File = FileRepo.File;
 
 // Shapes of filesystem entries exposed by the API
 

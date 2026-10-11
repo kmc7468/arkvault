@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import type { ClassValue } from "svelte/elements";
+  import { afterPress } from "../press.ts";
 
   import IconClose from "~icons/material-symbols/close";
 
@@ -26,7 +27,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
-  onclick={onclick && (() => setTimeout(onclick, 100))}
+  onclick={afterPress(onclick)}
   class={[
     "inline-flex cursor-pointer items-center gap-x-1 rounded-lg px-3 py-1.5 text-sm font-medium transition active:scale-95",
     selected
@@ -42,9 +43,7 @@
     <button
       onclick={(e) => {
         e.stopPropagation();
-        if (onRemoveClick) {
-          setTimeout(onRemoveClick, 100);
-        }
+        afterPress(onRemoveClick)?.();
       }}
     >
       <IconClose />

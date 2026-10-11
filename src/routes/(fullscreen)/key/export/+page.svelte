@@ -8,6 +8,7 @@
     requestSessionUpgrade,
     serializeClientKeys,
   } from "#lib/client/keys/index.ts";
+  import { withRedirectPath } from "#lib/shared/redirect.ts";
   import {
     BottomDiv,
     Button,
@@ -58,7 +59,7 @@
       return;
     }
 
-    await goto("/client/pending?redirect=" + encodeURIComponent(data.redirectPath));
+    await goto(withRedirectPath("/client/pending", data.redirectPath));
   };
 </script>
 

@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { FileDownloadState } from "#lib/client/transfer/index.ts";
   import type { SummarizedFileInfo } from "#lib/features/filesystem/index.ts";
-  import { formatNetworkSpeed } from "#lib/utils/index.ts";
+  import { TransferProgress } from "#lib/features/transfer/components/index.ts";
 
   import IconCloudDownload from "~icons/material-symbols/cloud-download";
   import IconCheckCircle from "~icons/material-symbols/check-circle";
@@ -31,9 +31,7 @@
     </p>
     <p class="text-xs text-gray-800">
       {#if state.status === "downloading"}
-        전송됨
-        {Math.floor((state.progress ?? 0) * 100)}% ·
-        {formatNetworkSpeed((state.rate ?? 0) * 8)}
+        <TransferProgress progress={state.progress} rate={state.rate} />
       {:else if state.status === "completed"}
         다운로드 완료
       {:else if state.status === "error"}

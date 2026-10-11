@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getFileThumbnail } from "#lib/client/cache/index.ts";
   import type { SummarizedFileInfo } from "#lib/features/filesystem/index.ts";
+  import { afterPress } from "#lib/ui/index.ts";
 
   import IconFavorite from "~icons/material-symbols/favorite";
 
@@ -15,7 +16,7 @@
 </script>
 
 <button
-  onclick={onclick && (() => setTimeout(() => onclick(info), 100))}
+  onclick={afterPress(onclick && (() => onclick(info)))}
   class="relative aspect-square overflow-hidden rounded-sm transition active:scale-95 active:brightness-90"
 >
   {#if thumbnail?.url}

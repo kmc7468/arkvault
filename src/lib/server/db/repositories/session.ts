@@ -40,10 +40,7 @@ export const refreshSession = async (
     .where("last_used_at", ">", new Date(now.getTime() - env.session.exp))
     .returning(["user_id", "client_id"])
     .executeTakeFirst();
-  if (!session) {
-    throw new IntegrityError("Session not found");
-  }
-  return { userId: session.user_id, clientId: session.client_id };
+  return session ? { userId: session.user_id, clientId: session.client_id } : null;
 };
 
 export const upgradeSession = async (
@@ -74,7 +71,7 @@ export const upgradeSession = async (
     });
   } catch (e) {
     if (e instanceof pg.DatabaseError && e.code === "23505") {
-      throw new IntegrityError("Session already exists");
+      throw new IntegrityError("Already logged in");
     }
     throw e;
   }

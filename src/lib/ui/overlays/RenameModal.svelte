@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { TextInputModal } from "#lib/ui/index.ts";
+  import TextInputModal from "./TextInputModal.svelte";
 
   interface Props {
     isOpen: boolean;

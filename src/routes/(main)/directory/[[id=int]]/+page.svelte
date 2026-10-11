@@ -1,18 +1,18 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
+  import { getDownloadingFiles, getUploadingFiles } from "#lib/client/transfer/index.ts";
   import { tryAction } from "#lib/features/errors.ts";
   import { createDirectory, uploadFile, useDirectory } from "#lib/features/filesystem/index.ts";
   import { FloatingButton, OverlayGroup, TopBar } from "#lib/ui/index.ts";
   import DirectoryCreateModal from "./DirectoryCreateModal.svelte";
   import DirectoryEntries from "./directory-entries/index.ts";
-  import DownloadStatusCard from "./DownloadStatusCard.svelte";
   import DuplicateFileModal from "./DuplicateFileModal.svelte";
   import EntryCreateBottomSheet from "./EntryCreateBottomSheet.svelte";
   import EntryDeleteModal from "./EntryDeleteModal.svelte";
   import EntryMenuBottomSheet from "./EntryMenuBottomSheet.svelte";
   import EntryRenameModal from "./EntryRenameModal.svelte";
-  import UploadStatusCard from "./UploadStatusCard.svelte";
+  import TransferStatusCard from "./TransferStatusCard.svelte";
   import {
     createContext,
     deleteEntry,
@@ -89,8 +89,18 @@
   {#if info?.exists}
     <div class="flex grow flex-col px-4 pb-4">
       <div class="flex gap-x-2">
-        <UploadStatusCard onclick={() => goto("/file/uploads")} />
-        <DownloadStatusCard onclick={() => goto("/file/downloads")} />
+        <TransferStatusCard
+          label="진행 중인 업로드"
+          count={getUploadingFiles().length}
+          color="blue"
+          onclick={() => goto("/file/uploads")}
+        />
+        <TransferStatusCard
+          label="진행 중인 다운로드"
+          count={getDownloadingFiles().length}
+          color="green"
+          onclick={() => goto("/file/downloads")}
+        />
       </div>
       {#key info.id}
         <DirectoryEntries

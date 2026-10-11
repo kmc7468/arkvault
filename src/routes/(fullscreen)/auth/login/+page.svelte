@@ -9,6 +9,7 @@
   import { login as requestLogin, logout as requestLogout } from "#lib/features/auth/index.ts";
   import { showErrorToast } from "#lib/features/errors.ts";
   import { cleanupDeletedFileCaches } from "#lib/features/filesystem/index.ts";
+  import { withRedirectPath } from "#lib/shared/redirect.ts";
   import {
     BottomDiv,
     Button,
@@ -27,10 +28,6 @@
 
   let isForceLoginModalOpen = $state(false);
 
-  const redirect = async (url: string) => {
-    return await goto(`${url}?redirect=${encodeURIComponent(data.redirectPath)}`);
-  };
-
   const upgradeSession = async (force: boolean) => {
     const [upgradeRes, upgradeError] = await requestClientRegistrationAndSessionUpgrade(force);
     if (!force && upgradeError === "Already logged in") {
@@ -47,7 +44,7 @@
       await cleanupDeletedFileCaches().catch(console.error);
       await goto(data.redirectPath);
     } else {
-      await redirect("/client/pending");
+      await goto(withRedirectPath("/client/pending", data.redirectPath));
     }
   };
 
@@ -68,7 +65,8 @@
       return;
     }
 
-    if (!keyring.clientKeys) return await redirect("/key/generate");
+    if (!keyring.clientKeys)
+      return await goto(withRedirectPath("/key/generate", data.redirectPath));
 
     await upgradeSession(false);
   };

@@ -20,43 +20,43 @@ import { getChunkCount } from "#lib/shared/format/index.ts";
 import { Scheduler } from "#lib/utils/index.ts";
 import { trpc } from "#trpc/client.ts";
 
+const LIVE_STATUSES = [
+  "queued",
+  "encryption-pending",
+  "encrypting",
+  "upload-pending",
+  "uploading",
+] as const;
+
+type LiveStatus = (typeof LIVE_STATUSES)[number];
+
 export interface FileUploadState {
   id: string;
   name: string;
   parentId: DirectoryId;
-  status:
-    | "queued"
-    | "encryption-pending"
-    | "encrypting"
-    | "upload-pending"
-    | "uploading"
-    | "uploaded"
-    | "canceled"
-    | "error";
+  status: LiveStatus | "uploaded" | "canceled" | "error";
   progress?: number;
   rate?: number;
   estimated?: number;
 }
 
-export type LiveFileUploadState = FileUploadState & {
-  status: "queued" | "encryption-pending" | "encrypting" | "upload-pending" | "uploading";
-};
+export type LiveFileUploadState = FileUploadState & { status: LiveStatus };
 
 const scheduler = new Scheduler<{ fileId: number; thumbnailBuffer?: ArrayBuffer } | undefined>();
 let uploadingFiles: FileUploadState[] = $state([]);
 
-const isFileUploading = (status: FileUploadState["status"]) =>
-  ["queued", "encryption-pending", "encrypting", "upload-pending", "uploading"].includes(status);
+const isFileUploading = (file: FileUploadState): file is LiveFileUploadState => {
+  return (LIVE_STATUSES as readonly string[]).includes(file.status);
+};
 
 export const getUploadingFiles = (parentId?: DirectoryId) => {
-  return uploadingFiles.filter(
-    (file) =>
-      (parentId === undefined || file.parentId === parentId) && isFileUploading(file.status),
-  );
+  return uploadingFiles
+    .filter(isFileUploading)
+    .filter((file) => parentId === undefined || file.parentId === parentId);
 };
 
 export const clearUploadedFiles = () => {
-  uploadingFiles = uploadingFiles.filter((file) => isFileUploading(file.status));
+  uploadingFiles = uploadingFiles.filter(isFileUploading);
 };
 
 const requestDuplicateFileScan = limitFunction(

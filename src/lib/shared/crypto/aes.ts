@@ -1,4 +1,3 @@
-import { AES_GCM_IV_SIZE } from "#lib/shared/format/index.ts";
 import {
   encodeString,
   decodeString,
@@ -6,6 +5,9 @@ import {
   decodeFromBase64,
   concatenateBuffers,
 } from "./encoding.ts";
+
+export const AES_GCM_IV_SIZE = 12;
+export const AES_GCM_TAG_SIZE = 16;
 
 export const generateMasterKey = async () => {
   return {
@@ -44,9 +46,11 @@ export const makeAESKeyNonextractable = async (key: CryptoKey) => {
   );
 };
 
-export const wrapDataKey = async (dataKey: CryptoKey, masterKey: CryptoKey) => {
-  return encodeToBase64(await crypto.subtle.wrapKey("raw", dataKey, masterKey, "AES-KW"));
+const wrapKey = async (key: CryptoKey, masterKey: CryptoKey) => {
+  return encodeToBase64(await crypto.subtle.wrapKey("raw", key, masterKey, "AES-KW"));
 };
+
+export const wrapDataKey = wrapKey;
 
 export const unwrapDataKey = async (dataKeyWrapped: string, masterKey: CryptoKey) => {
   return {
@@ -62,9 +66,7 @@ export const unwrapDataKey = async (dataKeyWrapped: string, masterKey: CryptoKey
   };
 };
 
-export const wrapHmacSecret = async (hmacSecret: CryptoKey, masterKey: CryptoKey) => {
-  return encodeToBase64(await crypto.subtle.wrapKey("raw", hmacSecret, masterKey, "AES-KW"));
-};
+export const wrapHmacSecret = wrapKey;
 
 export const unwrapHmacSecret = async (hmacSecretWrapped: string, masterKey: CryptoKey) => {
   return {
@@ -84,7 +86,7 @@ export const unwrapHmacSecret = async (hmacSecretWrapped: string, masterKey: Cry
 };
 
 export const encryptData = async (data: BufferSource, dataKey: CryptoKey) => {
-  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const iv = crypto.getRandomValues(new Uint8Array(AES_GCM_IV_SIZE));
   const ciphertext = await crypto.subtle.encrypt(
     {
       name: "AES-GCM",

@@ -1,6 +1,8 @@
 import {
   getDirectoryInfo,
   getFileInfo,
+  isExistingFileInfo,
+  isLocalDirectoryInfo,
   type FileInfo,
   type LocalCategoryInfo,
   type LocalDirectoryInfo,
@@ -37,5 +39,8 @@ export const search = async (filter: SearchFilter) => {
     ),
     Promise.all(filesRaw.map((file) => getFileInfo(file.id, { serverResponse: file }))),
   ]);
-  return { directories, files } as SearchResult;
+  return {
+    directories: directories.filter(isLocalDirectoryInfo),
+    files: files.filter(isExistingFileInfo),
+  } satisfies SearchResult;
 };

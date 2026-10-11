@@ -1,5 +1,3 @@
-import { error } from "@sveltejs/kit";
-import { z } from "zod";
 import { authorize } from "#lib/server/auth.ts";
 import { handleAppErrors } from "#lib/server/http.ts";
 import { FileService } from "#lib/server/services/index.ts";
@@ -8,14 +6,7 @@ import type { RequestEvent, RequestHandler } from "./$types";
 
 const downloadHandler = async ({ locals, params, request }: RequestEvent) => {
   const { userId } = await authorize(locals, "activeClient");
-
-  const zodRes = z
-    .object({
-      id: z.coerce.number().int().positive(),
-    })
-    .safeParse(params);
-  if (!zodRes.success) error(400, "Invalid path parameters");
-  const { id } = zodRes.data;
+  const { id } = params;
 
   const getStream = params.thumbnail
     ? FileService.getFileThumbnailStream

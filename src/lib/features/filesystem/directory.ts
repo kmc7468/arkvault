@@ -2,12 +2,8 @@ import { deleteFileCache, deleteFileThumbnailCache } from "#lib/client/cache/ind
 import * as IndexedDB from "#lib/client/storage/indexed-db/index.ts";
 import { isTRPCClientError, trpc } from "#trpc/client.ts";
 import { FilesystemCache } from "./cache.svelte.ts";
-import {
-  decryptDirectoryMetadata,
-  decryptFileMetadata,
-  encryptName,
-  generateEntryKeys,
-} from "./metadata.ts";
+import { toDirectoryInfo, toFileInfo, type DirectoryDto } from "./dto.ts";
+import { encryptName, generateEntryKeys } from "./metadata.ts";
 import { useResource } from "./resource.svelte.ts";
 import type { DataKey, DirectoryInfo, MaybeDirectoryInfo } from "./types.ts";
 
@@ -43,37 +39,13 @@ const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>({
     try {
       const directory = await trpc.directory.get.query({ id });
       const [subDirectories, files, metadata] = await Promise.all([
-        Promise.all(
-          directory.subDirectories.map(async (directory) => ({
-            id: directory.id,
-            parentId: id,
-            isFavorite: directory.isFavorite,
-            ...(await decryptDirectoryMetadata(directory)),
-          })),
-        ),
-        Promise.all(
-          directory.files.map(async (file) => ({
-            id: file.id,
-            parentId: id,
-            contentType: file.contentType,
-            isFavorite: file.isFavorite,
-            ...(await decryptFileMetadata(file)),
-          })),
-        ),
-        directory.metadata && decryptDirectoryMetadata(directory.metadata),
+        Promise.all(directory.subDirectories.map(toDirectoryInfo)),
+        Promise.all(directory.files.map(toFileInfo)),
+        directory.metadata && toDirectoryInfo(directory.metadata),
       ]);
 
       return storeToIndexedDB(
-        id !== "root"
-          ? {
-              id,
-              parentId: directory.metadata!.parent,
-              subDirectories,
-              files,
-              isFavorite: directory.metadata!.isFavorite,
-              ...metadata!,
-            }
-          : { id, subDirectories, files },
+        metadata ? { ...metadata, subDirectories, files } : { id: "root", subDirectories, files },
       );
     } catch (e) {
       if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
@@ -109,35 +81,19 @@ const storeToIndexedDB = (info: DirectoryInfo) => {
   return { ...info, exists: true as const };
 };
 
-export const getDirectoryInfo = (
-  id: DirectoryId,
-  options?: {
-    serverResponse?: {
-      parent: DirectoryId;
-      mekVersion: number;
-      dek: string;
-      dekVersion: Date;
-      name: string;
-      nameIv: string;
-      isFavorite: boolean;
-    };
-  },
-) => {
+// Uses `serverResponse` instead of fetching the directory from the server if given
+export const getDirectoryInfo = (id: DirectoryId, options?: { serverResponse?: DirectoryDto }) => {
+  const serverResponse = options?.serverResponse;
   return cache.get(id, {
     fetchFromServer:
-      options?.serverResponse &&
-      (async (cachedValue) => {
-        const metadata = await decryptDirectoryMetadata(options!.serverResponse!);
-        return storeToIndexedDB({
+      serverResponse &&
+      (async (cachedValue) =>
+        storeToIndexedDB({
           subDirectories: [],
           files: [],
           ...cachedValue,
-          id: id as number,
-          parentId: options!.serverResponse!.parent,
-          isFavorite: options!.serverResponse!.isFavorite,
-          ...metadata,
-        });
-      }),
+          ...(await toDirectoryInfo(serverResponse)),
+        })),
   });
 };
 

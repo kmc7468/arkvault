@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { LiveFileUploadState } from "#lib/client/transfer/index.ts";
-  import { formatNetworkSpeed } from "#lib/utils/index.ts";
+  import { UploadStatusText } from "#lib/features/transfer/components/index.ts";
 
   import IconDraft from "~icons/material-symbols/draft";
 
@@ -20,18 +20,7 @@
       {state.name}
     </p>
     <p class="text-xs">
-      {#if state.status === "queued"}
-        대기 중
-      {:else if state.status === "encryption-pending"}
-        준비 중
-      {:else if state.status === "encrypting"}
-        암호화하는 중
-      {:else if state.status === "upload-pending"}
-        업로드를 기다리는 중
-      {:else if state.status === "uploading"}
-        전송됨 {Math.floor((state.progress ?? 0) * 100)}% ·
-        {formatNetworkSpeed((state.rate ?? 0) * 8)}
-      {/if}
+      <UploadStatusText {state} />
     </p>
   </div>
 </div>

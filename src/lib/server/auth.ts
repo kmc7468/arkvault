@@ -1,7 +1,7 @@
-import { ClientRepo, SessionRepo, IntegrityError } from "#lib/server/db/index.ts";
+import { ClientRepo, SessionRepo } from "#lib/server/db/index.ts";
 import env from "#lib/server/config.ts";
 import { verifySessionId } from "#lib/server/crypto.ts";
-import { AppError } from "#lib/server/errors.ts";
+import { AppError, invalidSessionError } from "#lib/server/errors.ts";
 
 export interface Session {
   sessionId: string;
@@ -39,19 +39,15 @@ export const authenticate = async (sessionIdSigned: string, ip: string, userAgen
     throw new AuthenticationError(400, "Invalid session id");
   }
 
-  try {
-    const { userId, clientId } = await SessionRepo.refreshSession(sessionId, ip, userAgent);
-    return {
-      id: sessionId,
-      userId,
-      clientId: clientId ?? undefined,
-    };
-  } catch (e) {
-    if (e instanceof IntegrityError && e.message === "Session not found") {
-      throw new AuthenticationError(401, "Invalid session id");
-    }
-    throw e;
+  const session = await SessionRepo.refreshSession(sessionId, ip, userAgent);
+  if (!session) {
+    throw new AuthenticationError(401, "Invalid session id");
   }
+  return {
+    id: sessionId,
+    userId: session.userId,
+    clientId: session.clientId ?? undefined,
+  };
 };
 
 const ensureUserClientState = async (
@@ -65,7 +61,7 @@ const ensureUserClientState = async (
 
   const userClient = await ClientRepo.getUserClient(userId, clientId);
   if (!userClient) {
-    throw new AppError("INTERNAL_SERVER_ERROR", "Invalid session id");
+    throw invalidSessionError();
   } else if (userClient.state !== state) {
     throw new AppError("FORBIDDEN", "Forbidden");
   }

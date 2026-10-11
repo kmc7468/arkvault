@@ -1,5 +1,8 @@
 export const DECRYPTED_FILE_URL_PREFIX = "/_internal/decrypted-file/";
 
+// Both the clients and the service worker keep the metadata of recently prepared files only
+export const MAX_PREPARED_FILES = 32;
+
 export interface FileMetadata {
   isLegacy: boolean;
   dataKey: CryptoKey;

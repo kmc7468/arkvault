@@ -1,6 +1,6 @@
+import { getRedirectPath } from "#lib/shared/redirect.ts";
 import type { PageLoad } from "./$types";
 
 export const load: PageLoad = async ({ url }) => {
-  const redirectPath = url.searchParams.get("redirect") || "/home";
-  return { redirectPath };
+  return { redirectPath: getRedirectPath(url) };
 };

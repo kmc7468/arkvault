@@ -3,24 +3,24 @@ import * as IndexedDB from "#lib/client/storage/indexed-db/index.ts";
 import { isTRPCClientError, trpc } from "#trpc/client.ts";
 import { FilesystemCache } from "./cache.svelte.ts";
 import { invalidateDirectory } from "./directory.ts";
-import { decryptCategoryMetadata, decryptFileMetadata, encryptName } from "./metadata.ts";
+import { toFileInfo, toFileWithCategoriesInfo, type FileDto } from "./dto.ts";
+import { encryptName } from "./metadata.ts";
 import { useResource } from "./resource.svelte.ts";
 import type { DataKey, FileInfo, MaybeFileInfo } from "./types.ts";
+
+// Categories of files stored in IndexedDB, which may have been deleted
+const getFileCategoryInfos = async (categoryIds: number[] | undefined) => {
+  const categories = await Promise.all(
+    (categoryIds ?? []).map((id) => IndexedDB.getCategoryInfo(id)),
+  );
+  return categories
+    .filter((category) => !!category)
+    .map(({ id, parentId, name }) => ({ id, parentId, name }));
+};
 
 const cache = new FilesystemCache<number, MaybeFileInfo>({
   async fetchFromIndexedDB(id) {
     const file = await IndexedDB.getFileInfo(id);
-    const categories = file?.categoryIds
-      ? await Promise.all(
-          file.categoryIds.map(async (categoryId) => {
-            const category = await IndexedDB.getCategoryInfo(categoryId);
-            return category
-              ? { id: category.id, parentId: category.parentId, name: category.name }
-              : undefined;
-          }),
-        )
-      : undefined;
-
     if (file) {
       return {
         id,
@@ -30,7 +30,7 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
         name: file.name,
         createdAt: file.createdAt,
         lastModifiedAt: file.lastModifiedAt,
-        categories: categories?.filter((category) => !!category) ?? [],
+        categories: await getFileCategoryInfos(file.categoryIds),
         isFavorite: file.isFavorite,
       };
     }
@@ -38,30 +38,7 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
 
   async fetchFromServer(id) {
     try {
-      const file = await trpc.file.get.query({ id });
-      const [categories, metadata] = await Promise.all([
-        Promise.all(
-          file.categories.map(async (category) => ({
-            id: category.id,
-            parentId: category.parent,
-            ...(await decryptCategoryMetadata(category)),
-          })),
-        ),
-        decryptFileMetadata(file),
-      ]);
-
-      return storeToIndexedDB({
-        id,
-        isLegacy: file.isLegacy,
-        parentId: file.parent,
-        dataKey: metadata.dataKey,
-        contentType: file.contentType,
-        name: metadata.name,
-        createdAt: metadata.createdAt,
-        lastModifiedAt: metadata.lastModifiedAt,
-        categories,
-        isFavorite: file.isFavorite,
-      });
+      return storeToIndexedDB(await toFileWithCategoriesInfo(await trpc.file.get.query({ id })));
     } catch (e) {
       if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
         await IndexedDB.deleteFileInfo(id);
@@ -72,33 +49,21 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
   },
 
   async bulkFetchFromIndexedDB(ids) {
-    const files = await IndexedDB.bulkGetFileInfos([...ids]);
-    const categories = await Promise.all(
-      files.map(async (file) =>
-        file?.categoryIds
-          ? await Promise.all(
-              file.categoryIds.map(async (categoryId) => {
-                const category = await IndexedDB.getCategoryInfo(categoryId);
-                return category
-                  ? { id: category.id, parentId: category.parentId, name: category.name }
-                  : undefined;
-              }),
-            )
-          : undefined,
-      ),
-    );
-
+    const files = (await IndexedDB.bulkGetFileInfos([...ids])).filter((file) => !!file);
     return new Map(
-      files
-        .filter((file) => !!file)
-        .map((file, index) => [
-          file.id,
-          {
-            ...file,
-            exists: true,
-            categories: categories[index]?.filter((category) => !!category) ?? [],
-          },
-        ]),
+      await Promise.all(
+        files.map(
+          async (file) =>
+            [
+              file.id,
+              {
+                ...file,
+                exists: true as const,
+                categories: await getFileCategoryInfos(file.categoryIds),
+              },
+            ] as const,
+        ),
+      ),
     );
   },
 
@@ -106,31 +71,7 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
     const idsArray = [...ids.keys()];
 
     const filesRaw = await trpc.file.bulkGet.query({ ids: idsArray });
-    const files = await Promise.all(
-      filesRaw.map(async ({ id, categories: categoriesRaw, ...metadataRaw }) => {
-        const [categories, metadata] = await Promise.all([
-          Promise.all(
-            categoriesRaw.map(async (category) => ({
-              id: category.id,
-              parentId: category.parent,
-              ...(await decryptCategoryMetadata(category)),
-            })),
-          ),
-          decryptFileMetadata(metadataRaw),
-        ]);
-
-        return {
-          id,
-          exists: true as const,
-          isLegacy: metadataRaw.isLegacy,
-          parentId: metadataRaw.parent,
-          contentType: metadataRaw.contentType,
-          categories,
-          isFavorite: metadataRaw.isFavorite,
-          ...metadata,
-        };
-      }),
-    );
+    const files = await Promise.all(filesRaw.map(toFileWithCategoriesInfo));
 
     const existingIds = new Set(filesRaw.map(({ id }) => id));
     const deletedIds = idsArray.filter((id) => !existingIds.has(id));
@@ -175,40 +116,18 @@ const bulkStoreToIndexedDB = (infos: FileInfo[]) => {
   return infos.map((info) => [info.id, { ...info, exists: true }] as const);
 };
 
-export const getFileInfo = (
-  id: number,
-  options?: {
-    serverResponse?: {
-      parent: DirectoryId;
-      mekVersion: number;
-      dek: string;
-      dekVersion: Date;
-      contentType: string;
-      name: string;
-      nameIv: string;
-      createdAt?: string;
-      createdAtIv?: string;
-      lastModifiedAt: string;
-      lastModifiedAtIv: string;
-      isFavorite: boolean;
-    };
-  },
-) => {
+// Uses `serverResponse` instead of fetching the file from the server if given
+export const getFileInfo = (id: number, options?: { serverResponse?: FileDto }) => {
+  const serverResponse = options?.serverResponse;
   return cache.get(id, {
     fetchFromServer:
-      options?.serverResponse &&
-      (async (cachedValue) => {
-        const metadata = await decryptFileMetadata(options!.serverResponse!);
-        return storeToIndexedDB({
+      serverResponse &&
+      (async (cachedValue) =>
+        storeToIndexedDB({
           categories: [],
           ...cachedValue,
-          id,
-          parentId: options!.serverResponse!.parent,
-          contentType: options!.serverResponse!.contentType,
-          isFavorite: options!.serverResponse!.isFavorite,
-          ...metadata,
-        });
-      }),
+          ...(await toFileInfo(serverResponse)),
+        })),
   });
 };
 
@@ -260,4 +179,18 @@ export const setFileFavorite = async (
   }
   invalidateDirectory(file.parentId);
   invalidateFile(file.id);
+};
+
+// The most recently created media files among the files stored locally
+export const getRecentMediaFileInfos = async (limit: number) => {
+  const files = await IndexedDB.getAllFileInfos();
+  return files
+    .filter(
+      ({ contentType }) => contentType.startsWith("image/") || contentType.startsWith("video/"),
+    )
+    .sort(
+      (a, b) =>
+        (b.createdAt ?? b.lastModifiedAt).getTime() - (a.createdAt ?? a.lastModifiedAt).getTime(),
+    )
+    .slice(0, limit);
 };

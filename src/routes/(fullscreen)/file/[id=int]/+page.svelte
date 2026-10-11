@@ -2,6 +2,7 @@
   import { untrack } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
+  import { convertHeic } from "#lib/client/media/heic.ts";
   import { captureVideoThumbnail } from "#lib/client/media/thumbnail.ts";
   import { saveDecryptedFile } from "#lib/client/service-worker.ts";
   import { getFileDownloadState } from "#lib/client/transfer/index.ts";
@@ -48,10 +49,7 @@
 
     try {
       const blob = await (await fetch(fileUrl)).blob();
-      const { default: heic2any } = await import("heic2any");
-      convertedImageUrl = URL.createObjectURL(
-        (await heic2any({ blob, toType: "image/jpeg" })) as Blob,
-      );
+      convertedImageUrl = URL.createObjectURL(await convertHeic(blob, "image/jpeg"));
     } catch (e) {
       showErrorToast(e, "이미지를 표시하지 못했어요.");
     }

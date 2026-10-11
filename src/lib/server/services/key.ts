@@ -1,6 +1,7 @@
 import { ClientRepo, HskRepo, MekRepo } from "#lib/server/db/index.ts";
 import { verifySignature } from "#lib/server/crypto.ts";
-import { AppError } from "#lib/server/errors.ts";
+import { AppError, invalidSessionError } from "#lib/server/errors.ts";
+import { serializeMasterKeyWrapped } from "#lib/shared/crypto/index.ts";
 
 export const getClientMeks = async (userId: number, clientId: number) => {
   return await MekRepo.getAllValidClientMeks(userId, clientId);
@@ -15,10 +16,10 @@ const verifyClientEncMekSig = async (
 ) => {
   const userClient = await ClientRepo.getUserClientWithDetails(userId, clientId);
   if (!userClient) {
-    throw new AppError("INTERNAL_SERVER_ERROR", "Invalid session id");
+    throw invalidSessionError();
   }
 
-  const data = JSON.stringify({ version, key: encMek });
+  const data = serializeMasterKeyWrapped(encMek, version);
   return verifySignature(Buffer.from(data), encMekSig, userClient.sigPubKey);
 };
 

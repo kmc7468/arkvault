@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { Component, Snippet } from "svelte";
   import type { ClassValue, SvelteHTMLElements } from "svelte/elements";
-  import { EntryButton, IconLabel } from "#lib/ui/index.ts";
+  import IconLabel from "../labels/IconLabel.svelte";
+  import EntryButton from "./EntryButton.svelte";
 
   interface Props {
     children: Snippet;

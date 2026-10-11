@@ -31,3 +31,7 @@ export class AppError extends Error {
     return httpStatuses[this.code];
   }
 }
+
+// The user or the client of an authenticated session doesn't exist, which shouldn't happen
+export const invalidSessionError = () =>
+  new AppError("INTERNAL_SERVER_ERROR", "Invalid session id");

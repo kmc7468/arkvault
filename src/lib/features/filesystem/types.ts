@@ -77,3 +77,10 @@ export type SubCategoryInfo = Omit<
   "subCategories" | "files" | "isFileRecursive"
 >;
 export type FileCategoryInfo = Omit<SubCategoryInfo, "dataKey">;
+
+export const isLocalDirectoryInfo = (
+  info: MaybeDirectoryInfo,
+): info is LocalDirectoryInfo & { exists: true } => info.exists && info.id !== "root";
+
+export const isExistingFileInfo = (info: MaybeFileInfo): info is FileInfo & { exists: true } =>
+  info.exists;

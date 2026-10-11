@@ -24,5 +24,6 @@ export * from "./overlays/overlay-group.svelte.ts";
 export { default as RenameModal } from "./overlays/RenameModal.svelte";
 export { default as TextInputModal } from "./overlays/TextInputModal.svelte";
 export * from "./overlays/toast.svelte.ts";
+export * from "./press.ts";
 export { default as Toasts } from "./overlays/Toasts.svelte";
 export { default as RowVirtualizer } from "./RowVirtualizer.svelte";

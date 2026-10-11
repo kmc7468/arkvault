@@ -30,15 +30,9 @@ export const publicProcedure = t.procedure.use(async ({ next }) => {
   return result;
 });
 
-const authedProcedure = publicProcedure.use(async ({ ctx, next }) => {
-  if (!ctx.locals.session) {
-    throw new TRPCError({ code: "UNAUTHORIZED" });
-  }
-  return next();
-});
-
+// `authorize` also rejects unauthenticated requests
 const sessionProcedure = (requiredPermission: "any" | "notClient") =>
-  authedProcedure.use(async ({ ctx, next }) => {
+  publicProcedure.use(async ({ ctx, next }) => {
     const session: Session = await authorize(ctx.locals, requiredPermission);
     return next({ ctx: { session } });
   });
@@ -46,7 +40,7 @@ const sessionProcedure = (requiredPermission: "any" | "notClient") =>
 const clientSessionProcedure = (
   requiredPermission: "anyClient" | "pendingClient" | "activeClient",
 ) =>
-  authedProcedure.use(async ({ ctx, next }) => {
+  publicProcedure.use(async ({ ctx, next }) => {
     const session: ClientSession = await authorize(ctx.locals, requiredPermission);
     return next({ ctx: { session } });
   });

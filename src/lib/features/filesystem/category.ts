@@ -2,12 +2,8 @@ import * as IndexedDB from "#lib/client/storage/indexed-db/index.ts";
 import { isTRPCClientError, trpc } from "#trpc/client.ts";
 import { FilesystemCache } from "./cache.svelte.ts";
 import { invalidateFile } from "./file.ts";
-import {
-  decryptCategoryMetadata,
-  decryptFileMetadata,
-  encryptName,
-  generateEntryKeys,
-} from "./metadata.ts";
+import { toCategoryInfo, toFileInfo } from "./dto.ts";
+import { encryptName, generateEntryKeys } from "./metadata.ts";
 import { useResource } from "./resource.svelte.ts";
 import type { CategoryInfo, DataKey, LocalCategoryInfo, MaybeCategoryInfo } from "./types.ts";
 
@@ -60,38 +56,25 @@ const cache = new FilesystemCache<CategoryId, MaybeCategoryInfo>({
     try {
       const category = await trpc.category.get.query({ id, recurse: true });
       const [subCategories, files, metadata] = await Promise.all([
+        Promise.all(category.subCategories.map(toCategoryInfo)),
         Promise.all(
-          category.subCategories.map(async (category) => ({
-            id: category.id,
-            parentId: id,
-            ...(await decryptCategoryMetadata(category)),
+          (category.files ?? []).map(async (file) => ({
+            ...(await toFileInfo(file)),
+            isRecursive: file.isRecursive,
           })),
         ),
-        category.files &&
-          Promise.all(
-            category.files.map(async (file) => ({
-              id: file.id,
-              parentId: file.parent,
-              contentType: file.contentType,
-              isFavorite: file.isFavorite,
-              isRecursive: file.isRecursive,
-              ...(await decryptFileMetadata(file)),
-            })),
-          ),
-        category.metadata && decryptCategoryMetadata(category.metadata),
+        category.metadata && toCategoryInfo(category.metadata),
       ]);
 
       return storeToIndexedDB(
-        id !== "root"
+        metadata
           ? {
-              id,
-              parentId: category.metadata!.parent,
+              ...metadata,
               subCategories,
-              files: files!,
+              files,
               isFileRecursive: cachedInfo?.isFileRecursive ?? false,
-              ...metadata!,
             }
-          : { id, subCategories },
+          : { id: "root", subCategories },
       );
     } catch (e) {
       if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {

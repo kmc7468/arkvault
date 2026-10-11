@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ClassValue } from "svelte/elements";
-  import { IconLabel } from "#lib/ui/index.ts";
+  import IconLabel from "./IconLabel.svelte";
 
   import IconCategory from "~icons/material-symbols/category";
 

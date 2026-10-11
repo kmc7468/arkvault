@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { Component } from "svelte";
   import type { ClassValue, SvelteHTMLElements } from "svelte/elements";
-  import { AdaptiveDiv } from "#lib/ui/index.ts";
+  import AdaptiveDiv from "../layout/AdaptiveDiv.svelte";
+  import { afterPress } from "../press.ts";
 
   interface Props {
     class: ClassValue;
@@ -15,7 +16,7 @@
 <div class="pointer-events-none fixed inset-0">
   <AdaptiveDiv class="relative h-full">
     <button
-      onclick={onclick && (() => setTimeout(onclick, 100))}
+      onclick={afterPress(onclick)}
       class={[
         "pointer-events-auto absolute flex size-14 items-center justify-center rounded-full bg-gray-300 text-xl shadow-lg transition active:scale-95 active:bg-gray-400",
         className,

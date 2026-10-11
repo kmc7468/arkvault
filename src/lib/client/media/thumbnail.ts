@@ -1,3 +1,5 @@
+import { convertHeic } from "./heic.ts";
+
 const scaleSize = (width: number, height: number, targetSize: number) => {
   if (width <= targetSize || height <= targetSize) {
     return { width, height };
@@ -111,11 +113,6 @@ const generateVideoThumbnail = (videoUrl: string, time = 0) => {
   });
 };
 
-const convertHeicToPng = async (blob: Blob) => {
-  const { default: heic2any } = await import("heic2any");
-  return (await heic2any({ blob, toType: "image/png" })) as Blob;
-};
-
 // Generates a thumbnail of the image or video at the URL. Returns `null` if not supported.
 export const generateThumbnailFromUrl = async (url: string, contentType: string) => {
   try {
@@ -125,8 +122,8 @@ export const generateThumbnailFromUrl = async (url: string, contentType: string)
       } catch {
         if (contentType !== "image/heic") return null;
 
-        // Chromium can't decode HEIC images
-        const png = URL.createObjectURL(await convertHeicToPng(await (await fetch(url)).blob()));
+        const blob = await (await fetch(url)).blob();
+        const png = URL.createObjectURL(await convertHeic(blob, "image/png"));
         try {
           return await generateImageThumbnail(png);
         } finally {

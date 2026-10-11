@@ -12,6 +12,7 @@
   } from "#lib/client/keys/index.ts";
   import { ForceLoginModal } from "#lib/features/auth/components/index.ts";
   import { cleanupDeletedFileCaches } from "#lib/features/filesystem/index.ts";
+  import { withRedirectPath } from "#lib/shared/redirect.ts";
   import {
     BottomDiv,
     Button,
@@ -87,7 +88,7 @@
     }
 
     await cleanupDeletedFileCaches().catch(console.error);
-    await goto("/client/pending?redirect=" + encodeURIComponent(data.redirectPath));
+    await goto(withRedirectPath("/client/pending", data.redirectPath));
   };
 
   const importKeys = async () => {

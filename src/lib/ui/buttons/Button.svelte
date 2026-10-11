@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import type { ClassValue } from "svelte/elements";
+  import { afterPress } from "../press.ts";
 
   interface Props {
     children: Snippet;
@@ -26,7 +27,7 @@
 </script>
 
 <button
-  onclick={onclick && (() => setTimeout(onclick, 100))}
+  onclick={afterPress(onclick)}
   class={[
     "h-12 min-w-fit rounded-xl p-3 font-medium transition active:scale-95",
     bgColor,

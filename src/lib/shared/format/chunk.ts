@@ -1,8 +1,8 @@
+import { AES_GCM_IV_SIZE, AES_GCM_TAG_SIZE } from "#lib/shared/crypto/index.ts";
+
 // Files are encrypted in chunks of `CHUNK_SIZE` bytes, each of which is stored as
 // `IV || ciphertext || tag`. Legacy files are encrypted as a single chunk.
 
-export const AES_GCM_IV_SIZE = 12;
-export const AES_GCM_TAG_SIZE = 16;
 export const ENCRYPTION_OVERHEAD = AES_GCM_IV_SIZE + AES_GCM_TAG_SIZE;
 
 export const CHUNK_SIZE = 4 * 1024 * 1024; // 4 MiB

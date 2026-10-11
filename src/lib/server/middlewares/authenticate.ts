@@ -1,6 +1,7 @@
 import { error, redirect } from "@sveltejs/kit";
 import type { Handle } from "@sveltejs/kit/hooks";
 import { cookieOptions, authenticate, AuthenticationError } from "#lib/server/auth.ts";
+import { getRedirectPath, withRedirectPath } from "#lib/shared/redirect.ts";
 
 export const authenticateMiddleware: Handle = async ({ event, resolve }) => {
   try {
@@ -20,16 +21,14 @@ export const authenticateMiddleware: Handle = async ({ event, resolve }) => {
       } else if (pathname.startsWith("/api")) {
         error(e.status, e.message);
       } else {
-        redirect(302, "/auth/login?redirect=" + encodeURIComponent(pathname + search));
+        redirect(302, withRedirectPath("/auth/login", pathname + search));
       }
     }
     throw e;
   }
 
   if (event.url.pathname === "/auth/login") {
-    const redirectPath = event.url.searchParams.get("redirect");
-    // Allow same-origin paths only
-    redirect(302, redirectPath?.match(/^\/(?![/\\])/) ? redirectPath : "/home");
+    redirect(302, getRedirectPath(event.url));
   }
 
   return await resolve(event);

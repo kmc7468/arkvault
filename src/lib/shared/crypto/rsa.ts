@@ -166,15 +166,21 @@ export const verifySignatureRSA = async (
   );
 };
 
+// The message signed by clients to prove the integrity of the wrapped master key. Also verified
+// by the server, so it must not be changed.
+export const serializeMasterKeyWrapped = (masterKeyWrapped: string, masterKeyVersion: number) => {
+  return JSON.stringify({
+    version: masterKeyVersion,
+    key: masterKeyWrapped,
+  });
+};
+
 export const signMasterKeyWrapped = async (
   masterKeyWrapped: string,
   masterKeyVersion: number,
   signKey: CryptoKey,
 ) => {
-  const serialized = JSON.stringify({
-    version: masterKeyVersion,
-    key: masterKeyWrapped,
-  });
+  const serialized = serializeMasterKeyWrapped(masterKeyWrapped, masterKeyVersion);
   return encodeToBase64(await signMessageRSA(encodeString(serialized), signKey));
 };
 
@@ -184,10 +190,7 @@ export const verifyMasterKeyWrapped = async (
   masterKeyWrappedSig: string,
   verifyKey: CryptoKey,
 ) => {
-  const serialized = JSON.stringify({
-    version: masterKeyVersion,
-    key: masterKeyWrapped,
-  });
+  const serialized = serializeMasterKeyWrapped(masterKeyWrapped, masterKeyVersion);
   return await verifySignatureRSA(
     encodeString(serialized),
     decodeFromBase64(masterKeyWrappedSig),

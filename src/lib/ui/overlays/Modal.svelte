@@ -2,7 +2,7 @@
   import type { Snippet } from "svelte";
   import type { ClassValue } from "svelte/elements";
   import { fade } from "svelte/transition";
-  import { AdaptiveDiv } from "#lib/ui/index.ts";
+  import AdaptiveDiv from "../layout/AdaptiveDiv.svelte";
 
   interface Props {
     children: Snippet;

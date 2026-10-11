@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { FileCacheIndex } from "#lib/client/storage/indexed-db/index.ts";
   import type { MaybeFileInfo } from "#lib/features/filesystem/index.ts";
+  import { afterPress } from "#lib/ui/index.ts";
   import { formatDate, formatFileSize } from "#lib/utils/index.ts";
 
   import IconDraft from "~icons/material-symbols/draft";
@@ -40,7 +41,7 @@
     </p>
   </div>
   <button
-    onclick={() => setTimeout(() => onDeleteClick(index.fileId), 100)}
+    onclick={afterPress(() => onDeleteClick(index.fileId))}
     class="shrink-0 rounded-full p-1 active:bg-gray-100"
   >
     <IconDelete class="text-lg text-gray-600" />

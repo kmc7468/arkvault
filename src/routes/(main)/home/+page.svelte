@@ -2,14 +2,16 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { FileThumbnailButton } from "#lib/features/filesystem/components/index.ts";
-  import { type SummarizedFileInfo } from "#lib/features/filesystem/index.ts";
+  import {
+    getRecentMediaFileInfos,
+    type SummarizedFileInfo,
+  } from "#lib/features/filesystem/index.ts";
   import { EntryButton } from "#lib/ui/index.ts";
-  import { requestFreshMediaFilesRetrieval } from "./service.ts";
 
   let mediaFiles: SummarizedFileInfo[] = $state([]);
 
   onMount(async () => {
-    mediaFiles = await requestFreshMediaFilesRetrieval();
+    mediaFiles = await getRecentMediaFileInfos(8);
   });
 </script>
 

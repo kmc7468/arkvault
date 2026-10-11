@@ -4,7 +4,8 @@
 
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import { Button, Modal } from "#lib/ui/index.ts";
+  import Button from "../buttons/Button.svelte";
+  import Modal from "./Modal.svelte";
 
   interface Props {
     cancelText?: string;

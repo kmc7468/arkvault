@@ -1,8 +1,8 @@
 import argon2 from "argon2";
-import { ClientRepo, IntegrityError, SessionRepo, UserRepo } from "#lib/server/db/index.ts";
+import { ClientRepo, SessionRepo, UserRepo } from "#lib/server/db/index.ts";
 import env from "#lib/server/config.ts";
 import { issueSessionId } from "#lib/server/crypto.ts";
-import { AppError } from "#lib/server/errors.ts";
+import { AppError, invalidSessionError } from "#lib/server/errors.ts";
 import { createChallenge, verifyChallengeAnswer } from "./client.ts";
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -36,7 +36,7 @@ export const changePassword = async (
 
   const user = await UserRepo.getUser(userId);
   if (!user) {
-    throw new AppError("INTERNAL_SERVER_ERROR", "Invalid session id");
+    throw invalidSessionError();
   } else if (!(await argon2.verify(user.password, oldPassword))) {
     throw new AppError("FORBIDDEN", "Invalid password");
   }
@@ -83,17 +83,12 @@ export const verifySessionUpgrade = async (
 ) => {
   const challenge = await SessionRepo.consumeSessionUpgradeChallenge(challengeId, sessionId, ip);
   const client = await verifyChallengeAnswer(challenge, answerSig);
+  await SessionRepo.upgradeSession(userId, sessionId, client.id, force);
+};
 
-  try {
-    await SessionRepo.upgradeSession(userId, sessionId, client.id, force);
-  } catch (e) {
-    if (e instanceof IntegrityError) {
-      if (e.message === "Session not found") {
-        throw new AppError("INTERNAL_SERVER_ERROR", "Invalid challenge answer");
-      } else if (e.message === "Session already exists") {
-        throw new AppError("CONFLICT", "Already logged in");
-      }
-    }
-    throw e;
-  }
+export const cleanupExpiredSessions = async () => {
+  await Promise.all([
+    SessionRepo.cleanupExpiredSessions(),
+    SessionRepo.cleanupExpiredSessionUpgradeChallenges(),
+  ]);
 };

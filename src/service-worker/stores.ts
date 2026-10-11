@@ -1,6 +1,4 @@
-import type { FileMetadata } from "#lib/shared/service-worker.ts";
-
-const MAX_FILE_METADATA_ENTRIES = 32;
+import { MAX_PREPARED_FILES, type FileMetadata } from "#lib/shared/service-worker.ts";
 
 const fileMetadata = new Map<number, FileMetadata>();
 
@@ -18,7 +16,7 @@ export const fileMetadataStore = {
     fileMetadata.delete(fileId);
     fileMetadata.set(fileId, metadata);
 
-    while (fileMetadata.size > MAX_FILE_METADATA_ENTRIES) {
+    while (fileMetadata.size > MAX_PREPARED_FILES) {
       fileMetadata.delete(fileMetadata.keys().next().value!);
     }
   },

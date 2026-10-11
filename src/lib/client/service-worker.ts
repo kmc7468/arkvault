@@ -1,6 +1,8 @@
+import { LRUCache } from "lru-cache";
 import { handleDownloadProgress } from "#lib/client/transfer/download.svelte.ts";
 import {
   DECRYPTED_FILE_URL_PREFIX,
+  MAX_PREPARED_FILES,
   type FileMetadata,
   type ServiceWorkerMessage,
   type ServiceWorkerResponse,
@@ -10,7 +12,7 @@ const PREPARE_TIMEOUT_MS = 5000;
 
 // The service worker may be terminated at any time, losing its in-memory metadata.
 // Keep a copy here so that it can be re-requested on demand.
-const preparedFiles = new Map<number, FileMetadata>();
+const preparedFiles = new LRUCache<number, FileMetadata>({ max: MAX_PREPARED_FILES });
 let isListening = false;
 
 export const listenForServiceWorkerMessages = () => {

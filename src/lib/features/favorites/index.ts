@@ -1,6 +1,8 @@
 import {
   getDirectoryInfo,
   getFileInfo,
+  isExistingFileInfo,
+  isLocalDirectoryInfo,
   setDirectoryFavorite,
   setFileFavorite,
   type LocalDirectoryInfo,
@@ -29,18 +31,16 @@ export const getFavoriteEntries = async () => {
   ]);
   return [
     ...sortEntries(
-      directories.map((directory): FavoriteEntry => ({
+      directories.filter(isLocalDirectoryInfo).map((directory): FavoriteEntry => ({
         type: "directory",
-        name: directory.name!,
-        details: directory as LocalDirectoryInfo,
+        name: directory.name,
+        details: directory,
       })),
     ),
     ...sortEntries(
-      files.map((file): FavoriteEntry => ({
-        type: "file",
-        name: file.name!,
-        details: file as SummarizedFileInfo,
-      })),
+      files
+        .filter(isExistingFileInfo)
+        .map((file): FavoriteEntry => ({ type: "file", name: file.name, details: file })),
     ),
   ];
 };

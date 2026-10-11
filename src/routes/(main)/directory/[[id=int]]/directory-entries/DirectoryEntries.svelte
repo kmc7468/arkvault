@@ -49,7 +49,7 @@
     ...sortEntries(info.subDirectories.map(toEntry("directory"))),
     ...sortEntries([
       ...info.files.map(toEntry("file")),
-      ...(getUploadingFiles(info.id) as LiveFileUploadState[]).map(toEntry("uploading-file")),
+      ...getUploadingFiles(info.id).map(toEntry("uploading-file")),
     ]),
   ]);
 </script>
