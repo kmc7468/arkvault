@@ -14,6 +14,7 @@
     "lint": "prettier --check . && eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "bash tests/e2e/run.sh",
     "db:up": "docker compose -f docker-compose.dev.yaml -p arkvault-dev up -d",
     "db:down": "docker compose -f docker-compose.dev.yaml -p arkvault-dev down",
     "db:migrate": "kysely migrate"
@@ -23,6 +24,7 @@
     "@eslint/js": "^10.0.1",
     "@iconify-json/material-symbols": "^1.2.95",
     "@noble/hashes": "^2.4.0",
+    "@playwright/test": "1.64.0",
     "@sveltejs/adapter-node": "^6.0.0",
     "@sveltejs/kit": "^3.0.1",
     "@sveltejs/load-config": "^0.2.2",
