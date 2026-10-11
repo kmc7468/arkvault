@@ -1,6 +1,5 @@
-import type { RequestEvent } from "@sveltejs/kit";
 import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
-import { createContext, router } from "./init.server";
+import { router } from "./init.server";
 import {
   authRouter,
   categoryRouter,
@@ -28,8 +27,6 @@ export const appRouter = router({
   upload: uploadRouter,
   user: userRouter,
 });
-
-export const createCaller = (event: RequestEvent) => appRouter.createCaller(createContext(event));
 
 export type AppRouter = typeof appRouter;
 export type RouterInputs = inferRouterInputs<AppRouter>;

@@ -30,7 +30,7 @@ export const requestCategoryRename = async (category: SelectedCategory, newName:
   const newNameEncrypted = await encryptString(newName, category.dataKey.key);
 
   try {
-    await trpc().category.rename.mutate({
+    await trpc.category.rename.mutate({
       id: category.id,
       dekVersion: category.dataKey.version,
       name: newNameEncrypted.ciphertext,
@@ -45,7 +45,7 @@ export const requestCategoryRename = async (category: SelectedCategory, newName:
 
 export const requestCategoryDeletion = async (category: SelectedCategory) => {
   try {
-    await trpc().category.delete.mutate({ id: category.id });
+    await trpc.category.delete.mutate({ id: category.id });
     return true;
   } catch {
     // TODO: Error Handling

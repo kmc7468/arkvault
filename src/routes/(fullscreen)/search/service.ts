@@ -20,7 +20,7 @@ export interface SearchResult {
 }
 
 export const requestSearch = async (filter: SearchFilter, masterKey: CryptoKey) => {
-  const { directories: directoriesRaw, files: filesRaw } = await trpc().search.search.query({
+  const { directories: directoriesRaw, files: filesRaw } = await trpc.search.search.query({
     ancestor: filter.ancestorId,
     inFavorites: filter.inFavorites,
     includeCategories: filter.categories

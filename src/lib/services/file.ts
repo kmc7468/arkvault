@@ -29,14 +29,14 @@ export const requestFileThumbnailUpload = async (
   dataKeyVersion: Date,
 ) => {
   try {
-    const { uploadId } = await trpc().upload.startFileThumbnailUpload.mutate({
+    const { uploadId } = await trpc.upload.startFileThumbnailUpload.mutate({
       file: fileId,
       dekVersion: dataKeyVersion,
     });
 
     await uploadBlob(uploadId, thumbnail, dataKey);
 
-    await trpc().upload.completeFileThumbnailUpload.mutate({ uploadId });
+    await trpc.upload.completeFileThumbnailUpload.mutate({ uploadId });
     return true;
   } catch {
     // TODO: Error Handling
@@ -47,7 +47,7 @@ export const requestFileThumbnailUpload = async (
 export const requestDeletedFilesCleanup = async () => {
   let liveFiles;
   try {
-    liveFiles = await trpc().file.list.query();
+    liveFiles = await trpc.file.list.query();
   } catch {
     // TODO: Error Handling
     return;

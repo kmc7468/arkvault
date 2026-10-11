@@ -60,7 +60,7 @@ const requestDuplicateFileScan = limitFunction(
     state.status = "encryption-pending";
 
     const fileSigned = encodeToBase64(await signMessageHmac(file, hmacSecret.secret));
-    const files = await trpc().file.listByHash.query({
+    const files = await trpc.file.listByHash.query({
       hskVersion: hmacSecret.version,
       contentHmac: fileSigned,
     });
@@ -134,7 +134,7 @@ const requestFileMetadataEncryption = limitFunction(
         generateThumbnail(file).then((blob) => blob?.arrayBuffer()),
       ]);
 
-    const { uploadId } = await trpc().upload.startFileUpload.mutate({
+    const { uploadId } = await trpc.upload.startFileUpload.mutate({
       chunks: Math.ceil(file.size / CHUNK_SIZE),
       parent: fileMetadata.parentId,
       mekVersion: masterKey.version,
@@ -175,7 +175,7 @@ const requestFileUpload = limitFunction(
       },
     });
 
-    const { file: fileId } = await trpc().upload.completeFileUpload.mutate({
+    const { file: fileId } = await trpc.upload.completeFileUpload.mutate({
       uploadId,
       contentHmac: fileSigned,
       encContentHash,
@@ -183,14 +183,14 @@ const requestFileUpload = limitFunction(
 
     if (thumbnailBuffer) {
       try {
-        const { uploadId } = await trpc().upload.startFileThumbnailUpload.mutate({
+        const { uploadId } = await trpc.upload.startFileThumbnailUpload.mutate({
           file: fileId,
           dekVersion: dataKeyVersion,
         });
 
         await uploadBlob(uploadId, new Blob([thumbnailBuffer]), dataKey);
 
-        await trpc().upload.completeFileThumbnailUpload.mutate({ uploadId });
+        await trpc.upload.completeFileThumbnailUpload.mutate({ uploadId });
       } catch (e) {
         console.error(e);
       }

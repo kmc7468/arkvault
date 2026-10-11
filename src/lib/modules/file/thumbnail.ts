@@ -1,6 +1,5 @@
 import { LRUCache } from "lru-cache";
 import { writable, type Writable } from "svelte/store";
-import { browser } from "$app/environment";
 import { decryptChunk } from "$lib/modules/crypto";
 import type { SummarizedFileInfo } from "$lib/modules/filesystem";
 import { readFile, writeFile, deleteFile, deleteDirectory } from "$lib/modules/opfs";
@@ -27,10 +26,7 @@ const fetchFromServer = async (fileId: number, dataKey: CryptoKey) => {
 };
 
 export const getFileThumbnail = (file: SummarizedFileInfo) => {
-  if (
-    !browser ||
-    !(file.contentType.startsWith("image/") || file.contentType.startsWith("video/"))
-  ) {
+  if (!(file.contentType.startsWith("image/") || file.contentType.startsWith("video/"))) {
     return undefined;
   }
 

@@ -10,7 +10,7 @@ export const requestSessionUpgrade = async (
 ) => {
   let id, challenge;
   try {
-    ({ id, challenge } = await trpc().auth.upgrade.mutate({
+    ({ id, challenge } = await trpc.auth.upgrade.mutate({
       encPubKey: encryptKeyBase64,
       sigPubKey: verifyKeyBase64,
     }));
@@ -24,7 +24,7 @@ export const requestSessionUpgrade = async (
   const answerSig = await signMessageRSA(answer, signKey);
 
   try {
-    await trpc().auth.verifyUpgrade.mutate({
+    await trpc.auth.verifyUpgrade.mutate({
       id,
       answerSig: encodeToBase64(answerSig),
       force,
@@ -41,7 +41,7 @@ export const requestSessionUpgrade = async (
 
 export const requestLogout = async () => {
   try {
-    await trpc().auth.logout.mutate();
+    await trpc.auth.logout.mutate();
     return true;
   } catch {
     // TODO: Error Handling

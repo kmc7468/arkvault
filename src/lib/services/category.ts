@@ -11,7 +11,7 @@ export const requestCategoryCreation = async (
   const nameEncrypted = await encryptString(name, dataKey);
 
   try {
-    await trpc().category.create.mutate({
+    await trpc.category.create.mutate({
       parent: parentId,
       mekVersion: masterKey.version,
       dek: await wrapDataKey(dataKey, masterKey.key),
@@ -28,7 +28,7 @@ export const requestCategoryCreation = async (
 
 export const requestFileRemovalFromCategory = async (fileId: number, categoryId: number) => {
   try {
-    await trpc().category.removeFile.mutate({ id: categoryId, file: fileId });
+    await trpc.category.removeFile.mutate({ id: categoryId, file: fileId });
     return true;
   } catch {
     // TODO: Error Handling

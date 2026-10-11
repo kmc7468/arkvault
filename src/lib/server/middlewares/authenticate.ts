@@ -25,6 +25,12 @@ export const authenticateMiddleware: Handle = async ({ event, resolve }) => {
     throw e;
   }
 
+  if (event.url.pathname === "/auth/login") {
+    const redirectPath = event.url.searchParams.get("redirect");
+    // Allow same-origin paths only
+    redirect(302, redirectPath?.match(/^\/(?![/\\])/) ? redirectPath : "/home");
+  }
+
   return await resolve(event);
 };
 

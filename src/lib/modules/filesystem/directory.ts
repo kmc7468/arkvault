@@ -33,7 +33,7 @@ const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>({
 
   async fetchFromServer(id, _cachedInfo, masterKey) {
     try {
-      const directory = await trpc().directory.get.query({ id });
+      const directory = await trpc.directory.get.query({ id });
       const [subDirectories, files, metadata] = await Promise.all([
         Promise.all(
           directory.subDirectories.map(async (directory) => ({

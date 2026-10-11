@@ -50,7 +50,7 @@ const cache = new FilesystemCache<CategoryId, MaybeCategoryInfo>({
 
   async fetchFromServer(id, cachedInfo, masterKey) {
     try {
-      const category = await trpc().category.get.query({ id, recurse: true });
+      const category = await trpc.category.get.query({ id, recurse: true });
       const [subCategories, files, metadata] = await Promise.all([
         Promise.all(
           category.subCategories.map(async (category) => ({

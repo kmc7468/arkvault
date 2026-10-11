@@ -52,9 +52,9 @@ export const requestFavoriteEntries = async (
 export const requestRemoveFavorite = async (type: "file" | "directory", id: number) => {
   try {
     if (type === "directory") {
-      await trpc().favorites.removeDirectory.mutate({ id });
+      await trpc.favorites.removeDirectory.mutate({ id });
     } else {
-      await trpc().favorites.removeFile.mutate({ id });
+      await trpc.favorites.removeFile.mutate({ id });
     }
     return true;
   } catch {

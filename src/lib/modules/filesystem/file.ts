@@ -34,7 +34,7 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
 
   async fetchFromServer(id, _cachedInfo, masterKey) {
     try {
-      const file = await trpc().file.get.query({ id });
+      const file = await trpc.file.get.query({ id });
       const [categories, metadata] = await Promise.all([
         Promise.all(
           file.categories.map(async (category) => ({
@@ -101,7 +101,7 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
   async bulkFetchFromServer(ids, masterKey) {
     const idsArray = [...ids.keys()];
 
-    const filesRaw = await trpc().file.bulkGet.query({ ids: idsArray });
+    const filesRaw = await trpc.file.bulkGet.query({ ids: idsArray });
     const files = await Promise.all(
       filesRaw.map(async ({ id, categories: categoriesRaw, ...metadataRaw }) => {
         const [categories, metadata] = await Promise.all([

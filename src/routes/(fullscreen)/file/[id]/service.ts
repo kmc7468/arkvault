@@ -41,7 +41,7 @@ export const requestThumbnailUpload = async (
 
 export const requestFileAdditionToCategory = async (fileId: number, categoryId: number) => {
   try {
-    await trpc().category.addFile.mutate({ id: categoryId, file: fileId });
+    await trpc.category.addFile.mutate({ id: categoryId, file: fileId });
     return true;
   } catch {
     // TODO: Error Handling
@@ -52,9 +52,9 @@ export const requestFileAdditionToCategory = async (fileId: number, categoryId: 
 export const requestFavoriteToggle = async (fileId: number, isFavorite: boolean) => {
   try {
     if (isFavorite) {
-      await trpc().favorites.removeFile.mutate({ id: fileId });
+      await trpc.favorites.removeFile.mutate({ id: fileId });
     } else {
-      await trpc().favorites.addFile.mutate({ id: fileId });
+      await trpc.favorites.addFile.mutate({ id: fileId });
     }
     return true;
   } catch {
