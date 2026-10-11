@@ -1,8 +1,8 @@
 import { createReadStream } from "fs";
 import { stat } from "fs/promises";
 import { Readable } from "stream";
-import { AppError } from "#lib/server/errors.js";
-import { resolveRange, type RangeRequest } from "#lib/shared/http.js";
+import { AppError } from "#lib/server/errors.ts";
+import { resolveRange, type RangeRequest } from "#lib/shared/http.ts";
 
 export const createEncContentStream = async (
   path: string,

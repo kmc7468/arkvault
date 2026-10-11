@@ -9,9 +9,9 @@
     keyring,
     registerInitialMasterKeyAndHmacSecret,
     requestClientRegistrationAndSessionUpgrade,
-  } from "#lib/client/keys/index.js";
-  import { ForceLoginModal } from "#lib/features/auth/components/index.js";
-  import { cleanupDeletedFileCaches } from "#lib/features/filesystem/index.js";
+  } from "#lib/client/keys/index.ts";
+  import { ForceLoginModal } from "#lib/features/auth/components/index.ts";
+  import { cleanupDeletedFileCaches } from "#lib/features/filesystem/index.ts";
   import {
     BottomDiv,
     Button,
@@ -19,8 +19,8 @@
     TextButton,
     TitledDiv,
     showToast,
-  } from "#lib/ui/index.js";
-  import { gotoStateful } from "#lib/utils/index.js";
+  } from "#lib/ui/index.ts";
+  import { gotoStateful } from "#lib/utils/index.ts";
   import Order from "./Order.svelte";
 
   import IconKey from "~icons/material-symbols/key";

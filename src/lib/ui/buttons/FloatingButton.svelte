@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Component } from "svelte";
   import type { ClassValue, SvelteHTMLElements } from "svelte/elements";
-  import { AdaptiveDiv } from "#lib/ui/index.js";
+  import { AdaptiveDiv } from "#lib/ui/index.ts";
 
   interface Props {
     class: ClassValue;

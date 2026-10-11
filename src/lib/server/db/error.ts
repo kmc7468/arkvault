@@ -1,4 +1,4 @@
-import { AppError, type ErrorCode } from "#lib/server/errors.js";
+import { AppError, type ErrorCode } from "#lib/server/errors.ts";
 
 const errorCodes = {
   // Category

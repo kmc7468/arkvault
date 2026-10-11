@@ -1,5 +1,5 @@
-import { UserService } from "#lib/server/services/index.js";
-import { router, roleProcedure } from "#trpc/init.server.js";
+import { UserService } from "#lib/server/services/index.ts";
+import { router, roleProcedure } from "#trpc/init.server.ts";
 
 const userRouter = router({
   get: roleProcedure["any"].query(async ({ ctx }) => {

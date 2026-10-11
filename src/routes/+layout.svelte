@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { getDownloadingFiles, getUploadingFiles } from "#lib/client/transfer/index.js";
-  import { Toasts } from "#lib/ui/index.js";
+  import { getDownloadingFiles, getUploadingFiles } from "#lib/client/transfer/index.ts";
+  import { Toasts } from "#lib/ui/index.ts";
   import "../app.css";
 
   let { children } = $props();

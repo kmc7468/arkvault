@@ -1,7 +1,7 @@
 import type { NotNull } from "kysely";
-import { IntegrityError } from "../error";
-import db from "../kysely";
-import { enqueueFileDeletions } from "./fileDeletion";
+import { IntegrityError } from "../error.ts";
+import db from "../kysely.ts";
+import { enqueueFileDeletions } from "./file-deletion.ts";
 
 interface Thumbnail {
   id: number;

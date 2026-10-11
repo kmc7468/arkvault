@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { TextInput, ActionModal, type ConfirmHandler } from "#lib/ui/index.js";
+  import { TextInput, ActionModal, type ConfirmHandler } from "#lib/ui/index.ts";
 
   interface Props {
     defaultValue?: string;

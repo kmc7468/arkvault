@@ -1,5 +1,5 @@
 import type { Generated } from "kysely";
-import type { Ciphertext } from "./utils";
+import type { Ciphertext } from "./utils.ts";
 
 export interface UploadSessionTable {
   id: string;

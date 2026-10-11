@@ -3,11 +3,11 @@
   import {
     getFileCacheIndex,
     deleteFileCache as doDeleteFileCache,
-  } from "#lib/client/cache/index.js";
-  import type { FileCacheIndex } from "#lib/client/storage/indexedDB/index.js";
-  import { bulkGetFileInfo, type MaybeFileInfo } from "#lib/features/filesystem/index.js";
-  import { FullscreenDiv, TopBar } from "#lib/ui/index.js";
-  import { formatFileSize } from "#lib/utils/index.js";
+  } from "#lib/client/cache/index.ts";
+  import type { FileCacheIndex } from "#lib/client/storage/indexed-db/index.ts";
+  import { bulkGetFileInfo, type MaybeFileInfo } from "#lib/features/filesystem/index.ts";
+  import { FullscreenDiv, TopBar } from "#lib/ui/index.ts";
+  import { formatFileSize } from "#lib/utils/index.ts";
   import File from "./File.svelte";
 
   interface FileCache {

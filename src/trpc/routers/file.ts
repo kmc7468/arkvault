@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { FileService } from "#lib/server/services/index.js";
-import { toFileDto, toFileWithCategoriesDto } from "#trpc/dto.js";
-import { router, roleProcedure } from "#trpc/init.server.js";
-import { Base64Schema, EncryptedNameSchema, IdSchema, toCiphertext } from "#trpc/schemas.js";
+import { FileService } from "#lib/server/services/index.ts";
+import { toFileDto, toFileWithCategoriesDto } from "#trpc/dto.ts";
+import { router, roleProcedure } from "#trpc/init.server.ts";
+import { Base64Schema, EncryptedNameSchema, IdSchema, toCiphertext } from "#trpc/schemas.ts";
 
 const fileRouter = router({
   get: roleProcedure["activeClient"]

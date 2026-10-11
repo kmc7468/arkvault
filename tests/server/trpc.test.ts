@@ -1,8 +1,8 @@
 import type { RequestEvent } from "@sveltejs/kit";
 import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it } from "vitest";
-import { appRouter } from "#trpc/router.server.js";
-import { createDirectory, createUser, resetDatabase } from "../helpers/database";
+import { appRouter } from "#trpc/router.server.ts";
+import { createDirectory, createUser, resetDatabase } from "../helpers/database.ts";
 
 const createCaller = (userId: number, clientId?: number) =>
   appRouter.createCaller({

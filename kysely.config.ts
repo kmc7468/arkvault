@@ -1,5 +1,5 @@
 import { defineConfig } from "kysely-ctl";
-import { createDialect } from "./src/lib/server/db/dialect";
+import { createDialect } from "./src/lib/server/db/dialect.ts";
 
 // Empty values (e.g. `DATABASE_HOST=` in .env) are treated as unset, as in src/env.ts
 const optional = (name: string) => process.env[name] || undefined;

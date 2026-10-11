@@ -1,15 +1,15 @@
 <script lang="ts">
-  import { getUploadingFiles, type LiveFileUploadState } from "#lib/client/transfer/index.js";
-  import { DirectoryEntry, FileEntry } from "#lib/features/filesystem/components/index.js";
+  import { getUploadingFiles, type LiveFileUploadState } from "#lib/client/transfer/index.ts";
+  import { DirectoryEntry, FileEntry } from "#lib/features/filesystem/components/index.ts";
   import type {
     DirectoryInfo,
     SubDirectoryInfo,
     SummarizedFileInfo,
-  } from "#lib/features/filesystem/index.js";
-  import { ActionEntryButton, RowVirtualizer, DirectoryEntryLabel } from "#lib/ui/index.js";
-  import { sortEntries } from "#lib/utils/index.js";
+  } from "#lib/features/filesystem/index.ts";
+  import { ActionEntryButton, RowVirtualizer, DirectoryEntryLabel } from "#lib/ui/index.ts";
+  import { sortEntries } from "#lib/utils/index.ts";
   import UploadingFile from "./UploadingFile.svelte";
-  import type { SelectedEntry } from "../service.svelte";
+  import type { SelectedEntry } from "../service.svelte.ts";
 
   import IconMoreVert from "~icons/material-symbols/more-vert";
 

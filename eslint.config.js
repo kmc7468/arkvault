@@ -61,7 +61,7 @@ export default defineConfig(
     "src/lib/ui/**": "^(#lib/(server|client|features)/|#trpc/)",
     "src/lib/features/**": "^#lib/server/",
     "src/service-worker/**":
-      "^(#lib/(?!shared/|client/storage/|client/cache/fileCache\\.js$)|#trpc/|#workers/)",
+      "^(#lib/(?!shared/|client/storage/|client/cache/file-cache\\.ts$)|#trpc/|#workers/)",
   }),
   {
     files: ["**/*.svelte", "**/*.svelte.ts", "**/*.svelte.js"],

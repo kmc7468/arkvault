@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { getFileThumbnail } from "#lib/client/cache/index.js";
-  import type { SummarizedFileInfo } from "#lib/features/filesystem/index.js";
+  import { getFileThumbnail } from "#lib/client/cache/index.ts";
+  import type { SummarizedFileInfo } from "#lib/features/filesystem/index.ts";
 
   import IconFavorite from "~icons/material-symbols/favorite";
 

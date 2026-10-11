@@ -1,8 +1,8 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import MenuEntryButton from "./MenuEntryButton.svelte";
-  import { logout as requestLogout } from "#lib/features/auth/index.js";
-  import { tryAction } from "#lib/features/errors.js";
+  import { logout as requestLogout } from "#lib/features/auth/index.ts";
+  import { tryAction } from "#lib/features/errors.ts";
 
   import IconStorage from "~icons/material-symbols/storage";
   import IconImage from "~icons/material-symbols/image";
@@ -46,7 +46,7 @@
   <div class="space-y-2">
     <p class="font-semibold">보안</p>
     <MenuEntryButton
-      onclick={() => goto("/auth/changePassword")}
+      onclick={() => goto("/auth/change-password")}
       icon={IconPassword}
       iconColor="text-blue-500"
     >

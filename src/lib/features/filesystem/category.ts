@@ -1,15 +1,15 @@
-import * as IndexedDB from "#lib/client/storage/indexedDB/index.js";
-import { isTRPCClientError, trpc } from "#trpc/client.js";
-import { FilesystemCache } from "./cache.svelte";
-import { invalidateFile } from "./file";
+import * as IndexedDB from "#lib/client/storage/indexed-db/index.ts";
+import { isTRPCClientError, trpc } from "#trpc/client.ts";
+import { FilesystemCache } from "./cache.svelte.ts";
+import { invalidateFile } from "./file.ts";
 import {
   decryptCategoryMetadata,
   decryptFileMetadata,
   encryptName,
   generateEntryKeys,
-} from "./metadata";
-import { useResource } from "./resource.svelte";
-import type { CategoryInfo, DataKey, LocalCategoryInfo, MaybeCategoryInfo } from "./types";
+} from "./metadata.ts";
+import { useResource } from "./resource.svelte.ts";
+import type { CategoryInfo, DataKey, LocalCategoryInfo, MaybeCategoryInfo } from "./types.ts";
 
 const cache = new FilesystemCache<CategoryId, MaybeCategoryInfo>({
   async fetchFromIndexedDB(id) {

@@ -6,8 +6,8 @@ import {
   getDecryptedSize,
   getEncryptedRange,
   getEncryptedSize,
-} from "#lib/shared/format/index.js";
-import { getContentRangeHeader, parseRangeHeader, resolveRange } from "#lib/shared/http.js";
+} from "#lib/shared/format/index.ts";
+import { getContentRangeHeader, parseRangeHeader, resolveRange } from "#lib/shared/http.ts";
 
 describe("parseRangeHeader", () => {
   it("parses byte ranges", () => {

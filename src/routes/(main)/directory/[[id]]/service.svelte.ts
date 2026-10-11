@@ -7,7 +7,7 @@ import {
   setDirectoryFavorite,
   setFileFavorite,
   type DataKey,
-} from "#lib/features/filesystem/index.js";
+} from "#lib/features/filesystem/index.ts";
 
 export interface SelectedEntry {
   type: "directory" | "file";

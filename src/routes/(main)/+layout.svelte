@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { AdaptiveDiv } from "#lib/ui/index.js";
+  import { AdaptiveDiv } from "#lib/ui/index.ts";
   import BottomBar from "./BottomBar.svelte";
 
   let { children } = $props();

@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { FileThumbnailButton } from "#lib/features/filesystem/components/index.js";
-  import { type SummarizedFileInfo } from "#lib/features/filesystem/index.js";
-  import { EntryButton } from "#lib/ui/index.js";
-  import { requestFreshMediaFilesRetrieval } from "./service";
+  import { FileThumbnailButton } from "#lib/features/filesystem/components/index.ts";
+  import { type SummarizedFileInfo } from "#lib/features/filesystem/index.ts";
+  import { EntryButton } from "#lib/ui/index.ts";
+  import { requestFreshMediaFilesRetrieval } from "./service.ts";
 
   let mediaFiles: SummarizedFileInfo[] = $state([]);
 

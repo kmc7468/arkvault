@@ -1,7 +1,7 @@
-import { ClientRepo, SessionRepo, IntegrityError } from "#lib/server/db/index.js";
-import env from "#lib/server/config.js";
-import { verifySessionId } from "#lib/server/crypto.js";
-import { AppError } from "#lib/server/errors.js";
+import { ClientRepo, SessionRepo, IntegrityError } from "#lib/server/db/index.ts";
+import env from "#lib/server/config.ts";
+import { verifySessionId } from "#lib/server/crypto.ts";
+import { AppError } from "#lib/server/errors.ts";
 
 export interface Session {
   sessionId: string;

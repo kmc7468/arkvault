@@ -1,8 +1,8 @@
 import type { ClientInit } from "@sveltejs/kit/hooks";
-import { cleanupFileCaches } from "#lib/client/cache/index.js";
-import { keyring } from "#lib/client/keys/index.js";
-import { listenForServiceWorkerMessages } from "#lib/client/serviceWorker.js";
-import { cleanupDanglingInfos } from "#lib/client/storage/indexedDB/index.js";
+import { cleanupFileCaches } from "#lib/client/cache/index.ts";
+import { keyring } from "#lib/client/keys/index.ts";
+import { listenForServiceWorkerMessages } from "#lib/client/service-worker.ts";
+import { cleanupDanglingInfos } from "#lib/client/storage/indexed-db/index.ts";
 
 const requestPersistentStorage = async () => {
   const isPersistent = await navigator.storage.persist();

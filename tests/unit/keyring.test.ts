@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { keyring } from "#lib/client/keys/keyring.svelte.js";
-import type { MasterKey } from "#lib/client/keys/types.js";
+import { keyring } from "#lib/client/keys/keyring.svelte.ts";
+import type { MasterKey } from "#lib/client/keys/types.ts";
 
-vi.mock("#lib/client/storage/indexedDB/index.js", () => ({
+vi.mock("#lib/client/storage/indexed-db/index.ts", () => ({
   getClientKey: vi.fn(async () => null),
   getMasterKeys: vi.fn(async () => []),
   getHmacSecrets: vi.fn(async () => []),

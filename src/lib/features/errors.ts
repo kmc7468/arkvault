@@ -1,5 +1,5 @@
-import { showToast } from "#lib/ui/index.js";
-import { isTRPCClientError } from "#trpc/client.js";
+import { showToast } from "#lib/ui/index.ts";
+import { isTRPCClientError } from "#trpc/client.ts";
 
 const getErrorMessage = (e: unknown, fallbackMessage: string) => {
   if (isTRPCClientError(e)) {

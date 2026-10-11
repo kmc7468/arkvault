@@ -1,5 +1,5 @@
 import { createContext as createSvelteContext } from "svelte";
-import type { SelectedCategory } from "#lib/features/filesystem/components/index.js";
+import type { SelectedCategory } from "#lib/features/filesystem/components/index.ts";
 
 export interface SelectedFile {
   id: number;

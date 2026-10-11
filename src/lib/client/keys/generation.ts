@@ -13,9 +13,9 @@ import {
   makeRSAKeyNonextractable,
   wrapHmacSecret,
   wrapMasterKey,
-} from "#lib/shared/crypto/index.js";
-import { keyring } from "./keyring.svelte";
-import { deserializeClientKeys } from "./serialization";
+} from "#lib/shared/crypto/index.ts";
+import { keyring } from "./keyring.svelte.ts";
+import { deserializeClientKeys } from "./serialization.ts";
 
 // Generates new client keys and keeps them in the keyring without persisting
 export const generateClientKeys = async () => {

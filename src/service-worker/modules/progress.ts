@@ -1,5 +1,5 @@
-import type { DownloadProgressMessage } from "#lib/shared/serviceWorker.js";
-import { notifyClients } from "./clients";
+import type { DownloadProgressMessage } from "#lib/shared/service-worker.ts";
+import { notifyClients } from "./clients.ts";
 
 const REPORT_INTERVAL_MS = 200;
 

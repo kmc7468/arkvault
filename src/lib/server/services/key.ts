@@ -1,6 +1,6 @@
-import { ClientRepo, HskRepo, MekRepo } from "#lib/server/db/index.js";
-import { verifySignature } from "#lib/server/crypto.js";
-import { AppError } from "#lib/server/errors.js";
+import { ClientRepo, HskRepo, MekRepo } from "#lib/server/db/index.ts";
+import { verifySignature } from "#lib/server/crypto.ts";
+import { AppError } from "#lib/server/errors.ts";
 
 export const getClientMeks = async (userId: number, clientId: number) => {
   return await MekRepo.getAllValidClientMeks(userId, clientId);

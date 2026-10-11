@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { showErrorToast, tryAction } from "#lib/features/errors.js";
+  import { showErrorToast, tryAction } from "#lib/features/errors.ts";
   import {
     getFavoriteEntries,
     removeFavorite,
     type FavoriteEntry,
-  } from "#lib/features/favorites/index.js";
-  import { DirectoryEntry, FileEntry } from "#lib/features/filesystem/components/index.js";
-  import { RowVirtualizer, TopBar } from "#lib/ui/index.js";
+  } from "#lib/features/favorites/index.ts";
+  import { DirectoryEntry, FileEntry } from "#lib/features/filesystem/components/index.ts";
+  import { RowVirtualizer, TopBar } from "#lib/ui/index.ts";
 
   import IconClose from "~icons/material-symbols/close";
   import IconSearch from "~icons/material-symbols/search";

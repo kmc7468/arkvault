@@ -7,7 +7,7 @@
     requestClientRegistration,
     requestSessionUpgrade,
     serializeClientKeys,
-  } from "#lib/client/keys/index.js";
+  } from "#lib/client/keys/index.ts";
   import {
     BottomDiv,
     Button,
@@ -15,7 +15,7 @@
     TextButton,
     TitledDiv,
     showToast,
-  } from "#lib/ui/index.js";
+  } from "#lib/ui/index.ts";
   import BeforeContinueBottomSheet from "./BeforeContinueBottomSheet.svelte";
   import BeforeContinueModal from "./BeforeContinueModal.svelte";
 

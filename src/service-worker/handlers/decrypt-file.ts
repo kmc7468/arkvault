@@ -4,25 +4,25 @@ import {
   storeCachedChunk,
   touchFileCache,
   type FileCacheLayout,
-} from "#lib/client/cache/fileCache.js";
-import { getFileCacheIndexOf } from "#lib/client/storage/indexedDB/cacheIndex.js";
+} from "#lib/client/cache/file-cache.ts";
+import { getFileCacheIndexOf } from "#lib/client/storage/indexed-db/cache-index.ts";
 import {
   CHUNK_SIZE,
   createDecryptionStream,
   getChunkCount,
   getDecryptedSize,
   getEncryptedRange,
-} from "#lib/shared/format/index.js";
+} from "#lib/shared/format/index.ts";
 import {
   getContentRangeHeader,
   parseRangeHeader,
   resolveRange,
   type ByteRange,
   type RangeRequest,
-} from "#lib/shared/http.js";
-import { DECRYPTED_FILE_URL_PREFIX, type FileMetadata } from "#lib/shared/serviceWorker.js";
-import { getFileMetadata } from "../modules/metadata";
-import { trackDownloadProgress } from "../modules/progress";
+} from "#lib/shared/http.ts";
+import { DECRYPTED_FILE_URL_PREFIX, type FileMetadata } from "#lib/shared/service-worker.ts";
+import { getFileMetadata } from "../modules/metadata.ts";
+import { trackDownloadProgress } from "../modules/progress.ts";
 
 interface StreamRequest {
   fileId: number;

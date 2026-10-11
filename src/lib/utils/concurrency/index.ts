@@ -1,2 +1,2 @@
-export * from "./BoundedQueue";
-export * from "./Scheduler";
+export * from "./bounded-queue.ts";
+export * from "./scheduler.ts";

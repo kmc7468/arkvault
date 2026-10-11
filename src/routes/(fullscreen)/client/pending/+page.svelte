@@ -5,8 +5,8 @@
     downloadMasterKeys,
     generatePublicKeyFingerprint,
     keyring,
-  } from "#lib/client/keys/index.js";
-  import { FullscreenDiv, TitledDiv } from "#lib/ui/index.js";
+  } from "#lib/client/keys/index.ts";
+  import { FullscreenDiv, TitledDiv } from "#lib/ui/index.ts";
 
   import IconFingerprint from "~icons/material-symbols/fingerprint";
 

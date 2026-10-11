@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ActionModal } from "#lib/ui/index.js";
+  import { ActionModal } from "#lib/ui/index.ts";
 
   interface Props {
     isOpen: boolean;

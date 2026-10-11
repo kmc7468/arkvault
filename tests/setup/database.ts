@@ -3,7 +3,7 @@ import { Kysely, PostgresDialect } from "kysely";
 import { Migrator } from "kysely/migration";
 import pg from "pg";
 import type { TestProject } from "vitest/node";
-import migrations from "../../src/lib/server/db/migrations";
+import migrations from "../../src/lib/server/db/migrations/index.ts";
 
 declare module "vitest" {
   export interface ProvidedContext {

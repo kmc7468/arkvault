@@ -1,5 +1,5 @@
-import type { ComputeMessage, ResultMessage } from "#workers/hmac.js";
-import HmacWorker from "#workers/hmac.js?worker";
+import type { ComputeMessage, ResultMessage } from "#workers/hmac.ts";
+import HmacWorker from "#workers/hmac.ts?worker";
 
 // Computes HMAC of large blobs incrementally in a worker, which WebCrypto doesn't support
 export const signMessageHmac = async (message: Blob, hmacSecret: CryptoKey) => {

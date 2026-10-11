@@ -7,7 +7,7 @@ import {
   encryptChunk,
   encryptString,
   generateDataKey,
-} from "#lib/shared/crypto/index.js";
+} from "#lib/shared/crypto/index.ts";
 
 describe("base64", () => {
   it("round-trips large buffers", () => {

@@ -1,4 +1,4 @@
-import { trpc } from "#trpc/client.js";
+import { trpc } from "#trpc/client.ts";
 
 export const login = async (email: string, password: string) => {
   await trpc.auth.login.mutate({ email, password });

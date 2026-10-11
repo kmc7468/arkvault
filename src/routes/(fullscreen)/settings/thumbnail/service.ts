@@ -1,13 +1,13 @@
 import { limitFunction } from "p-limit";
 import { SvelteMap } from "svelte/reactivity";
-import { generateThumbnailFromUrl } from "#lib/client/media/thumbnail.js";
+import { generateThumbnailFromUrl } from "#lib/client/media/thumbnail.ts";
 import {
   getFileInfo,
   getFileStreamUrl,
   uploadFileThumbnail,
   type FileInfo,
-} from "#lib/features/filesystem/index.js";
-import type { RouterOutputs } from "#trpc/router.server.js";
+} from "#lib/features/filesystem/index.ts";
+import type { RouterOutputs } from "#trpc/router.server.ts";
 
 export type GenerationStatus = "queued" | "generating" | "uploading" | "uploaded" | "error";
 

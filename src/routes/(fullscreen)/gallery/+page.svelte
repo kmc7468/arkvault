@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { FileThumbnailButton } from "#lib/features/filesystem/components/index.js";
+  import { FileThumbnailButton } from "#lib/features/filesystem/components/index.ts";
   import {
     bulkGetFileInfo,
     type MaybeFileInfo,
     type SummarizedFileInfo,
-  } from "#lib/features/filesystem/index.js";
-  import { FullscreenDiv, RowVirtualizer, TopBar } from "#lib/ui/index.js";
-  import { formatDate, formatDateSortable, SortBy, sortEntries } from "#lib/utils/index.js";
+  } from "#lib/features/filesystem/index.ts";
+  import { FullscreenDiv, RowVirtualizer, TopBar } from "#lib/ui/index.ts";
+  import { formatDate, formatDateSortable, SortBy, sortEntries } from "#lib/utils/index.ts";
 
   let { data } = $props();
 

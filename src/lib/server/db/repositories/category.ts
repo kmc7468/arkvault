@@ -1,8 +1,8 @@
 import type { Selectable } from "kysely";
-import { IntegrityError } from "../error";
-import db from "../kysely";
-import type { CategoryTable, Ciphertext } from "../schema";
-import { lockActiveMekVersion } from "./mek";
+import { IntegrityError } from "../error.ts";
+import db from "../kysely.ts";
+import type { CategoryTable, Ciphertext } from "../schema/index.ts";
+import { lockActiveMekVersion } from "./mek.ts";
 
 export interface Category {
   id: number;

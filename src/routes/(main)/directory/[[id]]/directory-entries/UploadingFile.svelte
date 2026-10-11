@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { LiveFileUploadState } from "#lib/client/transfer/index.js";
-  import { formatNetworkSpeed } from "#lib/utils/index.js";
+  import type { LiveFileUploadState } from "#lib/client/transfer/index.ts";
+  import { formatNetworkSpeed } from "#lib/utils/index.ts";
 
   import IconDraft from "~icons/material-symbols/draft";
 

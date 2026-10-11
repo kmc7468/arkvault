@@ -1,9 +1,9 @@
-import * as Initial1737357000 from "./1737357000-Initial";
-import * as AddFileCategory1737422340 from "./1737422340-AddFileCategory";
-import * as AddThumbnail1738409340 from "./1738409340-AddThumbnail";
-import * as AddChunkedUpload1768062380 from "./1768062380-AddChunkedUpload";
-import * as AddFavorites1768643000 from "./1768643000-AddFavorites";
-import * as AddFileDeletionQueue1791730000 from "./1791730000-AddFileDeletionQueue";
+import * as Initial1737357000 from "./1737357000-Initial.ts";
+import * as AddFileCategory1737422340 from "./1737422340-AddFileCategory.ts";
+import * as AddThumbnail1738409340 from "./1738409340-AddThumbnail.ts";
+import * as AddChunkedUpload1768062380 from "./1768062380-AddChunkedUpload.ts";
+import * as AddFavorites1768643000 from "./1768643000-AddFavorites.ts";
+import * as AddFileDeletionQueue1791730000 from "./1791730000-AddFileDeletionQueue.ts";
 
 export default {
   "1737357000-Initial": Initial1737357000,

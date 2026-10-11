@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { FileCacheIndex } from "#lib/client/storage/indexedDB/index.js";
-  import type { MaybeFileInfo } from "#lib/features/filesystem/index.js";
-  import { formatDate, formatFileSize } from "#lib/utils/index.js";
+  import type { FileCacheIndex } from "#lib/client/storage/indexed-db/index.ts";
+  import type { MaybeFileInfo } from "#lib/features/filesystem/index.ts";
+  import { formatDate, formatFileSize } from "#lib/utils/index.ts";
 
   import IconDraft from "~icons/material-symbols/draft";
   import IconScanDelete from "~icons/material-symbols/scan-delete";

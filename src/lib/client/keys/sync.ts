@@ -7,10 +7,10 @@ import {
   unwrapHmacSecret,
   unwrapMasterKey,
   verifyMasterKeyWrapped,
-} from "#lib/shared/crypto/index.js";
-import { isTRPCClientError, trpc } from "#trpc/client.js";
-import { keyring } from "./keyring.svelte";
-import type { ClientKeys } from "./types";
+} from "#lib/shared/crypto/index.ts";
+import { isTRPCClientError, trpc } from "#trpc/client.ts";
+import { keyring } from "./keyring.svelte.ts";
+import type { ClientKeys } from "./types.ts";
 
 // Synchronizes keys with the server
 

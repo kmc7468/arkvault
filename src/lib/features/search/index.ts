@@ -4,8 +4,8 @@ import {
   type FileInfo,
   type LocalCategoryInfo,
   type LocalDirectoryInfo,
-} from "#lib/features/filesystem/index.js";
-import { trpc } from "#trpc/client.js";
+} from "#lib/features/filesystem/index.ts";
+import { trpc } from "#trpc/client.ts";
 
 export interface SearchFilter {
   ancestorId: DirectoryId;

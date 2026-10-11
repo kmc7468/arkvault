@@ -1,2 +1,2 @@
-export * from "./download.svelte";
-export * from "./upload.svelte";
+export * from "./download.svelte.ts";
+export * from "./upload.svelte.ts";

@@ -3,7 +3,7 @@ import { observable } from "@trpc/server/observable";
 import superjson from "superjson";
 import { goto } from "$app/navigation";
 import { navigating } from "$app/state";
-import type { AppRouter } from "./router.server";
+import type { AppRouter } from "./router.server.ts";
 
 // Procedures that report invalid credentials as UNAUTHORIZED, not an expired session
 const CREDENTIAL_PROCEDURES = new Set(["auth.login", "auth.upgrade"]);

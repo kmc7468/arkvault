@@ -2,11 +2,11 @@
   import { untrack } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { captureVideoThumbnail } from "#lib/client/media/thumbnail.js";
-  import { saveDecryptedFile } from "#lib/client/serviceWorker.js";
-  import { getFileDownloadState } from "#lib/client/transfer/index.js";
-  import { showErrorToast, tryAction } from "#lib/features/errors.js";
-  import { Categories } from "#lib/features/filesystem/components/index.js";
+  import { captureVideoThumbnail } from "#lib/client/media/thumbnail.ts";
+  import { saveDecryptedFile } from "#lib/client/service-worker.ts";
+  import { getFileDownloadState } from "#lib/client/transfer/index.ts";
+  import { showErrorToast, tryAction } from "#lib/features/errors.ts";
+  import { Categories } from "#lib/features/filesystem/components/index.ts";
   import {
     addFileToCategory,
     getFileStreamUrl,
@@ -16,8 +16,8 @@
     useFile,
     type DataKey,
     type FileInfo,
-  } from "#lib/features/filesystem/index.js";
-  import { FullscreenDiv, IconEntryButton, TopBar } from "#lib/ui/index.js";
+  } from "#lib/features/filesystem/index.ts";
+  import { FullscreenDiv, IconEntryButton, TopBar } from "#lib/ui/index.ts";
   import AddToCategoryBottomSheet from "./AddToCategoryBottomSheet.svelte";
   import DownloadStatus from "./DownloadStatus.svelte";
   import TopBarMenu from "./TopBarMenu.svelte";

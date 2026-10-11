@@ -1,5 +1,5 @@
 import { redirect } from "@sveltejs/kit";
-import { keyring } from "#lib/client/keys/index.js";
+import { keyring } from "#lib/client/keys/index.ts";
 import type { LayoutLoad } from "./$types";
 
 export const ssr = false;

@@ -5,8 +5,8 @@ import {
   storeClientKey,
   storeHmacSecrets,
   storeMasterKeys,
-} from "#lib/client/storage/indexedDB/index.js";
-import type { ClientKeys, HmacSecret, MasterKey } from "./types";
+} from "#lib/client/storage/indexed-db/index.ts";
+import type { ClientKeys, HmacSecret, MasterKey } from "./types.ts";
 
 const findLatestActive = <T extends { version: number; state: string }>(
   entries: ReadonlyMap<number, T>,

@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "crypto";
 import { createReadStream } from "fs";
 import { mkdir, open, unlink } from "fs/promises";
 import { dirname } from "path";
-import env from "#lib/server/config.js";
+import env from "#lib/server/config.ts";
 
 const roots = {
   library: () => env.libraryPath,

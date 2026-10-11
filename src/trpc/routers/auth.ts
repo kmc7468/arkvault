@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { cookieOptions } from "#lib/server/auth.js";
-import { AuthService } from "#lib/server/services/index.js";
-import { router, publicProcedure, roleProcedure } from "#trpc/init.server.js";
-import { Base64Schema, IdSchema } from "#trpc/schemas.js";
+import { cookieOptions } from "#lib/server/auth.ts";
+import { AuthService } from "#lib/server/services/index.ts";
+import { router, publicProcedure, roleProcedure } from "#trpc/init.server.ts";
+import { Base64Schema, IdSchema } from "#trpc/schemas.ts";
 
 const authRouter = router({
   login: publicProcedure

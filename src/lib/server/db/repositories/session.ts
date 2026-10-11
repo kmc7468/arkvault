@@ -1,7 +1,7 @@
 import pg from "pg";
-import env from "#lib/server/config.js";
-import { IntegrityError } from "../error";
-import db from "../kysely";
+import env from "#lib/server/config.ts";
+import { IntegrityError } from "../error.ts";
+import db from "../kysely.ts";
 
 export const createSession = async (
   userId: number,

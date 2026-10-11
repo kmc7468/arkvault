@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { DirectoryService, FileService } from "#lib/server/services/index.js";
-import { toDirectoryDto, toFileDto } from "#trpc/dto.js";
-import { router, roleProcedure } from "#trpc/init.server.js";
-import { IdSchema } from "#trpc/schemas.js";
+import { DirectoryService, FileService } from "#lib/server/services/index.ts";
+import { toDirectoryDto, toFileDto } from "#trpc/dto.ts";
+import { router, roleProcedure } from "#trpc/init.server.ts";
+import { IdSchema } from "#trpc/schemas.ts";
 
 const IdInputSchema = z.object({ id: IdSchema });
 

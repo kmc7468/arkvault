@@ -1,6 +1,6 @@
 import { self } from "$app/service-worker";
-import type { FileMetadata, ServiceWorkerResponse } from "#lib/shared/serviceWorker.js";
-import { fileMetadataStore } from "../stores";
+import type { FileMetadata, ServiceWorkerResponse } from "#lib/shared/service-worker.ts";
+import { fileMetadataStore } from "../stores.ts";
 
 const METADATA_REQUEST_TIMEOUT_MS = 3000;
 

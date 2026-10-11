@@ -1,4 +1,4 @@
-import { encodeString, encodeToBase64, decodeFromBase64 } from "./encoding";
+import { encodeString, encodeToBase64, decodeFromBase64 } from "./encoding.ts";
 
 export const generateEncryptionKeyPair = async () => {
   const keyPair = await crypto.subtle.generateKey(

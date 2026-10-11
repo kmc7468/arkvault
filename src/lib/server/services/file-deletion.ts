@@ -1,5 +1,5 @@
-import { FileDeletionRepo } from "#lib/server/db/index.js";
-import { deleteFile } from "#lib/server/storage/index.js";
+import { FileDeletionRepo } from "#lib/server/db/index.ts";
+import { deleteFile } from "#lib/server/storage/index.ts";
 
 const BATCH_SIZE = 100;
 

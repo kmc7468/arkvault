@@ -4,11 +4,11 @@
     downloadMasterKeys,
     keyring,
     requestClientRegistrationAndSessionUpgrade,
-  } from "#lib/client/keys/index.js";
-  import { ForceLoginModal } from "#lib/features/auth/components/index.js";
-  import { login as requestLogin, logout as requestLogout } from "#lib/features/auth/index.js";
-  import { showErrorToast } from "#lib/features/errors.js";
-  import { cleanupDeletedFileCaches } from "#lib/features/filesystem/index.js";
+  } from "#lib/client/keys/index.ts";
+  import { ForceLoginModal } from "#lib/features/auth/components/index.ts";
+  import { login as requestLogin, logout as requestLogout } from "#lib/features/auth/index.ts";
+  import { showErrorToast } from "#lib/features/errors.ts";
+  import { cleanupDeletedFileCaches } from "#lib/features/filesystem/index.ts";
   import {
     BottomDiv,
     Button,
@@ -17,8 +17,8 @@
     TextInput,
     TitledDiv,
     showToast,
-  } from "#lib/ui/index.js";
-  import { isTRPCClientError } from "#trpc/client.js";
+  } from "#lib/ui/index.ts";
+  import { isTRPCClientError } from "#trpc/client.ts";
 
   let { data } = $props();
 

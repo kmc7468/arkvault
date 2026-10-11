@@ -1,11 +1,11 @@
 import { sql, type Selectable } from "kysely";
-import { IntegrityError } from "../error";
-import db from "../kysely";
-import type { Ciphertext, UploadSessionTable } from "../schema";
-import { ensureDirectoryExists } from "./directory";
-import { enqueueFileDeletions } from "./fileDeletion";
-import { lockActiveHskVersion } from "./hsk";
-import { lockActiveMekVersion } from "./mek";
+import { IntegrityError } from "../error.ts";
+import db from "../kysely.ts";
+import type { Ciphertext, UploadSessionTable } from "../schema/index.ts";
+import { ensureDirectoryExists } from "./directory.ts";
+import { enqueueFileDeletions } from "./file-deletion.ts";
+import { lockActiveHskVersion } from "./hsk.ts";
+import { lockActiveMekVersion } from "./mek.ts";
 
 interface BaseUploadSession {
   id: string;

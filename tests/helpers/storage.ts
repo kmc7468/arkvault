@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "fs/promises";
 import { dirname, join } from "path";
-import env from "#lib/server/config.js";
+import env from "#lib/server/config.ts";
 
 let sequence = 0;
 

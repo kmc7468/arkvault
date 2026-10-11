@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { encryptChunk, generateDataKey } from "#lib/shared/crypto/index.js";
+import { encryptChunk, generateDataKey } from "#lib/shared/crypto/index.ts";
+import { concatenateBuffers } from "#lib/shared/crypto/index.ts";
 import {
   CHUNK_SIZE,
   createDecryptionStream,
   getEncryptedRange,
   getEncryptedSize,
-} from "#lib/shared/format/index.js";
-import { concatenateBuffers } from "#lib/shared/crypto/index.js";
+} from "#lib/shared/format/index.ts";
 
 const plaintext = Uint8Array.from({ length: 2 * CHUNK_SIZE + 12345 }, (_, i) => (i * 7) % 251);
 

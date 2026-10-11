@@ -1,5 +1,5 @@
 <script module lang="ts">
-  import type { DataKey, SubCategoryInfo } from "#lib/features/filesystem/index.js";
+  import type { DataKey, SubCategoryInfo } from "#lib/features/filesystem/index.ts";
 
   export interface SelectedCategory {
     id: number;
@@ -11,8 +11,8 @@
 <script lang="ts">
   import type { Component } from "svelte";
   import type { SvelteHTMLElements } from "svelte/elements";
-  import { ActionEntryButton, CategoryLabel } from "#lib/ui/index.js";
-  import { sortEntries } from "#lib/utils/index.js";
+  import { ActionEntryButton, CategoryLabel } from "#lib/ui/index.ts";
+  import { sortEntries } from "#lib/utils/index.ts";
 
   interface Props {
     categories: SubCategoryInfo[];

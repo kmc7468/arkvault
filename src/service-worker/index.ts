@@ -3,9 +3,9 @@ import {
   DECRYPTED_FILE_URL_PREFIX,
   type ServiceWorkerMessage,
   type ServiceWorkerResponse,
-} from "#lib/shared/serviceWorker.js";
-import { decryptFile } from "./handlers";
-import { fileMetadataStore } from "./stores";
+} from "#lib/shared/service-worker.ts";
+import { decryptFile } from "./handlers/index.ts";
+import { fileMetadataStore } from "./stores.ts";
 
 self.addEventListener("message", (event) => {
   const message: ServiceWorkerMessage = event.data;

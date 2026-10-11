@@ -1,11 +1,11 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { tryAction } from "#lib/features/errors.js";
+  import { tryAction } from "#lib/features/errors.ts";
   import {
     FileEntry,
     SubCategories,
     CategoryCreateModal,
-  } from "#lib/features/filesystem/components/index.js";
+  } from "#lib/features/filesystem/components/index.ts";
   import {
     createCategory,
     deleteCategory,
@@ -14,13 +14,13 @@
     setCategoryFileRecursive,
     useCategory,
     type LocalCategoryInfo,
-  } from "#lib/features/filesystem/index.js";
-  import { CheckBox, OverlayGroup, RowVirtualizer, TopBar } from "#lib/ui/index.js";
-  import { sortEntries } from "#lib/utils/index.js";
+  } from "#lib/features/filesystem/index.ts";
+  import { CheckBox, OverlayGroup, RowVirtualizer, TopBar } from "#lib/ui/index.ts";
+  import { sortEntries } from "#lib/utils/index.ts";
   import CategoryDeleteModal from "./CategoryDeleteModal.svelte";
   import CategoryMenuBottomSheet from "./CategoryMenuBottomSheet.svelte";
   import CategoryRenameModal from "./CategoryRenameModal.svelte";
-  import { createContext } from "./service.svelte";
+  import { createContext } from "./service.svelte.ts";
 
   import IconClose from "~icons/material-symbols/close";
   import IconMoreVert from "~icons/material-symbols/more-vert";

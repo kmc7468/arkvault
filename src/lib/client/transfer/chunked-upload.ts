@@ -1,10 +1,10 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import axios from "axios";
 import pLimit from "p-limit";
-import { encodeToBase64, encryptChunk } from "#lib/shared/crypto/index.js";
-import { CHUNK_SIZE, getChunkCount, getEncryptedSize } from "#lib/shared/format/index.js";
-import { BoundedQueue } from "#lib/utils/concurrency/index.js";
-import { createSpeedMeter } from "#lib/utils/speedMeter.js";
+import { encodeToBase64, encryptChunk } from "#lib/shared/crypto/index.ts";
+import { CHUNK_SIZE, getChunkCount, getEncryptedSize } from "#lib/shared/format/index.ts";
+import { BoundedQueue } from "#lib/utils/concurrency/index.ts";
+import { createSpeedMeter } from "#lib/utils/speed-meter.ts";
 
 interface UploadStats {
   progress: number;

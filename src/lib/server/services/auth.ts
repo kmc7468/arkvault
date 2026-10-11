@@ -1,9 +1,9 @@
 import argon2 from "argon2";
-import { ClientRepo, IntegrityError, SessionRepo, UserRepo } from "#lib/server/db/index.js";
-import env from "#lib/server/config.js";
-import { issueSessionId } from "#lib/server/crypto.js";
-import { AppError } from "#lib/server/errors.js";
-import { createChallenge, verifyChallengeAnswer } from "./client";
+import { ClientRepo, IntegrityError, SessionRepo, UserRepo } from "#lib/server/db/index.ts";
+import env from "#lib/server/config.ts";
+import { issueSessionId } from "#lib/server/crypto.ts";
+import { AppError } from "#lib/server/errors.ts";
+import { createChallenge, verifyChallengeAnswer } from "./client.ts";
 
 const MIN_PASSWORD_LENGTH = 8;
 

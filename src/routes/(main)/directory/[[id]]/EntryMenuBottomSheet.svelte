@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { BottomSheet, DirectoryEntryLabel, IconEntryButton } from "#lib/ui/index.js";
-  import { useContext } from "./service.svelte";
+  import { BottomSheet, DirectoryEntryLabel, IconEntryButton } from "#lib/ui/index.ts";
+  import { useContext } from "./service.svelte.ts";
 
   import IconFavorite from "~icons/material-symbols/favorite";
   import IconFavoriteBorder from "~icons/material-symbols/favorite-outline";

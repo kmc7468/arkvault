@@ -1,24 +1,24 @@
 import { limitFunction } from "p-limit";
-import { signMessageHmac } from "#lib/client/crypto/hmac.js";
+import { createUploadFileCache } from "#lib/client/cache/index.ts";
+import { signMessageHmac } from "#lib/client/crypto/hmac.ts";
 import {
   ensureHmacSecrets,
   keyring,
   type HmacSecret,
   type MasterKey,
-} from "#lib/client/keys/index.js";
-import { createUploadFileCache } from "#lib/client/cache/index.js";
-import { readExifDateTime } from "#lib/client/media/exif.js";
-import { generateThumbnail } from "#lib/client/media/thumbnail.js";
-import { uploadBlob } from "#lib/client/transfer/chunkedUpload.js";
+} from "#lib/client/keys/index.ts";
+import { readExifDateTime } from "#lib/client/media/exif.ts";
+import { generateThumbnail } from "#lib/client/media/thumbnail.ts";
+import { uploadBlob } from "#lib/client/transfer/chunked-upload.ts";
 import {
   encodeToBase64,
   generateDataKey,
   wrapDataKey,
   encryptString,
-} from "#lib/shared/crypto/index.js";
-import { getChunkCount } from "#lib/shared/format/index.js";
-import { Scheduler } from "#lib/utils/index.js";
-import { trpc } from "#trpc/client.js";
+} from "#lib/shared/crypto/index.ts";
+import { getChunkCount } from "#lib/shared/format/index.ts";
+import { Scheduler } from "#lib/utils/index.ts";
+import { trpc } from "#trpc/client.ts";
 
 export interface FileUploadState {
   id: string;

@@ -1,11 +1,11 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { tryAction } from "#lib/features/errors.js";
-  import { createDirectory, uploadFile, useDirectory } from "#lib/features/filesystem/index.js";
-  import { FloatingButton, OverlayGroup, TopBar } from "#lib/ui/index.js";
+  import { tryAction } from "#lib/features/errors.ts";
+  import { createDirectory, uploadFile, useDirectory } from "#lib/features/filesystem/index.ts";
+  import { FloatingButton, OverlayGroup, TopBar } from "#lib/ui/index.ts";
   import DirectoryCreateModal from "./DirectoryCreateModal.svelte";
-  import DirectoryEntries from "./DirectoryEntries";
+  import DirectoryEntries from "./directory-entries/index.ts";
   import DownloadStatusCard from "./DownloadStatusCard.svelte";
   import DuplicateFileModal from "./DuplicateFileModal.svelte";
   import EntryCreateBottomSheet from "./EntryCreateBottomSheet.svelte";
@@ -13,7 +13,12 @@
   import EntryMenuBottomSheet from "./EntryMenuBottomSheet.svelte";
   import EntryRenameModal from "./EntryRenameModal.svelte";
   import UploadStatusCard from "./UploadStatusCard.svelte";
-  import { createContext, deleteEntry, renameEntry, toggleEntryFavorite } from "./service.svelte";
+  import {
+    createContext,
+    deleteEntry,
+    renameEntry,
+    toggleEntryFavorite,
+  } from "./service.svelte.ts";
 
   import IconSearch from "~icons/material-symbols/search";
   import IconAdd from "~icons/material-symbols/add";

@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { tryAction } from "#lib/features/errors.js";
-  import { SubCategories, CategoryCreateModal } from "#lib/features/filesystem/components/index.js";
-  import { createCategory, useCategory } from "#lib/features/filesystem/index.js";
-  import { BottomDiv, BottomSheet, Button, FullscreenDiv } from "#lib/ui/index.js";
+  import { tryAction } from "#lib/features/errors.ts";
+  import { SubCategories, CategoryCreateModal } from "#lib/features/filesystem/components/index.ts";
+  import { createCategory, useCategory } from "#lib/features/filesystem/index.ts";
+  import { BottomDiv, BottomSheet, Button, FullscreenDiv } from "#lib/ui/index.ts";
 
   interface Props {
     onAddToCategoryClick: (categoryId: number) => void;

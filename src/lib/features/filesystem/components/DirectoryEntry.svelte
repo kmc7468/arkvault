@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Component } from "svelte";
   import type { SvelteHTMLElements } from "svelte/elements";
-  import { ActionEntryButton, DirectoryEntryLabel } from "#lib/ui/index.js";
+  import { ActionEntryButton, DirectoryEntryLabel } from "#lib/ui/index.ts";
 
   interface Props {
     action?: {

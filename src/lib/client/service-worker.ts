@@ -1,10 +1,10 @@
-import { handleDownloadProgress } from "#lib/client/transfer/download.svelte.js";
+import { handleDownloadProgress } from "#lib/client/transfer/download.svelte.ts";
 import {
   DECRYPTED_FILE_URL_PREFIX,
   type FileMetadata,
   type ServiceWorkerMessage,
   type ServiceWorkerResponse,
-} from "#lib/shared/serviceWorker.js";
+} from "#lib/shared/service-worker.ts";
 
 const PREPARE_TIMEOUT_MS = 5000;
 

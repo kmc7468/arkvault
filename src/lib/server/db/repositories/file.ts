@@ -1,11 +1,11 @@
 import { sql, type Selectable } from "kysely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import pg from "pg";
-import { IntegrityError } from "../error";
-import db from "../kysely";
-import type { Ciphertext, FileTable } from "../schema";
-import { toCategory } from "./category";
-import { enqueueFileDeletions } from "./fileDeletion";
+import { IntegrityError } from "../error.ts";
+import db from "../kysely.ts";
+import type { Ciphertext, FileTable } from "../schema/index.ts";
+import { toCategory } from "./category.ts";
+import { enqueueFileDeletions } from "./file-deletion.ts";
 
 export interface File {
   id: number;

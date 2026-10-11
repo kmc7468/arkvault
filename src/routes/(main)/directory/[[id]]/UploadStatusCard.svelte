@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getUploadingFiles } from "#lib/client/transfer/index.js";
+  import { getUploadingFiles } from "#lib/client/transfer/index.ts";
 
   interface Props {
     onclick: () => void;

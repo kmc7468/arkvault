@@ -2,9 +2,9 @@ import { error } from "@sveltejs/kit";
 import { Readable } from "stream";
 import type { ReadableStream } from "stream/web";
 import { z } from "zod";
-import { authorize } from "#lib/server/auth.js";
-import { handleAppErrors } from "#lib/server/http.js";
-import { UploadService } from "#lib/server/services/index.js";
+import { authorize } from "#lib/server/auth.ts";
+import { handleAppErrors } from "#lib/server/http.ts";
+import { UploadService } from "#lib/server/services/index.ts";
 import type { RequestHandler } from "./$types";
 
 export const POST: RequestHandler = handleAppErrors(async ({ locals, params, request }) => {

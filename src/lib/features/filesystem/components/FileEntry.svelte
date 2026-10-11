@@ -1,10 +1,10 @@
 <script lang="ts">
   import type { Component } from "svelte";
   import type { ClassValue, SvelteHTMLElements } from "svelte/elements";
-  import { getFileThumbnail } from "#lib/client/cache/index.js";
-  import { ActionEntryButton, DirectoryEntryLabel } from "#lib/ui/index.js";
-  import { formatDateTime } from "#lib/utils/index.js";
-  import type { SummarizedFileInfo } from "../types";
+  import { getFileThumbnail } from "#lib/client/cache/index.ts";
+  import { ActionEntryButton, DirectoryEntryLabel } from "#lib/ui/index.ts";
+  import { formatDateTime } from "#lib/utils/index.ts";
+  import type { SummarizedFileInfo } from "../types.ts";
 
   interface Props {
     action?: {

@@ -1,5 +1,5 @@
 import { sql } from "kysely";
-import db from "#lib/server/db/kysely.js";
+import db from "#lib/server/db/kysely.ts";
 
 export const resetDatabase = async () => {
   const { rows } = await sql<{ tablename: string }>`

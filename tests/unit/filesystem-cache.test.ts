@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { FilesystemCache } from "#lib/features/filesystem/cache.svelte.js";
+import { FilesystemCache } from "#lib/features/filesystem/cache.svelte.ts";
 
 interface Entry {
   id: number;

@@ -1,4 +1,4 @@
-import { AppError } from "#lib/server/errors.js";
+import { AppError } from "#lib/server/errors.ts";
 
 const DEK_VERSION_TOLERANCE = 60 * 1000; // 1 minute
 

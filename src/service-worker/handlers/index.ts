@@ -1,1 +1,1 @@
-export { default as decryptFile } from "./decryptFile";
+export { default as decryptFile } from "./decrypt-file.ts";

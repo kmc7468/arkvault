@@ -1,9 +1,9 @@
 import type { Selectable } from "kysely";
-import { IntegrityError } from "../error";
-import db from "../kysely";
-import type { Ciphertext, DirectoryTable } from "../schema";
-import { enqueueFileDeletions } from "./fileDeletion";
-import { lockActiveMekVersion } from "./mek";
+import { IntegrityError } from "../error.ts";
+import db from "../kysely.ts";
+import type { Ciphertext, DirectoryTable } from "../schema/index.ts";
+import { enqueueFileDeletions } from "./file-deletion.ts";
+import { lockActiveMekVersion } from "./mek.ts";
 
 export interface Directory {
   id: number;

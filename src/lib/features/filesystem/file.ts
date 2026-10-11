@@ -1,11 +1,11 @@
-import { deleteFileCache, deleteFileThumbnailCache } from "#lib/client/cache/index.js";
-import * as IndexedDB from "#lib/client/storage/indexedDB/index.js";
-import { isTRPCClientError, trpc } from "#trpc/client.js";
-import { FilesystemCache } from "./cache.svelte";
-import { invalidateDirectory } from "./directory";
-import { decryptCategoryMetadata, decryptFileMetadata, encryptName } from "./metadata";
-import { useResource } from "./resource.svelte";
-import type { DataKey, FileInfo, MaybeFileInfo } from "./types";
+import { deleteFileCache, deleteFileThumbnailCache } from "#lib/client/cache/index.ts";
+import * as IndexedDB from "#lib/client/storage/indexed-db/index.ts";
+import { isTRPCClientError, trpc } from "#trpc/client.ts";
+import { FilesystemCache } from "./cache.svelte.ts";
+import { invalidateDirectory } from "./directory.ts";
+import { decryptCategoryMetadata, decryptFileMetadata, encryptName } from "./metadata.ts";
+import { useResource } from "./resource.svelte.ts";
+import type { DataKey, FileInfo, MaybeFileInfo } from "./types.ts";
 
 const cache = new FilesystemCache<number, MaybeFileInfo>({
   async fetchFromIndexedDB(id) {

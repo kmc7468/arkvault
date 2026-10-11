@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { CategoryRepo, DirectoryRepo, UploadRepo, IntegrityError } from "#lib/server/db/index.js";
+import { CategoryRepo, DirectoryRepo, UploadRepo, IntegrityError } from "#lib/server/db/index.ts";
 import {
   createCategory,
   createDirectory,
@@ -7,7 +7,7 @@ import {
   newEntryParams,
   resetDatabase,
   ciphertext,
-} from "../helpers/database";
+} from "../helpers/database.ts";
 
 beforeEach(resetDatabase);
 

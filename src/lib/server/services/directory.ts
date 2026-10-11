@@ -1,8 +1,8 @@
-import { DirectoryRepo, FileRepo } from "#lib/server/db/index.js";
-import type { Ciphertext } from "#lib/server/db/schema/index.js";
-import { AppError } from "#lib/server/errors.js";
-import { ensureFreshDekVersion } from "./common";
-import { schedulePendingFileDeletions } from "./fileDeletion";
+import { DirectoryRepo, FileRepo } from "#lib/server/db/index.ts";
+import type { Ciphertext } from "#lib/server/db/schema/index.ts";
+import { AppError } from "#lib/server/errors.ts";
+import { ensureFreshDekVersion } from "./common.ts";
+import { schedulePendingFileDeletions } from "./file-deletion.ts";
 
 export const getDirectory = async (userId: number, directoryId: DirectoryId) => {
   const directory =

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ClassValue } from "svelte/elements";
-  import { IconLabel } from "#lib/ui/index.js";
+  import { IconLabel } from "#lib/ui/index.ts";
 
   import IconFolder from "~icons/material-symbols/folder";
   import IconDriveFolderUpload from "~icons/material-symbols/drive-folder-upload";

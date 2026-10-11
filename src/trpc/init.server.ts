@@ -1,8 +1,8 @@
 import type { RequestEvent } from "@sveltejs/kit";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
-import { authorize, type ClientSession, type Session } from "#lib/server/auth.js";
-import { AppError, type ErrorCode } from "#lib/server/errors.js";
+import { authorize, type ClientSession, type Session } from "#lib/server/auth.ts";
+import { AppError, type ErrorCode } from "#lib/server/errors.ts";
 
 export const createContext = (event: RequestEvent) => event;
 export type Context = Awaited<ReturnType<typeof createContext>>;

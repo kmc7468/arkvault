@@ -1,14 +1,14 @@
 import mime from "mime";
 import { z } from "zod";
-import { UploadService } from "#lib/server/services/index.js";
-import { router, roleProcedure } from "#trpc/init.server.js";
+import { UploadService } from "#lib/server/services/index.ts";
+import { router, roleProcedure } from "#trpc/init.server.ts";
 import {
   Base64Schema,
   DirectoryIdSchema,
   EncryptedNameSchema,
   IdSchema,
   toCiphertext,
-} from "#trpc/schemas.js";
+} from "#trpc/schemas.ts";
 
 const uploadRouter = router({
   startFileUpload: roleProcedure["activeClient"]

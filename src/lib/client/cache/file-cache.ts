@@ -4,7 +4,7 @@ import {
   getFileCacheIndexOf,
   storeFileCacheIndex,
   updateFileCacheRetrievedAt,
-} from "#lib/client/storage/indexedDB/cacheIndex.js";
+} from "#lib/client/storage/indexed-db/cache-index.ts";
 import {
   createWritable,
   deleteDirectory,
@@ -14,8 +14,8 @@ import {
   listDirectoryNames,
   listFileNames,
   moveFile,
-} from "#lib/client/storage/opfs.js";
-import { CHUNK_SIZE, getChunkCount } from "#lib/shared/format/index.js";
+} from "#lib/client/storage/opfs.ts";
+import { CHUNK_SIZE, getChunkCount } from "#lib/shared/format/index.ts";
 
 // Caches the plaintext of files in chunks, so that partially loaded files (e.g. videos which were
 // partially played) can also be cached. Chunk `i` starts at `i * CHUNK_SIZE` of the plaintext,

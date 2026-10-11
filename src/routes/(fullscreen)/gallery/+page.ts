@@ -1,4 +1,4 @@
-import { trpc } from "#trpc/client.js";
+import { trpc } from "#trpc/client.ts";
 import type { PageLoad } from "./$types";
 
 export const load: PageLoad = async ({ parent }) => {

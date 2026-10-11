@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { FileUploadState } from "#lib/client/transfer/index.js";
-  import { formatNetworkSpeed } from "#lib/utils/index.js";
+  import type { FileUploadState } from "#lib/client/transfer/index.ts";
+  import { formatNetworkSpeed } from "#lib/utils/index.ts";
 
   import IconPending from "~icons/material-symbols/pending";
   import IconLockClock from "~icons/material-symbols/lock-clock";

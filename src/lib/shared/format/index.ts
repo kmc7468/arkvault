@@ -1,2 +1,2 @@
-export * from "./chunk";
-export * from "./stream";
+export * from "./chunk.ts";
+export * from "./stream.ts";

@@ -1,9 +1,9 @@
 import { Kysely } from "kysely";
 import { Migrator } from "kysely/migration";
-import env from "#lib/server/config.js";
-import { createDialect } from "./dialect";
-import migrations from "./migrations";
-import type { Database } from "./schema";
+import env from "#lib/server/config.ts";
+import { createDialect } from "./dialect.ts";
+import migrations from "./migrations/index.ts";
+import type { Database } from "./schema/index.ts";
 
 const db = new Kysely<Database>({ dialect: createDialect(env.database) });
 

@@ -2,16 +2,16 @@ import {
   deleteFileCache,
   deleteFileThumbnailCache,
   storeFileThumbnailCache,
-} from "#lib/client/cache/index.js";
+} from "#lib/client/cache/index.ts";
 import {
   getDecryptedFileUrl,
   prepareFileDecryption,
   saveDecryptedFile,
-} from "#lib/client/serviceWorker.js";
-import { getAllFileInfos } from "#lib/client/storage/indexedDB/index.js";
-import { uploadBlob } from "#lib/client/transfer/chunkedUpload.js";
-import { trpc } from "#trpc/client.js";
-import type { DataKey } from "./types";
+} from "#lib/client/service-worker.ts";
+import { getAllFileInfos } from "#lib/client/storage/indexed-db/index.ts";
+import { uploadBlob } from "#lib/client/transfer/chunked-upload.ts";
+import { trpc } from "#trpc/client.ts";
+import type { DataKey } from "./types.ts";
 
 interface StreamableFile {
   id: number;

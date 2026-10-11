@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { TextInputModal } from "#lib/ui/index.js";
+  import { TextInputModal } from "#lib/ui/index.ts";
 
   interface Props {
     isOpen: boolean;

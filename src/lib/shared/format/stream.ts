@@ -1,6 +1,6 @@
-import { decryptChunk } from "#lib/shared/crypto/index.js";
-import type { ByteRange } from "#lib/shared/http.js";
-import { CHUNK_SIZE, ENCRYPTED_CHUNK_SIZE } from "./chunk";
+import { decryptChunk } from "#lib/shared/crypto/index.ts";
+import type { ByteRange } from "#lib/shared/http.ts";
+import { CHUNK_SIZE, ENCRYPTED_CHUNK_SIZE } from "./chunk.ts";
 
 // Accumulates stream pieces and takes them out in fixed sizes without copying them repeatedly
 const createByteQueue = () => {

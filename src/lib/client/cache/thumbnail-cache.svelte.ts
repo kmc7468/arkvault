@@ -1,7 +1,7 @@
 /* eslint-disable svelte/prefer-svelte-reactivity -- Lookup tables of reactive entries */
 import { LRUCache } from "lru-cache";
-import { deleteDirectory, deleteFile, readFile, writeFile } from "#lib/client/storage/opfs.js";
-import { decryptChunk, encodeToBase64 } from "#lib/shared/crypto/index.js";
+import { deleteDirectory, deleteFile, readFile, writeFile } from "#lib/client/storage/opfs.ts";
+import { decryptChunk, encodeToBase64 } from "#lib/shared/crypto/index.ts";
 
 export interface Thumbnail {
   url?: string;

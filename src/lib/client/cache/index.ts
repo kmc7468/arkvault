@@ -1,2 +1,2 @@
-export * from "./fileCache";
-export * from "./thumbnailCache.svelte";
+export * from "./file-cache.ts";
+export * from "./thumbnail-cache.svelte.ts";

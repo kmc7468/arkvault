@@ -1,7 +1,7 @@
 import pg from "pg";
-import { IntegrityError } from "../error";
-import db from "../kysely";
-import type { MekState } from "../schema";
+import { IntegrityError } from "../error.ts";
+import db from "../kysely.ts";
+import type { MekState } from "../schema/index.ts";
 
 interface Mek {
   userId: number;

@@ -1,8 +1,8 @@
 import { access } from "fs/promises";
 import { beforeEach, describe, expect, it } from "vitest";
-import { UploadRepo } from "#lib/server/db/index.js";
-import { DirectoryService, FileService } from "#lib/server/services/index.js";
-import { processPendingFileDeletions } from "#lib/server/services/fileDeletion.js";
+import { UploadRepo } from "#lib/server/db/index.ts";
+import { processPendingFileDeletions } from "#lib/server/services/file-deletion.ts";
+import { DirectoryService, FileService } from "#lib/server/services/index.ts";
 import {
   ciphertext,
   createDirectory,
@@ -11,8 +11,8 @@ import {
   getQueuedDeletions,
   newEntryParams,
   resetDatabase,
-} from "../helpers/database";
-import { createStoredFile } from "../helpers/storage";
+} from "../helpers/database.ts";
+import { createStoredFile } from "../helpers/storage.ts";
 
 const exists = (path: string) =>
   access(path).then(

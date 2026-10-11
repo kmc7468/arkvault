@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BoundedQueue, Scheduler } from "#lib/utils/concurrency/index.js";
+import { BoundedQueue, Scheduler } from "#lib/utils/concurrency/index.ts";
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 

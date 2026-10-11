@@ -4,16 +4,16 @@
   import { untrack } from "svelte";
   import { slide } from "svelte/transition";
   import { goto } from "$app/navigation";
-  import { showErrorToast } from "#lib/features/errors.js";
-  import { DirectoryEntry, FileEntry } from "#lib/features/filesystem/components/index.js";
+  import { showErrorToast } from "#lib/features/errors.ts";
+  import { DirectoryEntry, FileEntry } from "#lib/features/filesystem/components/index.ts";
   import {
     getDirectoryInfo,
     type LocalCategoryInfo,
     type MaybeDirectoryInfo,
-  } from "#lib/features/filesystem/index.js";
-  import { search, type SearchFilter, type SearchResult } from "#lib/features/search/index.js";
-  import { Chip, FullscreenDiv, RowVirtualizer } from "#lib/ui/index.js";
-  import { searchString, sortEntries } from "#lib/utils/index.js";
+  } from "#lib/features/filesystem/index.ts";
+  import { search, type SearchFilter, type SearchResult } from "#lib/features/search/index.ts";
+  import { Chip, FullscreenDiv, RowVirtualizer } from "#lib/ui/index.ts";
+  import { searchString, sortEntries } from "#lib/utils/index.ts";
   import SearchBar from "./SearchBar.svelte";
   import SelectCategoryBottomSheet from "./SelectCategoryBottomSheet.svelte";
 

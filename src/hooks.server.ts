@@ -1,9 +1,9 @@
 import { sequence, type ServerInit } from "@sveltejs/kit/hooks";
 import schedule from "node-schedule";
-import { ClientRepo, SessionRepo } from "#lib/server/db/index.js";
-import { migrateDB } from "#lib/server/db/kysely.js";
-import { authenticate, setAgentInfo } from "#lib/server/middlewares/index.js";
-import { FileDeletionService, UploadService } from "#lib/server/services/index.js";
+import { ClientRepo, SessionRepo } from "#lib/server/db/index.ts";
+import { migrateDB } from "#lib/server/db/kysely.ts";
+import { authenticate, setAgentInfo } from "#lib/server/middlewares/index.ts";
+import { FileDeletionService, UploadService } from "#lib/server/services/index.ts";
 
 export const init: ServerInit = async () => {
   await migrateDB();

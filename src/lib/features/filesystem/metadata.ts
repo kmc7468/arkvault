@@ -1,11 +1,11 @@
-import { keyring } from "#lib/client/keys/index.js";
+import { keyring } from "#lib/client/keys/index.ts";
 import {
   decryptString,
   encryptString,
   generateDataKey,
   unwrapDataKey,
   wrapDataKey,
-} from "#lib/shared/crypto/index.js";
+} from "#lib/shared/crypto/index.ts";
 
 const unwrapEntryDataKey = async (metadata: { mekVersion: number; dek: string }) => {
   const { dataKey } = await unwrapDataKey(

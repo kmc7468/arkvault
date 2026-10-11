@@ -1,10 +1,10 @@
 import { createHash } from "crypto";
 import { Readable } from "stream";
 import { beforeEach, describe, expect, it } from "vitest";
-import { UploadRepo } from "#lib/server/db/index.js";
-import { FileService, UploadService } from "#lib/server/services/index.js";
-import { isChunkUploaded } from "#lib/server/services/upload.js";
-import { ciphertext, createUser, newEntryParams, resetDatabase } from "../helpers/database";
+import { UploadRepo } from "#lib/server/db/index.ts";
+import { FileService, UploadService } from "#lib/server/services/index.ts";
+import { isChunkUploaded } from "#lib/server/services/upload.ts";
+import { ciphertext, createUser, newEntryParams, resetDatabase } from "../helpers/database.ts";
 
 beforeEach(resetDatabase);
 

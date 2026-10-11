@@ -1,2 +1,2 @@
-export { default as authenticate } from "./authenticate";
-export { default as setAgentInfo } from "./setAgentInfo";
+export { default as authenticate } from "./authenticate.ts";
+export { default as setAgentInfo } from "./set-agent-info.ts";

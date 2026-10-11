@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { ActionModal } from "#lib/ui/index.js";
-  import { truncateString } from "#lib/utils/index.js";
-  import { useContext } from "./service.svelte";
+  import { ActionModal } from "#lib/ui/index.ts";
+  import { truncateString } from "#lib/utils/index.ts";
+  import { useContext } from "./service.svelte.ts";
 
   interface Props {
     isOpen: boolean;

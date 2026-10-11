@@ -1,6 +1,6 @@
-import { storeFileThumbnailCache } from "#lib/client/cache/index.js";
-import { uploadFile as doUploadFile } from "#lib/client/transfer/index.js";
-import { invalidateDirectory } from "./directory";
+import { storeFileThumbnailCache } from "#lib/client/cache/index.ts";
+import { uploadFile as doUploadFile } from "#lib/client/transfer/index.ts";
+import { invalidateDirectory } from "./directory.ts";
 
 // Uploads the file and caches it with its thumbnail locally. Returns `false` if the upload is canceled.
 export const uploadFile = async (

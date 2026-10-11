@@ -1,7 +1,7 @@
 import pg from "pg";
-import { IntegrityError } from "../error";
-import db from "../kysely";
-import type { HskState } from "../schema";
+import { IntegrityError } from "../error.ts";
+import db from "../kysely.ts";
+import type { HskState } from "../schema/index.ts";
 
 interface Hsk {
   userId: number;

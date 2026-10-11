@@ -1,4 +1,4 @@
-import { DirectoryRepo, FileRepo } from "#lib/server/db/index.js";
+import { DirectoryRepo, FileRepo } from "#lib/server/db/index.ts";
 
 export const search = async (
   userId: number,

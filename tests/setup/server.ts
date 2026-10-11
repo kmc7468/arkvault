@@ -5,7 +5,7 @@ import { vi } from "vitest";
 
 const storagePath = await mkdtemp(join(tmpdir(), "arkvault-test-"));
 
-vi.mock("#lib/server/config.js", async () => {
+vi.mock("#lib/server/config.ts", async () => {
   const { inject } = await import("vitest");
   return {
     default: {

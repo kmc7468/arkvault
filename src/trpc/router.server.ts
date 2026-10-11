@@ -1,5 +1,5 @@
 import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
-import { router } from "./init.server";
+import { router } from "./init.server.ts";
 import {
   authRouter,
   categoryRouter,
@@ -12,7 +12,7 @@ import {
   searchRouter,
   uploadRouter,
   userRouter,
-} from "./routers";
+} from "./routers/index.ts";
 
 export const appRouter = router({
   auth: authRouter,

@@ -1,18 +1,18 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { deleteAllFileThumbnailCaches } from "#lib/client/cache/index.js";
-  import { FileEntry } from "#lib/features/filesystem/components/index.js";
-  import type { MaybeFileInfo } from "#lib/features/filesystem/index.js";
-  import { BottomDiv, Button, FullscreenDiv, IconEntryButton, TopBar } from "#lib/ui/index.js";
-  import { sortEntries } from "#lib/utils/index.js";
+  import { deleteAllFileThumbnailCaches } from "#lib/client/cache/index.ts";
+  import { FileEntry } from "#lib/features/filesystem/components/index.ts";
+  import type { MaybeFileInfo } from "#lib/features/filesystem/index.ts";
+  import { BottomDiv, Button, FullscreenDiv, IconEntryButton, TopBar } from "#lib/ui/index.ts";
+  import { sortEntries } from "#lib/utils/index.ts";
   import {
     getThumbnailGenerationStatus,
     clearThumbnailGenerationStatuses,
     requestMissingThumbnailFiles,
     requestThumbnailGeneration,
     type GenerationStatus,
-  } from "./service";
+  } from "./service.ts";
 
   import IconCamera from "~icons/material-symbols/camera";
   import IconDelete from "~icons/material-symbols/delete";

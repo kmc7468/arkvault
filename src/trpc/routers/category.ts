@@ -1,14 +1,14 @@
 import { z } from "zod";
-import { CategoryService } from "#lib/server/services/index.js";
-import { toCategoryDto, toFileDto } from "#trpc/dto.js";
-import { router, roleProcedure } from "#trpc/init.server.js";
+import { CategoryService } from "#lib/server/services/index.ts";
+import { toCategoryDto, toFileDto } from "#trpc/dto.ts";
+import { router, roleProcedure } from "#trpc/init.server.ts";
 import {
   Base64Schema,
   CategoryIdSchema,
   EncryptedNameSchema,
   IdSchema,
   toCiphertext,
-} from "#trpc/schemas.js";
+} from "#trpc/schemas.ts";
 
 const categoryRouter = router({
   get: roleProcedure["activeClient"]

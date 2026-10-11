@@ -1,6 +1,6 @@
-import type { Category } from "#lib/server/db/repositories/category.js";
-import type { Directory } from "#lib/server/db/repositories/directory.js";
-import type { File } from "#lib/server/db/repositories/file.js";
+import type { Category } from "#lib/server/db/repositories/category.ts";
+import type { Directory } from "#lib/server/db/repositories/directory.ts";
+import type { File } from "#lib/server/db/repositories/file.ts";
 
 // Shapes of filesystem entries exposed by the API
 

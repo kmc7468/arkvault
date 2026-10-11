@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { AdaptiveDiv } from "#lib/ui/index.js";
+  import { AdaptiveDiv } from "#lib/ui/index.ts";
 
   let { children } = $props();
 </script>

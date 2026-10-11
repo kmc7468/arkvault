@@ -1,15 +1,15 @@
 import type { Readable } from "stream";
-import { db, FileRepo, MediaRepo, UploadRepo } from "#lib/server/db/index.js";
-import type { Ciphertext } from "#lib/server/db/schema/index.js";
-import { AppError } from "#lib/server/errors.js";
+import { db, FileRepo, MediaRepo, UploadRepo } from "#lib/server/db/index.ts";
+import type { Ciphertext } from "#lib/server/db/schema/index.ts";
+import { AppError } from "#lib/server/errors.ts";
 import {
   deleteFile,
   hashFile,
   reserveFile,
   writeChunkAtOffset,
-} from "#lib/server/storage/index.js";
-import { ensureFreshDekVersion } from "./common";
-import { schedulePendingFileDeletions } from "./fileDeletion";
+} from "#lib/server/storage/index.ts";
+import { ensureFreshDekVersion } from "./common.ts";
+import { schedulePendingFileDeletions } from "./file-deletion.ts";
 
 const UPLOAD_EXPIRES = 24 * 3600 * 1000; // 24 hours
 const THUMBNAIL_CHUNKS = 1; // Up to 4 MiB

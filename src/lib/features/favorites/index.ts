@@ -5,9 +5,9 @@ import {
   setFileFavorite,
   type LocalDirectoryInfo,
   type SummarizedFileInfo,
-} from "#lib/features/filesystem/index.js";
-import { sortEntries } from "#lib/utils/index.js";
-import { trpc } from "#trpc/client.js";
+} from "#lib/features/filesystem/index.ts";
+import { sortEntries } from "#lib/utils/index.ts";
+import { trpc } from "#trpc/client.ts";
 
 export type FavoriteEntry =
   | { type: "directory"; name: string; details: LocalDirectoryInfo }

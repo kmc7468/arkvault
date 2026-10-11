@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { ClientService } from "#lib/server/services/index.js";
-import { router, roleProcedure } from "#trpc/init.server.js";
-import { Base64Schema, IdSchema } from "#trpc/schemas.js";
+import { ClientService } from "#lib/server/services/index.ts";
+import { router, roleProcedure } from "#trpc/init.server.ts";
+import { Base64Schema, IdSchema } from "#trpc/schemas.ts";
 
 const clientRouter = router({
   register: roleProcedure["notClient"]

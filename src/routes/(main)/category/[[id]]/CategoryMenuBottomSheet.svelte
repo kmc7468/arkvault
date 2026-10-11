@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { BottomSheet, CategoryLabel, IconEntryButton } from "#lib/ui/index.js";
-  import { useContext } from "./service.svelte";
+  import { BottomSheet, CategoryLabel, IconEntryButton } from "#lib/ui/index.ts";
+  import { useContext } from "./service.svelte.ts";
 
   import IconEdit from "~icons/material-symbols/edit";
   import IconDelete from "~icons/material-symbols/delete";

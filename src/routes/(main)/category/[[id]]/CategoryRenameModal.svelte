@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { RenameModal } from "#lib/ui/index.js";
-  import { useContext } from "./service.svelte";
+  import { RenameModal } from "#lib/ui/index.ts";
+  import { useContext } from "./service.svelte.ts";
 
   interface Props {
     isOpen: boolean;

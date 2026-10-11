@@ -1,9 +1,9 @@
-import { FileRepo, MediaRepo } from "#lib/server/db/index.js";
-import type { Ciphertext } from "#lib/server/db/schema/index.js";
-import { AppError } from "#lib/server/errors.js";
-import { createEncContentStream } from "#lib/server/storage/index.js";
-import type { RangeRequest } from "#lib/shared/http.js";
-import { schedulePendingFileDeletions } from "./fileDeletion";
+import { FileRepo, MediaRepo } from "#lib/server/db/index.ts";
+import type { Ciphertext } from "#lib/server/db/schema/index.ts";
+import { AppError } from "#lib/server/errors.ts";
+import { createEncContentStream } from "#lib/server/storage/index.ts";
+import type { RangeRequest } from "#lib/shared/http.ts";
+import { schedulePendingFileDeletions } from "./file-deletion.ts";
 
 export const getFile = async (userId: number, fileId: number) => {
   const file = await FileRepo.getFile(userId, fileId);

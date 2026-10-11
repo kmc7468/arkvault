@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { getUploadingFiles, clearUploadedFiles } from "#lib/client/transfer/index.js";
-  import { FullscreenDiv, TopBar } from "#lib/ui/index.js";
+  import { getUploadingFiles, clearUploadedFiles } from "#lib/client/transfer/index.ts";
+  import { FullscreenDiv, TopBar } from "#lib/ui/index.ts";
   import File from "./File.svelte";
 
   const uploadingFiles = getUploadingFiles();

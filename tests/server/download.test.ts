@@ -4,7 +4,7 @@ import { join } from "path";
 import { buffer } from "stream/consumers";
 import type { ReadableStream } from "stream/web";
 import { describe, expect, it } from "vitest";
-import { createEncContentStream } from "#lib/server/storage/index.js";
+import { createEncContentStream } from "#lib/server/storage/index.ts";
 
 const createFile = async (content: string) => {
   const path = join(await mkdtemp(join(tmpdir(), "arkvault-test-")), "file");

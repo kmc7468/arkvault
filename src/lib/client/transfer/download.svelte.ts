@@ -1,5 +1,5 @@
-import type { DownloadProgressMessage } from "#lib/shared/serviceWorker.js";
-import { createSpeedMeter } from "#lib/utils/speedMeter.js";
+import type { DownloadProgressMessage } from "#lib/shared/service-worker.ts";
+import { createSpeedMeter } from "#lib/utils/speed-meter.ts";
 
 // Files are downloaded and decrypted by the service worker, which reports the progress
 

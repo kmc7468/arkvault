@@ -1,5 +1,5 @@
 import { error, type RequestEvent } from "@sveltejs/kit";
-import { AppError } from "#lib/server/errors.js";
+import { AppError } from "#lib/server/errors.ts";
 
 // Converts `AppError`s thrown by services into HTTP errors
 export const handleAppErrors = <Event extends RequestEvent>(

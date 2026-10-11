@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { changePassword as requestPasswordChange } from "#lib/features/auth/index.js";
-  import { tryAction } from "#lib/features/errors.js";
+  import { changePassword as requestPasswordChange } from "#lib/features/auth/index.ts";
+  import { tryAction } from "#lib/features/errors.ts";
   import {
     BottomDiv,
     Button,
@@ -10,7 +10,7 @@
     TitledDiv,
     TopBar,
     showToast,
-  } from "#lib/ui/index.js";
+  } from "#lib/ui/index.ts";
 
   let oldPassword = $state("");
   let newPassword = $state("");

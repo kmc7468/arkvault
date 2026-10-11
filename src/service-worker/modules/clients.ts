@@ -1,5 +1,5 @@
 import { self } from "$app/service-worker";
-import type { ServiceWorkerResponse } from "#lib/shared/serviceWorker.js";
+import type { ServiceWorkerResponse } from "#lib/shared/service-worker.ts";
 
 // Posts the message to the client that made the request, or to all windows if unknown
 // (e.g. downloads by navigation)

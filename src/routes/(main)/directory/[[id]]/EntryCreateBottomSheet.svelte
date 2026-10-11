@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { BottomSheet, IconEntryButton } from "#lib/ui/index.js";
+  import { BottomSheet, IconEntryButton } from "#lib/ui/index.ts";
 
   import IconCreateNewFolder from "~icons/material-symbols/create-new-folder";
   import IconUploadFile from "~icons/material-symbols/upload-file";
