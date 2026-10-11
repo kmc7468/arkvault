@@ -16,10 +16,6 @@ interface EncryptedChunk {
   data: ArrayBuffer;
 }
 
-const encryptChunkData = async (chunk: Blob, dataKey: CryptoKey): Promise<ArrayBuffer> => {
-  return await encryptChunk(await chunk.arrayBuffer(), dataKey);
-};
-
 const uploadEncryptedChunk = async (
   uploadId: string,
   chunkIndex: number,
@@ -40,7 +36,12 @@ export const uploadBlob = async (
   uploadId: string,
   blob: Blob,
   dataKey: CryptoKey,
-  options?: { concurrency?: number; onProgress?: (s: UploadStats) => void },
+  options?: {
+    concurrency?: number;
+    onProgress?: (s: UploadStats) => void;
+    // Receives each chunk of the plaintext before it is encrypted
+    onPlaintextChunk?: (chunkIndex: number, data: ArrayBuffer) => Promise<void>;
+  },
 ) => {
   const onProgress = options?.onProgress;
   const networkConcurrency = options?.concurrency ?? 4;
@@ -75,8 +76,9 @@ export const uploadBlob = async (
   const encryptionProducer = async () => {
     try {
       for (let i = 0; i < totalChunks; i++) {
-        const chunk = blob.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-        const data = await encryptChunkData(chunk, dataKey);
+        const chunk = await blob.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE).arrayBuffer();
+        await options?.onPlaintextChunk?.(i, chunk);
+        const data = await encryptChunk(chunk, dataKey);
         hash.update(new Uint8Array(data));
         await queue.push({ index: i, data });
       }

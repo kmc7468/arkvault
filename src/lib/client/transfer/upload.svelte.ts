@@ -6,6 +6,7 @@ import {
   type HmacSecret,
   type MasterKey,
 } from "#lib/client/keys/index.js";
+import { createUploadFileCache } from "#lib/client/cache/index.js";
 import { readExifDateTime } from "#lib/client/media/exif.js";
 import { generateThumbnail } from "#lib/client/media/thumbnail.js";
 import { uploadBlob } from "#lib/client/transfer/chunkedUpload.js";
@@ -150,18 +151,30 @@ const requestFileUpload = limitFunction(
   ) => {
     state.status = "uploading";
 
-    const { encContentHash } = await uploadBlob(uploadId, file, dataKey, {
-      onProgress(s) {
-        state.progress = s.progress;
-        state.rate = s.rate;
-      },
-    });
+    // The file is cached while uploading, so that it doesn't have to be read again
+    const cache = createUploadFileCache(file.size);
 
-    const { file: fileId } = await trpc.upload.completeFileUpload.mutate({
-      uploadId,
-      contentHmac: fileSigned,
-      encContentHash,
-    });
+    let fileId;
+    try {
+      const { encContentHash } = await uploadBlob(uploadId, file, dataKey, {
+        onProgress(s) {
+          state.progress = s.progress;
+          state.rate = s.rate;
+        },
+        onPlaintextChunk: cache.writeChunk,
+      });
+
+      ({ file: fileId } = await trpc.upload.completeFileUpload.mutate({
+        uploadId,
+        contentHmac: fileSigned,
+        encContentHash,
+      }));
+    } catch (e) {
+      await cache.discard();
+      throw e;
+    }
+
+    await cache.commit(fileId).catch(console.error);
 
     if (thumbnailBuffer) {
       try {

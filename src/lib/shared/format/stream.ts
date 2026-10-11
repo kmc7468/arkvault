@@ -39,17 +39,22 @@ const createByteQueue = () => {
 };
 
 // Decrypts the encrypted chunks covering the plaintext `range` (as returned by
-// `getEncryptedRange`) into the plaintext of the range
+// `getEncryptedRange`) into the plaintext of the range. `onChunk` receives each decrypted chunk
+// as a whole, along with its index in the file.
 export const createDecryptionStream = ({
   range,
+  firstChunkIndex = 0,
   chunkCount,
   dataKey,
   isLegacy,
+  onChunk,
 }: {
   range: ByteRange;
+  firstChunkIndex?: number;
   chunkCount: number;
   dataKey: CryptoKey;
   isLegacy: boolean;
+  onChunk?: (chunkIndex: number, chunk: Uint8Array) => void;
 }) => {
   const queue = createByteQueue();
   let chunkIndex = 0;
@@ -59,6 +64,8 @@ export const createDecryptionStream = ({
     encryptedSize: number,
   ) => {
     const decrypted = new Uint8Array(await decryptChunk(queue.take(encryptedSize).buffer, dataKey));
+    onChunk?.(firstChunkIndex + chunkIndex, decrypted);
+
     const isFirst = chunkIndex === 0;
     const isLast = chunkIndex === chunkCount - 1;
     chunkIndex++;

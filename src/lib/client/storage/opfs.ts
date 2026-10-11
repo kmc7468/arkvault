@@ -94,3 +94,51 @@ export const deleteDirectory = async (path: string) => {
 
   await parentHandle.removeEntry(directoryHandle.name, { recursive: true });
 };
+
+const listEntryNames = async (path: string, kind: FileSystemHandleKind) => {
+  const { directoryHandle } = await getDirectoryHandle(path);
+  if (!directoryHandle) return [];
+
+  const names: string[] = [];
+  for await (const handle of directoryHandle.values()) {
+    if (handle.kind === kind) {
+      names.push(handle.name);
+    }
+  }
+  return names;
+};
+
+export const listFileNames = (path: string) => listEntryNames(path, "file");
+
+export const listDirectoryNames = (path: string) => listEntryNames(path, "directory");
+
+// Deletes the files (not directories) directly under the directory
+export const deleteFilesInDirectory = async (path: string) => {
+  const { directoryHandle } = await getDirectoryHandle(path);
+  if (!directoryHandle) return;
+
+  for (const name of await listFileNames(path)) {
+    await directoryHandle.removeEntry(name);
+  }
+};
+
+// Renames the file atomically
+export const moveFile = async (path: string, newPath: string) => {
+  const { fileHandle } = await getFileHandle(path, false);
+  if (!fileHandle) {
+    throw new Error("File not found");
+  }
+
+  let directoryHandle = await navigator.storage.getDirectory();
+  const parts = newPath.split("/").filter((part) => part);
+  for (const part of parts.slice(0, -1)) {
+    directoryHandle = await directoryHandle.getDirectoryHandle(part, { create: true });
+  }
+
+  // Supported by Chromium for the origin private file system
+  await (
+    fileHandle as FileSystemFileHandle & {
+      move(destination: FileSystemDirectoryHandle, name: string): Promise<void>;
+    }
+  ).move(directoryHandle, parts.at(-1)!);
+};

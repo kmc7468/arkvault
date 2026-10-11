@@ -26,18 +26,7 @@ export const getFileStreamUrl = async ({ id, isLegacy, dataKey, contentType }: S
     throw new Error("Data key not loaded");
   }
 
-  const res = await fetch(`/api/file/${id}/download`, { method: "HEAD" });
-  if (!res.ok) {
-    throw new Error("Failed to get the file size");
-  }
-
-  const encContentSize = parseInt(res.headers.get("Content-Length") ?? "0", 10);
-  await prepareFileDecryption(id, {
-    isLegacy: !!isLegacy,
-    dataKey: dataKey.key,
-    encContentSize,
-    contentType,
-  });
+  await prepareFileDecryption(id, { isLegacy: !!isLegacy, dataKey: dataKey.key, contentType });
   return getDecryptedFileUrl(id);
 };
 

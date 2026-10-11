@@ -34,6 +34,9 @@
     {/if}
     <p class="text-xs text-gray-800">
       읽음 {formatDate(index.lastRetrievedAt)} · {formatFileSize(index.size)}
+      {#if !index.isComplete}
+        · 일부
+      {/if}
     </p>
   </div>
   <button
