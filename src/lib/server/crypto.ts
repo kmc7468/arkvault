@@ -56,12 +56,13 @@ export const issueSessionId = async (length: number, secret: string) => {
 export const verifySessionId = (sessionIdSigned: string, secret: string) => {
   const [sessionIdHex, sessionIdHmac] = sessionIdSigned.split(".");
   if (!sessionIdHex || !sessionIdHmac) return;
-  if (
-    timingSafeEqual(
-      Buffer.from(sessionIdHmac, "hex"),
-      createHmac("sha256", secret).update(Buffer.from(sessionIdHex, "hex")).digest(),
-    )
-  ) {
+
+  const actualHmac = Buffer.from(sessionIdHmac, "hex");
+  const expectedHmac = createHmac("sha256", secret)
+    .update(Buffer.from(sessionIdHex, "hex"))
+    .digest();
+  // `timingSafeEqual` throws if the lengths differ (e.g. malformed hex)
+  if (actualHmac.length === expectedHmac.length && timingSafeEqual(actualHmac, expectedHmac)) {
     return sessionIdHex;
   }
 };

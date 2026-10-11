@@ -70,7 +70,7 @@ export class App {
   // Locators
 
   row(name: string) {
-    return this.page.locator("#container", { hasText: name }).first();
+    return this.page.locator("[data-entry-container]", { hasText: name }).first();
   }
 
   // Inputs are labeled by sibling elements instead of placeholders
@@ -112,7 +112,7 @@ export class App {
   }
 
   async openMenu(name: string) {
-    await this.row(name).locator("#action-button").click();
+    await this.row(name).locator("[data-action-button]").click();
   }
 
   async upload(assets: Asset[]) {

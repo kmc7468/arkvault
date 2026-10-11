@@ -1,5 +1,7 @@
 import ExifReader from "exifreader";
 
+const isInteger = (value: number | undefined): value is number => Number.isInteger(value);
+
 export const extractExifDateTime = (fileBuffer: ArrayBuffer) => {
   const exif = ExifReader.load(fileBuffer);
   const dateTimeOriginal = exif["DateTimeOriginal"]?.description;
@@ -11,7 +13,10 @@ export const extractExifDateTime = (fileBuffer: ArrayBuffer) => {
 
   const [year, month, day] = date.split(":").map(Number);
   const [hour, minute, second] = time.split(":").map(Number);
-  if (!year || !month || !day || !hour || !minute || !second) return undefined;
+  // Hours, minutes, and seconds may be 0, so they are checked differently
+  if (!year || !month || !day || !isInteger(hour) || !isInteger(minute) || !isInteger(second)) {
+    return undefined;
+  }
 
   if (!offsetTimeOriginal) {
     // No timezone information.. Assume local timezone

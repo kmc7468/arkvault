@@ -8,11 +8,17 @@ import { FileDeletionService, UploadService } from "#lib/server/services/index.t
 export const init: ServerInit = async () => {
   await migrateDB();
 
-  schedule.scheduleJob("0 * * * *", () => {
-    ClientRepo.cleanupExpiredUserClientChallenges();
-    SessionRepo.cleanupExpiredSessions();
-    SessionRepo.cleanupExpiredSessionUpgradeChallenges();
-    UploadService.cleanupExpiredUploadSessions();
+  schedule.scheduleJob("0 * * * *", async () => {
+    // Failures are logged and retried at the next run, so they don't crash the server
+    const results = await Promise.allSettled([
+      ClientRepo.cleanupExpiredUserClientChallenges(),
+      SessionRepo.cleanupExpiredSessions(),
+      SessionRepo.cleanupExpiredSessionUpgradeChallenges(),
+      UploadService.cleanupExpiredUploadSessions(),
+    ]);
+    results.forEach((result) => {
+      if (result.status === "rejected") console.error(result.reason);
+    });
     FileDeletionService.schedulePendingFileDeletions();
   });
   FileDeletionService.schedulePendingFileDeletions();

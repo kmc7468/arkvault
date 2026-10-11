@@ -9,7 +9,11 @@ export const signMessageHmac = async (message: Blob, hmacSecret: CryptoKey) => {
 
   return new Promise<Uint8Array>((resolve, reject) => {
     worker.onmessage = ({ data }: MessageEvent<ResultMessage>) => {
-      resolve(data.result);
+      if ("result" in data) {
+        resolve(data.result);
+      } else {
+        reject(data.error);
+      }
       worker.terminate();
     };
 

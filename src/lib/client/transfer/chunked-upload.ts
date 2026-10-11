@@ -1,6 +1,5 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import axios from "axios";
-import pLimit from "p-limit";
 import { encodeToBase64, encryptChunk } from "#lib/shared/crypto/index.ts";
 import { CHUNK_SIZE, getChunkCount, getEncryptedSize } from "#lib/shared/format/index.ts";
 import { BoundedQueue } from "#lib/utils/concurrency/index.ts";
@@ -70,7 +69,6 @@ export const uploadBlob = async (
   };
 
   const queue = new BoundedQueue<EncryptedChunk>(maxQueueSize);
-  let encryptionError: Error | null = null;
 
   // Producer: encrypt chunks and push to queue
   const encryptionProducer = async () => {
@@ -82,8 +80,6 @@ export const uploadBlob = async (
         hash.update(new Uint8Array(data));
         await queue.push({ index: i, data });
       }
-    } catch (e) {
-      encryptionError = e instanceof Error ? e : new Error(String(e));
     } finally {
       queue.close();
     }
@@ -91,36 +87,43 @@ export const uploadBlob = async (
 
   // Consumer: upload chunks from queue with concurrency limit
   const uploadConsumer = async () => {
-    const limit = pLimit(networkConcurrency);
     const activeTasks = new Set<Promise<void>>();
+    let failure: { reason: unknown } | undefined;
 
-    while (true) {
-      const item = await queue.pop();
-      if (item === null) break;
-      if (encryptionError) throw encryptionError;
+    try {
+      while (!failure) {
+        const item = await queue.pop();
+        if (item === null) break;
 
-      const task = limit(async () => {
-        try {
-          await uploadEncryptedChunk(uploadId, item.index, item.data, onChunkProgress);
-        } finally {
-          // @ts-expect-error
-          item.data = null;
+        const task: Promise<void> = uploadEncryptedChunk(
+          uploadId,
+          item.index,
+          item.data,
+          onChunkProgress,
+        )
+          .catch((reason) => {
+            failure ??= { reason };
+          })
+          .finally(() => activeTasks.delete(task));
+        activeTasks.add(task);
+
+        if (activeTasks.size >= networkConcurrency) {
+          await Promise.race(activeTasks);
         }
-      });
-
-      activeTasks.add(task);
-      task.finally(() => activeTasks.delete(task));
-
-      if (activeTasks.size >= networkConcurrency) {
-        await Promise.race(activeTasks);
       }
-    }
 
-    await Promise.all(activeTasks);
+      await Promise.all(activeTasks);
+      if (failure) throw failure.reason;
+    } finally {
+      queue.close(); // Stops the producer if the upload failed
+    }
   };
 
   // Run producer and consumer concurrently
-  await Promise.all([encryptionProducer(), uploadConsumer()]);
+  const [encryption, upload] = await Promise.allSettled([encryptionProducer(), uploadConsumer()]);
+  // The upload error takes precedence, as the producer fails due to the closed queue then
+  if (upload.status === "rejected") throw upload.reason;
+  if (encryption.status === "rejected") throw encryption.reason;
 
   onProgress?.({ progress: 1, rate: speedMeter() });
   return { encContentHash: encodeToBase64(hash.digest()) };

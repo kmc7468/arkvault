@@ -24,17 +24,17 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
-  id="container"
+  data-entry-container
   onclick={onclick && (() => setTimeout(onclick, 100))}
   class={["rounded-xl", className]}
 >
-  <div id="children" class="flex h-full items-center gap-x-4 p-2 transition">
+  <div data-entry-content class="flex h-full items-center gap-x-4 p-2 transition">
     <div class="grow overflow-x-hidden">
       {@render children()}
     </div>
     {#if ActionButtonIcon}
       <button
-        id="action-button"
+        data-action-button
         onclick={(e) => {
           e.stopPropagation();
           if (onActionButtonClick) {
@@ -52,10 +52,10 @@
 <style lang="postcss">
   @reference "../../../app.css";
 
-  #container:active:not(:has(#action-button:active)) {
+  [data-entry-container]:active:not(:has([data-action-button]:active)) {
     @apply bg-gray-100;
   }
-  #children:active:not(:has(#action-button:active)) {
+  [data-entry-content]:active:not(:has([data-action-button]:active)) {
     @apply scale-95;
   }
 </style>

@@ -69,7 +69,7 @@ test("즐겨찾기에 추가하고 즐겨찾기 화면에서 해제한다", asyn
 
   await app.page.goto("/favorites");
   await expect(app.row(image.name)).toBeVisible();
-  await app.row(image.name).locator("#action-button").click();
+  await app.row(image.name).locator("[data-action-button]").click();
   await expect(app.row(image.name)).toBeHidden();
 
   await app.page.goto("/directory");
@@ -105,7 +105,7 @@ test("카테고리를 만들고 파일을 추가, 제거한 뒤 이름을 바꾸
   await app.row("여행").click();
   await page.waitForURL(/\/category\/\d+/);
   await expect(app.row(image.name)).toBeVisible();
-  await app.row(image.name).locator("#action-button").click();
+  await app.row(image.name).locator("[data-action-button]").click();
   await expect(app.row(image.name)).toBeHidden();
 
   await page.goto("/category");

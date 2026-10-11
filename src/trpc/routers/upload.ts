@@ -13,24 +13,28 @@ import {
 const uploadRouter = router({
   startFileUpload: roleProcedure["activeClient"]
     .input(
-      z.object({
-        chunks: IdSchema,
-        parent: DirectoryIdSchema,
-        mekVersion: IdSchema,
-        dek: Base64Schema,
-        dekVersion: z.date(),
-        hskVersion: IdSchema.optional(),
-        contentType: z
-          .string()
-          .trim()
-          .nonempty()
-          .refine((value) => mime.getExtension(value) !== null),
-        ...EncryptedNameSchema,
-        createdAt: Base64Schema.optional(),
-        createdAtIv: Base64Schema.optional(),
-        lastModifiedAt: Base64Schema,
-        lastModifiedAtIv: Base64Schema,
-      }),
+      z
+        .object({
+          chunks: IdSchema,
+          parent: DirectoryIdSchema,
+          mekVersion: IdSchema,
+          dek: Base64Schema,
+          dekVersion: z.date(),
+          hskVersion: IdSchema.optional(),
+          contentType: z
+            .string()
+            .trim()
+            .nonempty()
+            .refine((value) => mime.getExtension(value) !== null),
+          ...EncryptedNameSchema,
+          createdAt: Base64Schema.optional(),
+          createdAtIv: Base64Schema.optional(),
+          lastModifiedAt: Base64Schema,
+          lastModifiedAtIv: Base64Schema,
+        })
+        .refine(({ createdAt, createdAtIv }) => !createdAt === !createdAtIv, {
+          message: "createdAt and createdAtIv must be provided together",
+        }),
     )
     .mutation(async ({ ctx, input }) => {
       return await UploadService.startFileUpload({
