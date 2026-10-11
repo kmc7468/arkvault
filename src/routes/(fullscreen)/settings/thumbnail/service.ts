@@ -1,8 +1,8 @@
 import { limitFunction } from "p-limit";
 import { SvelteMap } from "svelte/reactivity";
-import { storeFileThumbnailCache } from "#lib/modules/file/index.js";
+import { storeFileThumbnailCache } from "#lib/client/cache/index.js";
+import { generateThumbnail } from "#lib/client/media/thumbnail.js";
 import { getFileInfo, type FileInfo } from "#lib/modules/filesystem/index.js";
-import { generateThumbnail } from "#lib/modules/thumbnail.js";
 import { requestFileDownload, requestFileThumbnailUpload } from "#lib/services/file.js";
 import { HybridPromise, Scheduler } from "#lib/utils/index.js";
 import type { RouterOutputs } from "#trpc/router.server.js";

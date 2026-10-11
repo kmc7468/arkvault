@@ -1,4 +1,4 @@
-import { generateDataKey, wrapDataKey, encryptString } from "#lib/modules/crypto/index.js";
+import { generateDataKey, wrapDataKey, encryptString } from "#lib/shared/crypto/index.js";
 import type { MasterKey } from "#lib/stores/index.js";
 import { trpc } from "#trpc/client.js";
 

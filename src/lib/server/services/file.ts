@@ -2,9 +2,8 @@ import { FileRepo, MediaRepo } from "#lib/server/db/index.js";
 import type { Ciphertext } from "#lib/server/db/schema/index.js";
 import { AppError } from "#lib/server/errors.js";
 import { createEncContentStream } from "#lib/server/storage/index.js";
+import type { RangeRequest } from "#lib/shared/http.js";
 import { schedulePendingFileDeletions } from "./fileDeletion";
-
-type Range = { start?: number; end?: number };
 
 export const getFile = async (userId: number, fileId: number) => {
   const file = await FileRepo.getFile(userId, fileId);
@@ -68,7 +67,7 @@ export const getFileThumbnail = async (userId: number, fileId: number) => {
 
 const decodeIv = (iv: string | null) => (iv ? Buffer.from(iv, "base64") : undefined);
 
-export const getFileStream = async (userId: number, fileId: number, range?: Range) => {
+export const getFileStream = async (userId: number, fileId: number, range?: RangeRequest) => {
   const file = await FileRepo.getFile(userId, fileId);
   if (!file) {
     throw new AppError("NOT_FOUND", "File not found");
@@ -76,7 +75,11 @@ export const getFileStream = async (userId: number, fileId: number, range?: Rang
   return await createEncContentStream(file.path, decodeIv(file.encContentIv), range);
 };
 
-export const getFileThumbnailStream = async (userId: number, fileId: number, range?: Range) => {
+export const getFileThumbnailStream = async (
+  userId: number,
+  fileId: number,
+  range?: RangeRequest,
+) => {
   const thumbnail = await getFileThumbnail(userId, fileId);
   return await createEncContentStream(thumbnail.path, decodeIv(thumbnail.encContentIv), range);
 };

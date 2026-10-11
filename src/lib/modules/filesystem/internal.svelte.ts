@@ -1,5 +1,5 @@
 import { untrack } from "svelte";
-import { unwrapDataKey, decryptString } from "#lib/modules/crypto/index.js";
+import { unwrapDataKey, decryptString } from "#lib/shared/crypto/index.js";
 
 interface FilesystemCacheOptions<K, V> {
   fetchFromIndexedDB: (key: K) => Promise<V | undefined>;

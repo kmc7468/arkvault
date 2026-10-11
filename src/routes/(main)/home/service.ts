@@ -1,4 +1,4 @@
-import { getAllFileInfos } from "#lib/indexedDB/index.js";
+import { getAllFileInfos } from "#lib/client/storage/indexedDB/index.js";
 
 export const requestFreshMediaFilesRetrieval = async (limit = 8) => {
   const files = await getAllFileInfos();

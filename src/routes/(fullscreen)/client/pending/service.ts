@@ -1,4 +1,4 @@
-import { concatenateBuffers, exportRSAKey, digestMessage } from "#lib/modules/crypto/index.js";
+import { concatenateBuffers, exportRSAKey, digestMessage } from "#lib/shared/crypto/index.js";
 
 export { requestMasterKeyDownload } from "#lib/services/key.js";
 

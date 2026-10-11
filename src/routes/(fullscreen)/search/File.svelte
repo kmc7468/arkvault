@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ActionEntryButton } from "#lib/components/atoms/index.js";
   import { DirectoryEntryLabel } from "#lib/components/molecules/index.js";
-  import { getFileThumbnail } from "#lib/modules/file/index.js";
+  import { getFileThumbnail } from "#lib/client/cache/index.js";
   import type { SummarizedFileInfo } from "#lib/modules/filesystem/index.js";
   import { formatDateTime } from "#lib/utils/index.js";
 

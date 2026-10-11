@@ -1,8 +1,11 @@
 import { self } from "$app/service-worker";
-import { DECRYPTED_FILE_URL_PREFIX } from "./constants";
+import {
+  DECRYPTED_FILE_URL_PREFIX,
+  type ServiceWorkerMessage,
+  type ServiceWorkerResponse,
+} from "#lib/shared/serviceWorker.js";
 import { decryptFile } from "./handlers";
 import { fileMetadataStore } from "./stores";
-import type { ServiceWorkerMessage, ServiceWorkerResponse } from "./types";
 
 self.addEventListener("message", (event) => {
   const message: ServiceWorkerMessage = event.data;

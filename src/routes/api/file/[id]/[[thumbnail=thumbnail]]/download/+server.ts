@@ -1,9 +1,9 @@
 import { error } from "@sveltejs/kit";
 import { z } from "zod";
-import { parseRangeHeader, getContentRangeHeader } from "#lib/modules/http.js";
 import { authorize } from "#lib/server/auth.js";
 import { handleAppErrors } from "#lib/server/http.js";
 import { FileService } from "#lib/server/services/index.js";
+import { parseRangeHeader, getContentRangeHeader } from "#lib/shared/http.js";
 import type { RequestEvent, RequestHandler } from "./$types";
 
 const downloadHandler = async ({ locals, params, request }: RequestEvent) => {

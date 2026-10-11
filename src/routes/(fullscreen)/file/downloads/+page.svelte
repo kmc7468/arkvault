@@ -6,7 +6,7 @@
     getDownloadingFiles,
     clearDownloadedFiles,
     type FileDownloadState,
-  } from "#lib/modules/file/index.js";
+  } from "#lib/client/transfer/index.js";
   import { bulkGetFileInfo, type MaybeFileInfo } from "#lib/modules/filesystem/index.js";
   import { masterKeyStore } from "#lib/stores/index.js";
   import File from "./File.svelte";

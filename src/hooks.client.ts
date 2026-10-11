@@ -1,12 +1,12 @@
 import type { ClientInit } from "@sveltejs/kit/hooks";
+import { prepareFileCache } from "#lib/client/cache/index.js";
+import { listenForMetadataRequests } from "#lib/client/serviceWorker.js";
 import {
   cleanupDanglingInfos,
   getClientKey,
   getMasterKeys,
   getHmacSecrets,
-} from "#lib/indexedDB/index.js";
-import { prepareFileCache } from "#lib/modules/file/index.js";
-import { listenForMetadataRequests } from "#lib/serviceWorker/index.js";
+} from "#lib/client/storage/indexedDB/index.js";
 import { clientKeyStore, masterKeyStore, hmacSecretStore } from "#lib/stores/index.js";
 
 const requestPersistentStorage = async () => {

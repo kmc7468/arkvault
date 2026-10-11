@@ -1,4 +1,4 @@
-import type { FileMetadata } from "./types";
+import type { FileMetadata } from "#lib/shared/serviceWorker.js";
 
 const MAX_FILE_METADATA_ENTRIES = 32;
 

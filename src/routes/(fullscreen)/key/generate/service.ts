@@ -1,3 +1,4 @@
+import { deserializeClientKeys } from "#lib/modules/key.js";
 import {
   generateEncryptionKeyPair,
   generateSigningKeyPair,
@@ -10,8 +11,7 @@ import {
   makeAESKeyNonextractable,
   wrapHmacSecret,
   generateHmacSecret,
-} from "#lib/modules/crypto/index.js";
-import { deserializeClientKeys } from "#lib/modules/key.js";
+} from "#lib/shared/crypto/index.js";
 import { clientKeyStore } from "#lib/stores/index.js";
 
 export { requestLogout } from "#lib/services/auth.js";

@@ -3,7 +3,7 @@
   import { goto } from "$app/navigation";
   import { BottomDiv, Button, FullscreenDiv } from "#lib/components/atoms/index.js";
   import { IconEntryButton, TopBar } from "#lib/components/molecules/index.js";
-  import { deleteAllFileThumbnailCaches } from "#lib/modules/file/index.js";
+  import { deleteAllFileThumbnailCaches } from "#lib/client/cache/index.js";
   import type { MaybeFileInfo } from "#lib/modules/filesystem/index.js";
   import { masterKeyStore } from "#lib/stores/index.js";
   import { sortEntries } from "#lib/utils/index.js";

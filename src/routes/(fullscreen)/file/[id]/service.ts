@@ -1,5 +1,5 @@
-import { storeFileThumbnailCache } from "#lib/modules/file/index.js";
-import { prepareFileDecryption, getDecryptedFileUrl } from "#lib/serviceWorker/index.js";
+import { storeFileThumbnailCache } from "#lib/client/cache/index.js";
+import { prepareFileDecryption, getDecryptedFileUrl } from "#lib/client/serviceWorker.js";
 import { requestFileThumbnailUpload } from "#lib/services/file.js";
 import { trpc } from "#trpc/client.js";
 

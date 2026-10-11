@@ -1,7 +1,7 @@
 import { open } from "fs/promises";
 import type { Readable } from "stream";
-import { ENCRYPTION_OVERHEAD, ENCRYPTED_CHUNK_SIZE } from "#lib/constants/index.js";
 import { AppError } from "#lib/server/errors.js";
+import { ENCRYPTION_OVERHEAD, ENCRYPTED_CHUNK_SIZE } from "#lib/shared/format/index.js";
 
 const invalidChunkSize = () => new AppError("BAD_REQUEST", "Invalid chunk size");
 

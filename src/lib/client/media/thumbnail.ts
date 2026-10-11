@@ -1,4 +1,4 @@
-import { encodeToBase64 } from "#lib/modules/crypto/index.js";
+import { encodeToBase64 } from "#lib/shared/crypto/index.js";
 
 const scaleSize = (width: number, height: number, targetSize: number) => {
   if (width <= targetSize || height <= targetSize) {

@@ -1,15 +1,15 @@
-import ExifReader from "exifreader";
 import { limitFunction } from "p-limit";
-import { CHUNK_SIZE } from "#lib/constants/index.js";
+import { signMessageHmac } from "#lib/client/crypto/hmac.js";
+import { extractExifDateTime } from "#lib/client/media/exif.js";
+import { generateThumbnail } from "#lib/client/media/thumbnail.js";
+import { uploadBlob } from "#lib/client/transfer/chunkedUpload.js";
 import {
   encodeToBase64,
   generateDataKey,
   wrapDataKey,
   encryptString,
-} from "#lib/modules/crypto/index.js";
-import { signMessageHmac } from "#lib/modules/crypto/index.js";
-import { generateThumbnail } from "#lib/modules/thumbnail.js";
-import { uploadBlob } from "#lib/modules/upload.js";
+} from "#lib/shared/crypto/index.js";
+import { getChunkCount } from "#lib/shared/format/index.js";
 import type { MasterKey, HmacSecret } from "#lib/stores/index.js";
 import { Scheduler } from "#lib/utils/index.js";
 import { trpc } from "#trpc/client.js";
@@ -84,32 +84,6 @@ const getFileType = (file: File) => {
   throw new Error("Unknown file type");
 };
 
-const extractExifDateTime = (fileBuffer: ArrayBuffer) => {
-  const exif = ExifReader.load(fileBuffer);
-  const dateTimeOriginal = exif["DateTimeOriginal"]?.description;
-  const offsetTimeOriginal = exif["OffsetTimeOriginal"]?.description;
-  if (!dateTimeOriginal) return undefined;
-
-  const [date, time] = dateTimeOriginal.split(" ");
-  if (!date || !time) return undefined;
-
-  const [year, month, day] = date.split(":").map(Number);
-  const [hour, minute, second] = time.split(":").map(Number);
-  if (!year || !month || !day || !hour || !minute || !second) return undefined;
-
-  if (!offsetTimeOriginal) {
-    // No timezone information.. Assume local timezone
-    return new Date(year, month - 1, day, hour, minute, second);
-  }
-
-  const offsetSign = offsetTimeOriginal[0] === "+" ? 1 : -1;
-  const [offsetHour, offsetMinute] = offsetTimeOriginal.slice(1).split(":").map(Number);
-
-  const utcDate = Date.UTC(year, month - 1, day, hour, minute, second);
-  const offsetMs = offsetSign * ((offsetHour ?? 0) * 60 + (offsetMinute ?? 0)) * 60 * 1000;
-  return new Date(utcDate - offsetMs);
-};
-
 interface FileMetadata {
   parentId: "root" | number;
   name: string;
@@ -140,7 +114,7 @@ const requestFileMetadataEncryption = limitFunction(
       ]);
 
     const { uploadId } = await trpc.upload.startFileUpload.mutate({
-      chunks: Math.ceil(file.size / CHUNK_SIZE),
+      chunks: getChunkCount(file.size),
       parent: fileMetadata.parentId,
       mekVersion: masterKey.version,
       dek: dataKeyWrapped,

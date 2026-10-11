@@ -3,7 +3,7 @@
   import { CheckBox, RowVirtualizer } from "#lib/components/atoms/index.js";
   import { SubCategories, TopBar } from "#lib/components/molecules/index.js";
   import { CategoryCreateModal } from "#lib/components/organisms/index.js";
-  import { updateCategoryInfo } from "#lib/indexedDB/index.js";
+  import { updateCategoryInfo } from "#lib/client/storage/indexedDB/index.js";
   import { getCategoryInfo, type MaybeCategoryInfo } from "#lib/modules/filesystem/index.js";
   import { masterKeyStore } from "#lib/stores/index.js";
   import { HybridPromise, sortEntries } from "#lib/utils/index.js";

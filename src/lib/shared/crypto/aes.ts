@@ -1,11 +1,11 @@
-import { AES_GCM_IV_SIZE } from "#lib/constants/index.js";
+import { AES_GCM_IV_SIZE } from "#lib/shared/format/index.js";
 import {
   encodeString,
   decodeString,
   encodeToBase64,
   decodeFromBase64,
   concatenateBuffers,
-} from "./utils";
+} from "./encoding";
 
 export const generateMasterKey = async () => {
   return {

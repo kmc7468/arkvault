@@ -6,8 +6,8 @@
   import { FullscreenDiv } from "#lib/components/atoms/index.js";
   import { Categories, IconEntryButton, TopBar } from "#lib/components/molecules/index.js";
   import { getFileInfo, type MaybeFileInfo } from "#lib/modules/filesystem/index.js";
-  import { captureVideoThumbnail } from "#lib/modules/thumbnail.js";
-  import { getFileDownloadState } from "#lib/modules/file/index.js";
+  import { captureVideoThumbnail } from "#lib/client/media/thumbnail.js";
+  import { getFileDownloadState } from "#lib/client/transfer/index.js";
   import { masterKeyStore } from "#lib/stores/index.js";
   import { HybridPromise } from "#lib/utils/index.js";
   import AddToCategoryBottomSheet from "./AddToCategoryBottomSheet.svelte";

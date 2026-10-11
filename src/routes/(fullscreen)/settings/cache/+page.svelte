@@ -2,11 +2,11 @@
   import { onMount } from "svelte";
   import { FullscreenDiv } from "#lib/components/atoms/index.js";
   import { TopBar } from "#lib/components/molecules/index.js";
-  import type { FileCacheIndex } from "#lib/indexedDB/index.js";
+  import type { FileCacheIndex } from "#lib/client/storage/indexedDB/index.js";
   import {
     getFileCacheIndex,
     deleteFileCache as doDeleteFileCache,
-  } from "#lib/modules/file/index.js";
+  } from "#lib/client/cache/index.js";
   import { bulkGetFileInfo, type MaybeFileInfo } from "#lib/modules/filesystem/index.js";
   import { masterKeyStore } from "#lib/stores/index.js";
   import { formatFileSize } from "#lib/utils/index.js";

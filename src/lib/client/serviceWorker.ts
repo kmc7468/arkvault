@@ -1,5 +1,9 @@
-import { DECRYPTED_FILE_URL_PREFIX } from "#lib/constants/index.js";
-import type { FileMetadata, ServiceWorkerMessage, ServiceWorkerResponse } from "./types";
+import { DECRYPTED_FILE_URL_PREFIX } from "#lib/shared/serviceWorker.js";
+import type {
+  FileMetadata,
+  ServiceWorkerMessage,
+  ServiceWorkerResponse,
+} from "#lib/shared/serviceWorker.js";
 
 const PREPARE_TIMEOUT_MS = 5000;
 

@@ -1,3 +1,5 @@
+export const DECRYPTED_FILE_URL_PREFIX = "/_internal/decryptedFile/";
+
 export interface FileMetadata {
   isLegacy: boolean;
   dataKey: CryptoKey;

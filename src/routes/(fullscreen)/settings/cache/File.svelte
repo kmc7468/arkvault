@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { FileCacheIndex } from "#lib/indexedDB/index.js";
+  import type { FileCacheIndex } from "#lib/client/storage/indexedDB/index.js";
   import type { MaybeFileInfo } from "#lib/modules/filesystem/index.js";
   import { formatDate, formatFileSize } from "#lib/utils/index.js";
 

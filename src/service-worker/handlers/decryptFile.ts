@@ -1,14 +1,25 @@
-import { DECRYPTED_FILE_URL_PREFIX, CHUNK_SIZE, ENCRYPTED_CHUNK_SIZE } from "../constants";
-import { decryptChunk, getEncryptedRange, getDecryptedSize } from "../modules/crypto";
-import { parseRangeHeader, getContentRangeHeader } from "../modules/http";
+import { getFile } from "#lib/client/storage/opfs.js";
+import { decryptChunk } from "#lib/shared/crypto/index.js";
+import {
+  CHUNK_SIZE,
+  ENCRYPTED_CHUNK_SIZE,
+  getDecryptedSize,
+  getEncryptedRange,
+} from "#lib/shared/format/index.js";
+import {
+  getContentRangeHeader,
+  parseRangeHeader,
+  resolveRange,
+  type ByteRange,
+  type RangeRequest,
+} from "#lib/shared/http.js";
+import { DECRYPTED_FILE_URL_PREFIX, type FileMetadata } from "#lib/shared/serviceWorker.js";
 import { getFileMetadata } from "../modules/metadata";
-import { getFile } from "../modules/opfs";
-import type { FileMetadata } from "../types";
 
 const createResponse = (
   stream: ReadableStream<Uint8Array>,
   isRangeRequest: boolean,
-  range: { start: number; end: number; total: number },
+  range: ByteRange,
   contentType?: string,
   downloadFilename?: string,
 ) => {
@@ -33,22 +44,28 @@ const createResponse = (
   });
 };
 
+const createRangeNotSatisfiableResponse = (total: number) => {
+  return new Response("Invalid range", {
+    status: 416,
+    headers: { "Content-Range": `bytes */${total}` },
+  });
+};
+
 const streamFromOpfs = async (
   file: File,
   metadata?: FileMetadata,
-  range?: { start?: number; end?: number },
+  rangeRequest?: RangeRequest,
   downloadFilename?: string,
 ) => {
-  const start = range?.start ?? 0;
-  const end = range?.end ?? file.size - 1;
-  if (start > end || start < 0 || end >= file.size) {
-    return new Response("Invalid range", { status: 416 });
+  const range = resolveRange(rangeRequest, file.size);
+  if (!range) {
+    return createRangeNotSatisfiableResponse(file.size);
   }
 
   return createResponse(
-    file.slice(start, end + 1).stream(),
-    !!range,
-    { start, end, total: file.size },
+    file.slice(range.start, range.end + 1).stream(),
+    !!rangeRequest,
+    range,
     metadata?.contentType,
     downloadFilename,
   );
@@ -57,16 +74,16 @@ const streamFromOpfs = async (
 const streamFromServer = async (
   id: number,
   metadata: FileMetadata,
-  range?: { start?: number; end?: number },
+  rangeRequest?: RangeRequest,
   downloadFilename?: string,
 ) => {
   const totalSize = getDecryptedSize(metadata.encContentSize, metadata.isLegacy);
-  const start = range?.start ?? 0;
-  const end = range?.end ?? totalSize - 1;
-  if (start > end || start < 0 || end >= totalSize) {
-    return new Response("Invalid range", { status: 416 });
+  const range = resolveRange(rangeRequest, totalSize);
+  if (!range) {
+    return createRangeNotSatisfiableResponse(totalSize);
   }
 
+  const { start, end } = range;
   const encryptedRange = getEncryptedRange(start, end, metadata.encContentSize, metadata.isLegacy);
   const apiResponse = await fetch(`/api/file/${id}/download`, {
     headers: { Range: `bytes=${encryptedRange.start}-${encryptedRange.end}` },
@@ -85,9 +102,10 @@ const streamFromServer = async (
           controller.close();
         },
       }),
-      !!range,
-      { start, end, total: totalSize },
+      !!rangeRequest,
+      range,
       metadata.contentType,
+      downloadFilename,
     );
   }
 
@@ -124,8 +142,8 @@ const streamFromServer = async (
 
   return createResponse(
     apiResponse.body.pipeThrough(decryptingStream),
-    !!range,
-    { start, end, total: totalSize },
+    !!rangeRequest,
+    range,
     metadata.contentType,
     downloadFilename,
   );

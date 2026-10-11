@@ -2,22 +2,22 @@ import { createReadStream } from "fs";
 import { stat } from "fs/promises";
 import { Readable } from "stream";
 import { AppError } from "#lib/server/errors.js";
+import { resolveRange, type RangeRequest } from "#lib/shared/http.js";
 
 export const createEncContentStream = async (
   path: string,
   iv?: Buffer,
-  range?: { start?: number; end?: number },
+  rangeRequest?: RangeRequest,
 ) => {
   const { size: fileSize } = await stat(path);
   const ivSize = iv?.byteLength ?? 0;
-  const totalSize = fileSize + ivSize;
 
-  const start = range?.start ?? 0;
-  const end = range?.end ?? totalSize - 1;
-  if (start > end || start < 0 || end >= totalSize) {
+  const range = resolveRange(rangeRequest, fileSize + ivSize);
+  if (!range) {
     throw new AppError("RANGE_NOT_SATISFIABLE", "Invalid range");
   }
 
+  const { start, end } = range;
   return {
     encContentStream: Readable.toWeb(
       Readable.from(
@@ -34,7 +34,7 @@ export const createEncContentStream = async (
         })(),
       ),
     ),
-    range: { start, end, total: totalSize },
-    isRangeRequest: !!range,
+    range,
+    isRangeRequest: !!rangeRequest,
   };
 };

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { FileDownloadState } from "#lib/modules/file/index.js";
+  import type { FileDownloadState } from "#lib/client/transfer/index.js";
   import type { SummarizedFileInfo } from "#lib/modules/filesystem/index.js";
   import { formatNetworkSpeed } from "#lib/utils/index.js";
 

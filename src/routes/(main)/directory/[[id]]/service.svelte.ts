@@ -1,19 +1,19 @@
 import { getContext, setContext } from "svelte";
-import { storeHmacSecrets } from "#lib/indexedDB/index.js";
-import {
-  generateDataKey,
-  wrapDataKey,
-  unwrapHmacSecret,
-  encryptString,
-} from "#lib/modules/crypto/index.js";
 import {
   storeFileCache,
   deleteFileCache,
   storeFileThumbnailCache,
   deleteFileThumbnailCache,
-  uploadFile,
-} from "#lib/modules/file/index.js";
+} from "#lib/client/cache/index.js";
+import { storeHmacSecrets } from "#lib/client/storage/indexedDB/index.js";
+import { uploadFile } from "#lib/client/transfer/index.js";
 import type { DataKey } from "#lib/modules/filesystem/index.js";
+import {
+  generateDataKey,
+  wrapDataKey,
+  unwrapHmacSecret,
+  encryptString,
+} from "#lib/shared/crypto/index.js";
 import { hmacSecretStore, type MasterKey, type HmacSecret } from "#lib/stores/index.js";
 import { trpc } from "#trpc/client.js";
 

@@ -1,23 +1,7 @@
-import HmacWorker from "#workers/hmac.js?worker";
 import type { ComputeMessage, ResultMessage } from "#workers/hmac.js";
+import HmacWorker from "#workers/hmac.js?worker";
 
-export const digestMessage = async (message: BufferSource) => {
-  return await crypto.subtle.digest("SHA-256", message);
-};
-
-export const generateHmacSecret = async () => {
-  return {
-    hmacSecret: await crypto.subtle.generateKey(
-      {
-        name: "HMAC",
-        hash: "SHA-256",
-      } satisfies HmacKeyGenParams,
-      true,
-      ["sign", "verify"],
-    ),
-  };
-};
-
+// Computes HMAC of large blobs incrementally in a worker, which WebCrypto doesn't support
 export const signMessageHmac = async (message: Blob, hmacSecret: CryptoKey) => {
   const stream = message.stream();
   const hmacSecretRaw = new Uint8Array(await crypto.subtle.exportKey("raw", hmacSecret));

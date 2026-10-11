@@ -1,7 +1,7 @@
 <script lang="ts">
   import { FullscreenDiv } from "#lib/components/atoms/index.js";
   import { TopBar } from "#lib/components/molecules/index.js";
-  import { getUploadingFiles, clearUploadedFiles } from "#lib/modules/file/index.js";
+  import { getUploadingFiles, clearUploadedFiles } from "#lib/client/transfer/index.js";
   import File from "./File.svelte";
 
   const uploadingFiles = getUploadingFiles();

@@ -1,9 +1,9 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import axios from "axios";
 import pLimit from "p-limit";
-import { ENCRYPTION_OVERHEAD, CHUNK_SIZE } from "#lib/constants/index.js";
-import { encodeToBase64, encryptChunk } from "#lib/modules/crypto/index.js";
-import { BoundedQueue } from "#lib/utils/index.js";
+import { encodeToBase64, encryptChunk } from "#lib/shared/crypto/index.js";
+import { CHUNK_SIZE, getChunkCount, getEncryptedSize } from "#lib/shared/format/index.js";
+import { BoundedQueue } from "#lib/utils/concurrency/index.js";
 
 interface UploadStats {
   progress: number;
@@ -98,8 +98,8 @@ export const uploadBlob = async (
   const networkConcurrency = options?.concurrency ?? 4;
   const maxQueueSize = 8;
 
-  const totalChunks = Math.ceil(blob.size / CHUNK_SIZE);
-  const totalBytes = blob.size + totalChunks * ENCRYPTION_OVERHEAD;
+  const totalChunks = getChunkCount(blob.size);
+  const totalBytes = getEncryptedSize(blob.size);
 
   const uploadedByChunk = new Array<number>(totalChunks).fill(0);
   const speedMeter = createSpeedMeter(3000, 200);

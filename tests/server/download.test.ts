@@ -39,6 +39,25 @@ describe("createEncContentStream", () => {
     expect(await read(encContentStream)).toBe("2345");
   });
 
+  it("serves suffix ranges", async () => {
+    const path = await createFile("0123456789");
+
+    const { encContentStream, range } = await createEncContentStream(path, undefined, {
+      suffixLength: 3,
+    });
+
+    expect(range).toEqual({ start: 7, end: 9, total: 10 });
+    expect(await read(encContentStream)).toBe("789");
+  });
+
+  it("rejects unsatisfiable ranges", async () => {
+    const path = await createFile("0123456789");
+
+    await expect(createEncContentStream(path, undefined, { start: 10 })).rejects.toMatchObject({
+      code: "RANGE_NOT_SATISFIABLE",
+    });
+  });
+
   it("prepends the legacy IV to the content", async () => {
     const path = await createFile("6789");
 

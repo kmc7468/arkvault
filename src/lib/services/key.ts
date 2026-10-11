@@ -1,4 +1,5 @@
-import { storeMasterKeys } from "#lib/indexedDB/index.js";
+import { storeMasterKeys } from "#lib/client/storage/indexedDB/index.js";
+import { requestSessionUpgrade } from "#lib/services/auth.js";
 import {
   encodeToBase64,
   exportRSAKeyToBase64,
@@ -7,8 +8,7 @@ import {
   unwrapMasterKey,
   signMasterKeyWrapped,
   verifyMasterKeyWrapped,
-} from "#lib/modules/crypto/index.js";
-import { requestSessionUpgrade } from "#lib/services/auth.js";
+} from "#lib/shared/crypto/index.js";
 import { masterKeyStore, type ClientKeys } from "#lib/stores/index.js";
 import { trpc, isTRPCClientError } from "#trpc/client.js";
 

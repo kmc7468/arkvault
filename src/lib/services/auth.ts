@@ -1,4 +1,4 @@
-import { encodeToBase64, decryptChallenge, signMessageRSA } from "#lib/modules/crypto/index.js";
+import { encodeToBase64, decryptChallenge, signMessageRSA } from "#lib/shared/crypto/index.js";
 import { trpc, isTRPCClientError } from "#trpc/client.js";
 
 export const requestSessionUpgrade = async (

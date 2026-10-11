@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { LiveFileUploadState } from "#lib/modules/file/index.js";
+  import type { LiveFileUploadState } from "#lib/client/transfer/index.js";
   import { formatNetworkSpeed } from "#lib/utils/index.js";
 
   import IconDraft from "~icons/material-symbols/draft";

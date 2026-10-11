@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getDownloadingFiles } from "#lib/modules/file/index.js";
+  import { getDownloadingFiles } from "#lib/client/transfer/index.js";
 
   interface Props {
     onclick: () => void;

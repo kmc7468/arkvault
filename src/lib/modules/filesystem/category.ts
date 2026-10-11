@@ -1,4 +1,4 @@
-import * as IndexedDB from "#lib/indexedDB/index.js";
+import * as IndexedDB from "#lib/client/storage/indexedDB/index.js";
 import { trpc, isTRPCClientError } from "#trpc/client.js";
 import { FilesystemCache, decryptFileMetadata, decryptCategoryMetadata } from "./internal.svelte";
 import type { CategoryInfo, MaybeCategoryInfo } from "./types";
