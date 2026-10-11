@@ -1,13 +1,13 @@
-import { getAllFileInfos } from "$lib/indexedDB/filesystem";
+import { getAllFileInfos } from "#lib/indexedDB/filesystem.js";
 import {
   getFileCache,
   storeFileCache,
   deleteFileCache,
   downloadFile,
   deleteFileThumbnailCache,
-} from "$lib/modules/file";
-import { uploadBlob } from "$lib/modules/upload";
-import { trpc } from "$trpc/client";
+} from "#lib/modules/file/index.js";
+import { uploadBlob } from "#lib/modules/upload.js";
+import { trpc } from "#trpc/client.js";
 
 export const requestFileDownload = async (
   fileId: number,

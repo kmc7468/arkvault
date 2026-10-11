@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { FileDownloadState } from "$lib/modules/file";
-  import type { SummarizedFileInfo } from "$lib/modules/filesystem";
-  import { formatNetworkSpeed } from "$lib/utils";
+  import type { FileDownloadState } from "#lib/modules/file/index.js";
+  import type { SummarizedFileInfo } from "#lib/modules/filesystem/index.js";
+  import { formatNetworkSpeed } from "#lib/utils/index.js";
 
   import IconCloud from "~icons/material-symbols/cloud";
   import IconCloudDownload from "~icons/material-symbols/cloud-download";
@@ -19,7 +19,7 @@
 </script>
 
 <div class="flex h-14 items-center gap-x-4 p-2">
-  <div class="flex-shrink-0 text-lg text-gray-600">
+  <div class="shrink-0 text-lg text-gray-600">
     {#if state.status === "download-pending"}
       <IconCloud />
     {:else if state.status === "downloading"}
@@ -34,7 +34,7 @@
       <IconError class="text-red-500" />
     {/if}
   </div>
-  <div class="flex-grow overflow-hidden">
+  <div class="grow overflow-hidden">
     <p title={info.name} class="truncate font-medium">
       {info.name}
     </p>

@@ -1,16 +1,21 @@
 import { getContext, setContext } from "svelte";
-import { storeHmacSecrets } from "$lib/indexedDB";
-import { generateDataKey, wrapDataKey, unwrapHmacSecret, encryptString } from "$lib/modules/crypto";
+import { storeHmacSecrets } from "#lib/indexedDB/index.js";
+import {
+  generateDataKey,
+  wrapDataKey,
+  unwrapHmacSecret,
+  encryptString,
+} from "#lib/modules/crypto/index.js";
 import {
   storeFileCache,
   deleteFileCache,
   storeFileThumbnailCache,
   deleteFileThumbnailCache,
   uploadFile,
-} from "$lib/modules/file";
-import type { DataKey } from "$lib/modules/filesystem";
-import { hmacSecretStore, type MasterKey, type HmacSecret } from "$lib/stores";
-import { trpc } from "$trpc/client";
+} from "#lib/modules/file/index.js";
+import type { DataKey } from "#lib/modules/filesystem/index.js";
+import { hmacSecretStore, type MasterKey, type HmacSecret } from "#lib/stores/index.js";
+import { trpc } from "#trpc/client.js";
 
 export interface SelectedEntry {
   type: "directory" | "file";

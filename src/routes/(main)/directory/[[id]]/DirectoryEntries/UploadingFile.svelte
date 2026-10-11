@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { LiveFileUploadState } from "$lib/modules/file";
-  import { formatNetworkSpeed } from "$lib/utils";
+  import type { LiveFileUploadState } from "#lib/modules/file/index.js";
+  import { formatNetworkSpeed } from "#lib/utils/index.js";
 
   import IconDraft from "~icons/material-symbols/draft";
 
@@ -12,10 +12,10 @@
 </script>
 
 <div class="flex h-14 gap-x-4 p-2">
-  <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center text-xl">
+  <div class="flex size-10 shrink-0 items-center justify-center text-xl">
     <IconDraft class="text-gray-600" />
   </div>
-  <div class="flex flex-grow flex-col overflow-hidden text-gray-800">
+  <div class="flex grow flex-col overflow-hidden text-gray-800">
     <p title={state.name} class="truncate font-medium">
       {state.name}
     </p>

@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { BottomDiv, Button, FullscreenDiv, TextButton } from "$lib/components/atoms";
-  import { TitledDiv } from "$lib/components/molecules";
-  import { ForceLoginModal } from "$lib/components/organisms";
-  import { storeClientKeys } from "$lib/modules/key";
-  import { clientKeyStore } from "$lib/stores";
-  import { gotoStateful } from "$lib/utils";
+  import { BottomDiv, Button, FullscreenDiv, TextButton } from "#lib/components/atoms/index.js";
+  import { TitledDiv } from "#lib/components/molecules/index.js";
+  import { ForceLoginModal } from "#lib/components/organisms/index.js";
+  import { storeClientKeys } from "#lib/modules/key.js";
+  import { clientKeyStore } from "#lib/stores/index.js";
+  import { gotoStateful } from "#lib/utils/index.js";
   import Order from "./Order.svelte";
   import {
     generateClientKeys,
@@ -111,7 +111,7 @@
 
   onMount(async () => {
     if ($clientKeyStore) {
-      await goto(data.redirectPath, { replaceState: true });
+      await goto(data.redirectPath, { replace: true });
     }
   });
 </script>

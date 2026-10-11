@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { DirectoryIdSchema } from "$lib/schemas";
-import { DirectoryRepo, FileRepo } from "$lib/server/db";
+import { DirectoryIdSchema } from "#lib/schemas/index.js";
+import { DirectoryRepo, FileRepo } from "#lib/server/db/index.js";
 import { router, roleProcedure } from "../init.server";
 
 const searchRouter = router({

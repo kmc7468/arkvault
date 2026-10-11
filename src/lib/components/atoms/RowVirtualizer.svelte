@@ -55,7 +55,7 @@
   <div style:height="{$virtualizer.getTotalSize()}px">
     {#each $virtualizer.getVirtualItems() as virtualItem (virtualItem.key)}
       <div
-        class="absolute left-0 top-0 w-full"
+        class="absolute top-0 left-0 w-full"
         style:transform="translateY({virtualItem.start - scrollMargin}px)"
         data-index={virtualItem.index}
         use:measureItem

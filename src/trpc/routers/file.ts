@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { FileRepo, MediaRepo, IntegrityError } from "$lib/server/db";
-import { safeUnlink } from "$lib/server/modules/filesystem";
+import { FileRepo, MediaRepo, IntegrityError } from "#lib/server/db/index.js";
+import { safeUnlink } from "#lib/server/modules/filesystem.js";
 import { router, roleProcedure } from "../init.server";
 
 const fileRouter = router({

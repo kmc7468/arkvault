@@ -1,4 +1,4 @@
-import { trpc } from "$trpc/client";
+import { trpc } from "#trpc/client.js";
 
 export const requestPasswordChange = async (oldPassword: string, newPassword: string) => {
   try {

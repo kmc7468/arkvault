@@ -21,20 +21,20 @@
     className,
   ]}
 >
-  <div class="w-[2.3rem] flex-shrink-0">
+  <div class="w-[2.3rem] shrink-0">
     {#if showBackButton}
       <button
         onclick={onBackClick ?? (() => history.back())}
-        class="w-full rounded-full p-1 text-2xl active:bg-black active:bg-opacity-[0.04]"
+        class="w-full rounded-full p-1 text-2xl active:bg-black/4"
       >
         <IconArrowBack />
       </button>
     {/if}
   </div>
   {#if title}
-    <p class="flex-grow truncate text-center text-lg font-semibold">{title}</p>
+    <p class="grow truncate text-center text-lg font-semibold">{title}</p>
   {/if}
-  <div class="w-[2.3rem] flex-shrink-0">
+  <div class="w-[2.3rem] shrink-0">
     {#if children}
       {@render children()}
     {/if}

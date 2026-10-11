@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { TextInput } from "$lib/components/atoms";
-  import { ActionModal, type ConfirmHandler } from "$lib/components/molecules";
+  import { TextInput } from "#lib/components/atoms/index.js";
+  import { ActionModal, type ConfirmHandler } from "#lib/components/molecules/index.js";
 
   interface Props {
     defaultValue?: string;

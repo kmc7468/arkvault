@@ -1,10 +1,10 @@
 import { TRPCError } from "@trpc/server";
 import argon2 from "argon2";
 import { z } from "zod";
-import { ClientRepo, SessionRepo, UserRepo, IntegrityError } from "$lib/server/db";
-import env from "$lib/server/loadenv";
-import { cookieOptions } from "$lib/server/modules/auth";
-import { generateChallenge, verifySignature, issueSessionId } from "$lib/server/modules/crypto";
+import { ClientRepo, SessionRepo, UserRepo, IntegrityError } from "#lib/server/db/index.js";
+import env from "#lib/server/loadenv.js";
+import { cookieOptions } from "#lib/server/modules/auth.js";
+import { generateChallenge, verifySignature, issueSessionId } from "#lib/server/modules/crypto.js";
 import { router, publicProcedure, roleProcedure } from "../init.server";
 
 const authRouter = router({

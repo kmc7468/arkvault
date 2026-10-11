@@ -1,12 +1,15 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { FullscreenDiv } from "$lib/components/atoms";
-  import { TopBar } from "$lib/components/molecules";
-  import type { FileCacheIndex } from "$lib/indexedDB";
-  import { getFileCacheIndex, deleteFileCache as doDeleteFileCache } from "$lib/modules/file";
-  import { bulkGetFileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
-  import { masterKeyStore } from "$lib/stores";
-  import { formatFileSize } from "$lib/utils";
+  import { FullscreenDiv } from "#lib/components/atoms/index.js";
+  import { TopBar } from "#lib/components/molecules/index.js";
+  import type { FileCacheIndex } from "#lib/indexedDB/index.js";
+  import {
+    getFileCacheIndex,
+    deleteFileCache as doDeleteFileCache,
+  } from "#lib/modules/file/index.js";
+  import { bulkGetFileInfo, type MaybeFileInfo } from "#lib/modules/filesystem/index.js";
+  import { masterKeyStore } from "#lib/stores/index.js";
+  import { formatFileSize } from "#lib/utils/index.js";
   import File from "./File.svelte";
 
   interface FileCache {
@@ -58,7 +61,7 @@
       </div>
     </div>
   {:else}
-    <div class="flex flex-grow items-center justify-center">
+    <div class="flex grow items-center justify-center">
       <p class="text-gray-500">
         {#if fileCache}
           캐시된 파일이 없어요.

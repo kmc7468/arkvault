@@ -1,10 +1,10 @@
-import { storeFileThumbnailCache } from "$lib/modules/file";
-import { prepareFileDecryption, getDecryptedFileUrl } from "$lib/serviceWorker";
-import { requestFileThumbnailUpload } from "$lib/services/file";
-import { trpc } from "$trpc/client";
+import { storeFileThumbnailCache } from "#lib/modules/file/index.js";
+import { prepareFileDecryption, getDecryptedFileUrl } from "#lib/serviceWorker/index.js";
+import { requestFileThumbnailUpload } from "#lib/services/file.js";
+import { trpc } from "#trpc/client.js";
 
-export { requestCategoryCreation, requestFileRemovalFromCategory } from "$lib/services/category";
-export { requestFileDownload } from "$lib/services/file";
+export { requestCategoryCreation, requestFileRemovalFromCategory } from "#lib/services/category.js";
+export { requestFileDownload } from "#lib/services/file.js";
 
 export const requestVideoStream = async (
   fileId: number,

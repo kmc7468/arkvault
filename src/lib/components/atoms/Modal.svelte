@@ -2,7 +2,7 @@
   import type { Snippet } from "svelte";
   import type { ClassValue } from "svelte/elements";
   import { fade } from "svelte/transition";
-  import { AdaptiveDiv } from "$lib/components/atoms";
+  import { AdaptiveDiv } from "#lib/components/atoms/index.js";
 
   interface Props {
     children: Snippet;
@@ -19,7 +19,7 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     onclick={onclose || (() => (isOpen = false))}
-    class="fixed inset-0 z-10 bg-black bg-opacity-50"
+    class="fixed inset-0 z-10 bg-black/50"
     transition:fade|global={{ duration: 100 }}
   >
     <AdaptiveDiv class="flex h-full items-center justify-center px-4">

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ClassValue } from "svelte/elements";
-  import { IconLabel } from "$lib/components/molecules";
+  import { IconLabel } from "#lib/components/molecules/index.js";
 
   import IconFolder from "~icons/material-symbols/folder";
   import IconDriveFolderUpload from "~icons/material-symbols/drive-folder-upload";
@@ -29,9 +29,14 @@
 </script>
 
 {#snippet iconSnippet()}
-  <div class="relative flex h-10 w-10 items-center justify-center text-xl">
+  <div class="relative flex size-10 items-center justify-center text-xl">
     {#if thumbnail}
-      <img src={thumbnail} alt={name} loading="lazy" class="aspect-square rounded object-cover" />
+      <img
+        src={thumbnail}
+        alt={name}
+        loading="lazy"
+        class="aspect-square rounded-sm object-cover"
+      />
     {:else if type === "directory"}
       <IconFolder />
     {:else if type === "parent-directory"}
@@ -40,7 +45,7 @@
       <IconDraft class="text-blue-400" />
     {/if}
     {#if isFavorite}
-      <div class={["absolute bottom-0 right-0", !thumbnail && "rounded-full bg-white p-0.5"]}>
+      <div class={["absolute right-0 bottom-0", !thumbnail && "rounded-full bg-white p-0.5"]}>
         <IconFavorite
           class="text-xs text-red-500"
           style="filter: drop-shadow(0 0 1px white) drop-shadow(0 0 1px white)"

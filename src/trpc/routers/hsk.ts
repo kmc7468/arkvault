@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { HskRepo, IntegrityError } from "$lib/server/db";
+import { HskRepo, IntegrityError } from "#lib/server/db/index.js";
 import { router, roleProcedure } from "../init.server";
 
 const hskRouter = router({

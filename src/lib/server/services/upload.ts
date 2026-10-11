@@ -1,9 +1,9 @@
 import { error } from "@sveltejs/kit";
 import { open } from "fs/promises";
 import { Readable } from "stream";
-import { ENCRYPTION_OVERHEAD, ENCRYPTED_CHUNK_SIZE } from "$lib/constants";
-import { UploadRepo } from "$lib/server/db";
-import { safeUnlink } from "$lib/server/modules/filesystem";
+import { ENCRYPTION_OVERHEAD, ENCRYPTED_CHUNK_SIZE } from "#lib/constants/index.js";
+import { UploadRepo } from "#lib/server/db/index.js";
+import { safeUnlink } from "#lib/server/modules/filesystem.js";
 
 const chunkLocks = new Set<string>();
 

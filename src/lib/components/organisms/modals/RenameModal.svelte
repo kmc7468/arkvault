@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { TextInputModal } from "$lib/components/organisms";
+  import { TextInputModal } from "#lib/components/organisms/index.js";
 
   interface Props {
     isOpen: boolean;

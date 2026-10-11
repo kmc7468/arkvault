@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { BottomSheet } from "$lib/components/atoms";
-  import { IconEntryButton } from "$lib/components/molecules";
+  import { BottomSheet } from "#lib/components/atoms/index.js";
+  import { IconEntryButton } from "#lib/components/molecules/index.js";
 
   import IconCreateNewFolder from "~icons/material-symbols/create-new-folder";
   import IconUploadFile from "~icons/material-symbols/upload-file";
@@ -19,7 +19,7 @@
     icon={IconCreateNewFolder}
     onclick={onDirectoryCreateClick}
     class="h-16 w-full"
-    iconClass="!text-2xl text-yellow-500"
+    iconClass="text-2xl! text-yellow-500"
   >
     폴더 만들기
   </IconEntryButton>
@@ -27,7 +27,7 @@
     icon={IconUploadFile}
     onclick={onFileUploadClick}
     class="h-16 w-full"
-    iconClass="!text-2xl text-blue-400"
+    iconClass="text-2xl! text-blue-400"
   >
     파일 업로드
   </IconEntryButton>

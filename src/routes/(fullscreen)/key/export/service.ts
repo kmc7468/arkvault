@@ -1,5 +1,5 @@
-export { requestSessionUpgrade } from "$lib/services/auth";
+export { requestSessionUpgrade } from "#lib/services/auth.js";
 export {
   requestClientRegistration,
   requestInitialMasterKeyAndHmacSecretRegistration,
-} from "$lib/services/key";
+} from "#lib/services/key.js";

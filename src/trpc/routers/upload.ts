@@ -6,11 +6,11 @@ import mime from "mime";
 import { dirname } from "path";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
-import { DirectoryIdSchema } from "$lib/schemas";
-import { FileRepo, MediaRepo, UploadRepo, IntegrityError } from "$lib/server/db";
-import db from "$lib/server/db/kysely";
-import env from "$lib/server/loadenv";
-import { safeUnlink } from "$lib/server/modules/filesystem";
+import { DirectoryIdSchema } from "#lib/schemas/index.js";
+import { FileRepo, MediaRepo, UploadRepo, IntegrityError } from "#lib/server/db/index.js";
+import db from "#lib/server/db/kysely.js";
+import env from "#lib/server/loadenv.js";
+import { safeUnlink } from "#lib/server/modules/filesystem.js";
 import { router, roleProcedure } from "../init.server";
 
 const UPLOADS_EXPIRES = 24 * 3600 * 1000; // 24 hours

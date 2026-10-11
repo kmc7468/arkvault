@@ -1,29 +1,35 @@
-import ms from "ms";
-import { building } from "$app/environment";
-import { env } from "$env/dynamic/private";
-
-if (!building) {
-  if (!env.DATABASE_PASSWORD) throw new Error("DATABASE_PASSWORD not set");
-  if (!env.SESSION_SECRET) throw new Error("SESSION_SECRET not set");
-}
+import {
+  NODE_ENV,
+  DATABASE_HOST,
+  DATABASE_PORT,
+  DATABASE_USER,
+  DATABASE_PASSWORD,
+  DATABASE_NAME,
+  SESSION_SECRET,
+  SESSION_EXPIRES,
+  USER_CLIENT_CHALLENGE_EXPIRES,
+  SESSION_UPGRADE_CHALLENGE_EXPIRES,
+  LIBRARY_PATH,
+  THUMBNAILS_PATH,
+} from "$app/env/private";
 
 export default {
-  nodeEnv: env.NODE_ENV || "development",
+  nodeEnv: NODE_ENV,
   database: {
-    host: env.DATABASE_HOST,
-    port: env.DATABASE_PORT ? parseInt(env.DATABASE_PORT, 10) : undefined,
-    user: env.DATABASE_USER,
-    password: env.DATABASE_PASSWORD!,
-    name: env.DATABASE_NAME,
+    host: DATABASE_HOST,
+    port: DATABASE_PORT,
+    user: DATABASE_USER,
+    password: DATABASE_PASSWORD,
+    name: DATABASE_NAME,
   },
   session: {
-    secret: env.SESSION_SECRET!,
-    exp: ms(env.SESSION_EXPIRES || "14d"),
+    secret: SESSION_SECRET,
+    exp: SESSION_EXPIRES,
   },
   challenge: {
-    userClientExp: ms(env.USER_CLIENT_CHALLENGE_EXPIRES || "5m"),
-    sessionUpgradeExp: ms(env.SESSION_UPGRADE_CHALLENGE_EXPIRES || "5m"),
+    userClientExp: USER_CLIENT_CHALLENGE_EXPIRES,
+    sessionUpgradeExp: SESSION_UPGRADE_CHALLENGE_EXPIRES,
   },
-  libraryPath: env.LIBRARY_PATH || "library",
-  thumbnailsPath: env.THUMBNAILS_PATH || "thumbnails",
+  libraryPath: LIBRARY_PATH,
+  thumbnailsPath: THUMBNAILS_PATH,
 };

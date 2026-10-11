@@ -1,4 +1,4 @@
-import { AES_GCM_IV_SIZE } from "$lib/constants";
+import { AES_GCM_IV_SIZE } from "#lib/constants/index.js";
 import {
   encodeString,
   decodeString,

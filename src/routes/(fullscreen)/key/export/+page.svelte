@@ -1,10 +1,10 @@
 <script lang="ts">
   import FileSaver from "file-saver";
   import { goto } from "$app/navigation";
-  import { BottomDiv, Button, FullscreenDiv, TextButton } from "$lib/components/atoms";
-  import { TitledDiv } from "$lib/components/molecules";
-  import { serializeClientKeys, storeClientKeys } from "$lib/modules/key";
-  import { clientKeyStore } from "$lib/stores";
+  import { BottomDiv, Button, FullscreenDiv, TextButton } from "#lib/components/atoms/index.js";
+  import { TitledDiv } from "#lib/components/molecules/index.js";
+  import { serializeClientKeys, storeClientKeys } from "#lib/modules/key.js";
+  import { clientKeyStore } from "#lib/stores/index.js";
   import BeforeContinueBottomSheet from "./BeforeContinueBottomSheet.svelte";
   import BeforeContinueModal from "./BeforeContinueModal.svelte";
   import {
@@ -89,7 +89,7 @@
       암호 키를 파일로 내보낼까요?
     {/snippet}
 
-    <div class="space-y-2 break-keep text-lg text-gray-800">
+    <div class="space-y-2 text-lg break-keep text-gray-800">
       <p>
         모든 디바이스의 암호 키가 유실되면, 서버에 저장된 데이터를 영원히 복호화할 수 없게 돼요.
       </p>

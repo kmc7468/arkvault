@@ -1,13 +1,18 @@
 import ExifReader from "exifreader";
 import { limitFunction } from "p-limit";
-import { CHUNK_SIZE } from "$lib/constants";
-import { encodeToBase64, generateDataKey, wrapDataKey, encryptString } from "$lib/modules/crypto";
-import { signMessageHmac } from "$lib/modules/crypto";
-import { generateThumbnail } from "$lib/modules/thumbnail";
-import { uploadBlob } from "$lib/modules/upload";
-import type { MasterKey, HmacSecret } from "$lib/stores";
-import { Scheduler } from "$lib/utils";
-import { trpc } from "$trpc/client";
+import { CHUNK_SIZE } from "#lib/constants/index.js";
+import {
+  encodeToBase64,
+  generateDataKey,
+  wrapDataKey,
+  encryptString,
+} from "#lib/modules/crypto/index.js";
+import { signMessageHmac } from "#lib/modules/crypto/index.js";
+import { generateThumbnail } from "#lib/modules/thumbnail.js";
+import { uploadBlob } from "#lib/modules/upload.js";
+import type { MasterKey, HmacSecret } from "#lib/stores/index.js";
+import { Scheduler } from "#lib/utils/index.js";
+import { trpc } from "#trpc/client.js";
 
 export interface FileUploadState {
   id: string;

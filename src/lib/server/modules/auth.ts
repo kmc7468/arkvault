@@ -1,7 +1,7 @@
 import { error } from "@sveltejs/kit";
-import { ClientRepo, SessionRepo, IntegrityError } from "$lib/server/db";
-import env from "$lib/server/loadenv";
-import { verifySessionId } from "$lib/server/modules/crypto";
+import { ClientRepo, SessionRepo, IntegrityError } from "#lib/server/db/index.js";
+import env from "#lib/server/loadenv.js";
+import { verifySessionId } from "#lib/server/modules/crypto.js";
 
 export interface Session {
   sessionId: string;

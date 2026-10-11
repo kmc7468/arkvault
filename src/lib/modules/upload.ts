@@ -1,9 +1,9 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import axios from "axios";
 import pLimit from "p-limit";
-import { ENCRYPTION_OVERHEAD, CHUNK_SIZE } from "$lib/constants";
-import { encodeToBase64, encryptChunk } from "$lib/modules/crypto";
-import { BoundedQueue } from "$lib/utils";
+import { ENCRYPTION_OVERHEAD, CHUNK_SIZE } from "#lib/constants/index.js";
+import { encodeToBase64, encryptChunk } from "#lib/modules/crypto/index.js";
+import { BoundedQueue } from "#lib/utils/index.js";
 
 interface UploadStats {
   progress: number;

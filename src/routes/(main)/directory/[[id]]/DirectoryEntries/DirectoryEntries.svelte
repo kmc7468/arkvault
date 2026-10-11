@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { ActionEntryButton, RowVirtualizer } from "$lib/components/atoms";
-  import { DirectoryEntryLabel } from "$lib/components/molecules";
-  import { getUploadingFiles, type LiveFileUploadState } from "$lib/modules/file";
-  import type { DirectoryInfo } from "$lib/modules/filesystem";
-  import { sortEntries } from "$lib/utils";
+  import { ActionEntryButton, RowVirtualizer } from "#lib/components/atoms/index.js";
+  import { DirectoryEntryLabel } from "#lib/components/molecules/index.js";
+  import { getUploadingFiles, type LiveFileUploadState } from "#lib/modules/file/index.js";
+  import type { DirectoryInfo } from "#lib/modules/filesystem/index.js";
+  import { sortEntries } from "#lib/utils/index.js";
   import File from "./File.svelte";
   import SubDirectory from "./SubDirectory.svelte";
   import UploadingFile from "./UploadingFile.svelte";
@@ -54,7 +54,7 @@
         : entries[index]!.type!}
     estimateItemHeight={() => 56}
     itemGap={4}
-    class="pb-[4.5rem]"
+    class="pb-18"
   >
     {#snippet item(index)}
       {@const entry = entries[index]!}
@@ -76,7 +76,7 @@
     {/snippet}
   </RowVirtualizer>
 {:else}
-  <div class="flex flex-grow items-center justify-center">
+  <div class="flex grow items-center justify-center">
     <p class="text-gray-500">폴더가 비어 있어요.</p>
   </div>
 {/if}

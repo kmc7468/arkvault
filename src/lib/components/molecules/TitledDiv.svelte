@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Component, Snippet } from "svelte";
   import type { ClassValue, SvelteHTMLElements } from "svelte/elements";
-  import { TitleLabel } from "$lib/components/molecules";
+  import { TitleLabel } from "#lib/components/molecules/index.js";
 
   interface Props {
     children?: Snippet;

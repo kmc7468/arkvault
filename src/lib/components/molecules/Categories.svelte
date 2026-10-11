@@ -1,5 +1,5 @@
 <script module lang="ts">
-  import type { DataKey } from "$lib/modules/filesystem";
+  import type { DataKey } from "#lib/modules/filesystem/index.js";
 
   export interface SelectedCategory {
     id: number;
@@ -11,10 +11,10 @@
 <script lang="ts">
   import type { Component } from "svelte";
   import type { SvelteHTMLElements } from "svelte/elements";
-  import { ActionEntryButton } from "$lib/components/atoms";
-  import { CategoryLabel } from "$lib/components/molecules";
-  import type { SubCategoryInfo } from "$lib/modules/filesystem";
-  import { sortEntries } from "$lib/utils";
+  import { ActionEntryButton } from "#lib/components/atoms/index.js";
+  import { CategoryLabel } from "#lib/components/molecules/index.js";
+  import type { SubCategoryInfo } from "#lib/modules/filesystem/index.js";
+  import { sortEntries } from "#lib/utils/index.js";
 
   interface Props {
     categories: SubCategoryInfo[];

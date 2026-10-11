@@ -1,14 +1,8 @@
-/// <reference no-default-lib="true"/>
-/// <reference lib="esnext" />
-/// <reference lib="webworker" />
-/// <reference types="@sveltejs/kit" />
-
+import { self } from "$app/service-worker";
 import { DECRYPTED_FILE_URL_PREFIX } from "./constants";
 import { decryptFile } from "./handlers";
 import { fileMetadataStore } from "./stores";
 import type { ServiceWorkerMessage, ServiceWorkerResponse } from "./types";
-
-const self = globalThis.self as unknown as ServiceWorkerGlobalScope;
 
 self.addEventListener("message", (event) => {
   const message: ServiceWorkerMessage = event.data;

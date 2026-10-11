@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { FullscreenDiv } from "$lib/components/atoms";
-  import { TopBar } from "$lib/components/molecules";
+  import { FullscreenDiv } from "#lib/components/atoms/index.js";
+  import { TopBar } from "#lib/components/molecules/index.js";
   import {
     getDownloadingFiles,
     clearDownloadedFiles,
     type FileDownloadState,
-  } from "$lib/modules/file";
-  import { bulkGetFileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
-  import { masterKeyStore } from "$lib/stores";
+  } from "#lib/modules/file/index.js";
+  import { bulkGetFileInfo, type MaybeFileInfo } from "#lib/modules/filesystem/index.js";
+  import { masterKeyStore } from "#lib/stores/index.js";
   import File from "./File.svelte";
 
   let downloadingFiles: { info: MaybeFileInfo; state: FileDownloadState }[] = $state([]);

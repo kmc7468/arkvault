@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ClassValue } from "svelte/elements";
-  import { IconLabel } from "$lib/components/molecules";
+  import { IconLabel } from "#lib/components/molecules/index.js";
 
   import IconCategory from "~icons/material-symbols/category";
 

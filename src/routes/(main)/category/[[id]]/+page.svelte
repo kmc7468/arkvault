@@ -1,12 +1,12 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { CheckBox, RowVirtualizer } from "$lib/components/atoms";
-  import { SubCategories, TopBar } from "$lib/components/molecules";
-  import { CategoryCreateModal } from "$lib/components/organisms";
-  import { updateCategoryInfo } from "$lib/indexedDB";
-  import { getCategoryInfo, type MaybeCategoryInfo } from "$lib/modules/filesystem";
-  import { masterKeyStore } from "$lib/stores";
-  import { HybridPromise, sortEntries } from "$lib/utils";
+  import { CheckBox, RowVirtualizer } from "#lib/components/atoms/index.js";
+  import { SubCategories, TopBar } from "#lib/components/molecules/index.js";
+  import { CategoryCreateModal } from "#lib/components/organisms/index.js";
+  import { updateCategoryInfo } from "#lib/indexedDB/index.js";
+  import { getCategoryInfo, type MaybeCategoryInfo } from "#lib/modules/filesystem/index.js";
+  import { masterKeyStore } from "#lib/stores/index.js";
+  import { HybridPromise, sortEntries } from "#lib/utils/index.js";
   import CategoryDeleteModal from "./CategoryDeleteModal.svelte";
   import CategoryMenuBottomSheet from "./CategoryMenuBottomSheet.svelte";
   import CategoryRenameModal from "./CategoryRenameModal.svelte";

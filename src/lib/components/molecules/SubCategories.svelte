@@ -1,8 +1,12 @@
 <script lang="ts">
   import type { Component } from "svelte";
   import type { ClassValue, SvelteHTMLElements } from "svelte/elements";
-  import { Categories, IconEntryButton, type SelectedCategory } from "$lib/components/molecules";
-  import type { CategoryInfo } from "$lib/modules/filesystem";
+  import {
+    Categories,
+    IconEntryButton,
+    type SelectedCategory,
+  } from "#lib/components/molecules/index.js";
+  import type { CategoryInfo } from "#lib/modules/filesystem/index.js";
 
   import IconAddCircle from "~icons/material-symbols/add-circle";
 

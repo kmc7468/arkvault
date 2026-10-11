@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { BottomDiv, Button, FullscreenDiv } from "$lib/components/atoms";
-  import { IconEntryButton, TopBar } from "$lib/components/molecules";
-  import { deleteAllFileThumbnailCaches } from "$lib/modules/file";
-  import type { MaybeFileInfo } from "$lib/modules/filesystem";
-  import { masterKeyStore } from "$lib/stores";
-  import { sortEntries } from "$lib/utils";
+  import { BottomDiv, Button, FullscreenDiv } from "#lib/components/atoms/index.js";
+  import { IconEntryButton, TopBar } from "#lib/components/molecules/index.js";
+  import { deleteAllFileThumbnailCaches } from "#lib/modules/file/index.js";
+  import type { MaybeFileInfo } from "#lib/modules/filesystem/index.js";
+  import { masterKeyStore } from "#lib/stores/index.js";
+  import { sortEntries } from "#lib/utils/index.js";
   import File from "./File.svelte";
   import {
     getThumbnailGenerationStatus,
@@ -55,15 +55,15 @@
 </svelte:head>
 
 <TopBar title="썸네일" />
-<FullscreenDiv class="bg-gray-100 !px-0">
-  <div class="flex flex-grow flex-col space-y-4">
-    <div class="bg-white p-4 !pt-0">
+<FullscreenDiv class="bg-gray-100 px-0!">
+  <div class="flex grow flex-col space-y-4">
+    <div class="bg-white p-4 pt-0!">
       <IconEntryButton icon={IconDelete} onclick={deleteAllFileThumbnailCaches} class="w-full">
         저장된 썸네일 모두 삭제하기
       </IconEntryButton>
     </div>
     {#if files.length > 0}
-      <div class="flex-grow space-y-2 bg-white p-4">
+      <div class="grow space-y-2 bg-white p-4">
         <p class="text-lg font-bold text-gray-800">썸네일이 누락된 파일</p>
         <div class="space-y-4">
           <p class="break-keep text-gray-800">

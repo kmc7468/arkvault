@@ -1,9 +1,9 @@
-import { error, text } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import { Readable } from "stream";
 import type { ReadableStream } from "stream/web";
 import { z } from "zod";
-import { authorize } from "$lib/server/modules/auth";
-import { uploadChunk } from "$lib/server/services/upload";
+import { authorize } from "#lib/server/modules/auth.js";
+import { uploadChunk } from "#lib/server/services/upload.js";
 import type { RequestHandler } from "./$types";
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
@@ -28,5 +28,5 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
     chunkIndex,
     Readable.fromWeb(request.body as ReadableStream),
   );
-  return text("Chunk uploaded", { headers: { "Content-Type": "text/plain" } });
+  return new Response("Chunk uploaded", { headers: { "Content-Type": "text/plain" } });
 };

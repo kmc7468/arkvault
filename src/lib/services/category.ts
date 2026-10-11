@@ -1,6 +1,6 @@
-import { generateDataKey, wrapDataKey, encryptString } from "$lib/modules/crypto";
-import type { MasterKey } from "$lib/stores";
-import { trpc } from "$trpc/client";
+import { generateDataKey, wrapDataKey, encryptString } from "#lib/modules/crypto/index.js";
+import type { MasterKey } from "#lib/stores/index.js";
+import { trpc } from "#trpc/client.js";
 
 export const requestCategoryCreation = async (
   name: string,

@@ -25,15 +25,15 @@
 
 <div class={["flex items-center gap-x-4", className]}>
   {#if iconSnippet}
-    <div class={["flex-shrink-0", iconClassName]}>
+    <div class={["shrink-0", iconClassName]}>
       {@render iconSnippet()}
     </div>
   {:else if Icon}
-    <div class={["flex-shrink-0 text-lg", iconClassName]}>
+    <div class={["shrink-0 text-lg", iconClassName]}>
       <Icon />
     </div>
   {/if}
-  <div class="flex flex-grow flex-col overflow-x-hidden text-left">
+  <div class="flex grow flex-col overflow-x-hidden text-left">
     <p class={["truncate font-medium", textClassName]}>
       {@render children()}
     </p>

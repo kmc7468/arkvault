@@ -2,7 +2,7 @@ import { error } from "@sveltejs/kit";
 import { createReadStream } from "fs";
 import { stat } from "fs/promises";
 import { Readable } from "stream";
-import { FileRepo, MediaRepo } from "$lib/server/db";
+import { FileRepo, MediaRepo } from "#lib/server/db/index.js";
 
 const createEncContentStream = async (
   path: string,

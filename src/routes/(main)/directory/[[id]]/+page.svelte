@@ -2,11 +2,11 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { FloatingButton } from "$lib/components/atoms";
-  import { TopBar } from "$lib/components/molecules";
-  import { getDirectoryInfo, type MaybeDirectoryInfo } from "$lib/modules/filesystem";
-  import { masterKeyStore, hmacSecretStore } from "$lib/stores";
-  import { HybridPromise } from "$lib/utils";
+  import { FloatingButton } from "#lib/components/atoms/index.js";
+  import { TopBar } from "#lib/components/molecules/index.js";
+  import { getDirectoryInfo, type MaybeDirectoryInfo } from "#lib/modules/filesystem/index.js";
+  import { masterKeyStore, hmacSecretStore } from "#lib/stores/index.js";
+  import { HybridPromise } from "#lib/utils/index.js";
   import DirectoryCreateModal from "./DirectoryCreateModal.svelte";
   import DirectoryEntries from "./DirectoryEntries";
   import DownloadStatusCard from "./DownloadStatusCard.svelte";
@@ -109,16 +109,13 @@
 <input bind:this={fileInput} onchange={uploadFile} type="file" multiple class="hidden" />
 
 <div class="flex h-full flex-col">
-  <TopBar title={info?.name ?? "내 파일"} {showBackButton} class="flex-shrink-0">
-    <button
-      onclick={onSearchClick}
-      class="w-[2.3rem] flex-shrink-0 rounded-full p-1 active:bg-black active:bg-opacity-[0.04]"
-    >
+  <TopBar title={info?.name ?? "내 파일"} {showBackButton} class="shrink-0">
+    <button onclick={onSearchClick} class="w-[2.3rem] shrink-0 rounded-full p-1 active:bg-black/4">
       <IconSearch class="text-2xl" />
     </button>
   </TopBar>
   {#if info?.exists}
-    <div class="flex flex-grow flex-col px-4 pb-4">
+    <div class="flex grow flex-col px-4 pb-4">
       <div class="flex gap-x-2">
         <UploadStatusCard onclick={() => goto("/file/uploads")} />
         <DownloadStatusCard onclick={() => goto("/file/downloads")} />
@@ -149,7 +146,7 @@
   onclick={() => {
     isEntryCreateBottomSheetOpen = true;
   }}
-  class="bottom-24 right-4"
+  class="right-4 bottom-24"
 />
 <EntryCreateBottomSheet
   bind:isOpen={isEntryCreateBottomSheetOpen}

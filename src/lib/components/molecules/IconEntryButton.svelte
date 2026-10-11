@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { Component, Snippet } from "svelte";
   import type { ClassValue, SvelteHTMLElements } from "svelte/elements";
-  import { EntryButton } from "$lib/components/atoms";
-  import { IconLabel } from "$lib/components/molecules";
+  import { EntryButton } from "#lib/components/atoms/index.js";
+  import { IconLabel } from "#lib/components/molecules/index.js";
 
   interface Props {
     children: Snippet;

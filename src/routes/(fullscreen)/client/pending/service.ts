@@ -1,6 +1,6 @@
-import { concatenateBuffers, exportRSAKey, digestMessage } from "$lib/modules/crypto";
+import { concatenateBuffers, exportRSAKey, digestMessage } from "#lib/modules/crypto/index.js";
 
-export { requestMasterKeyDownload } from "$lib/services/key";
+export { requestMasterKeyDownload } from "#lib/services/key.js";
 
 export const generatePublicKeyFingerprint = async (encryptKey: CryptoKey, verifyKey: CryptoKey) => {
   const { key: encryptKeyBuffer } = await exportRSAKey(encryptKey);

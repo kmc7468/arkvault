@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { FileUploadState } from "$lib/modules/file";
-  import { formatNetworkSpeed } from "$lib/utils";
+  import type { FileUploadState } from "#lib/modules/file/index.js";
+  import { formatNetworkSpeed } from "#lib/utils/index.js";
 
   import IconPending from "~icons/material-symbols/pending";
   import IconLockClock from "~icons/material-symbols/lock-clock";
@@ -17,7 +17,7 @@
 </script>
 
 <div class="flex h-14 items-center gap-x-4 p-2">
-  <div class="flex-shrink-0 text-lg text-gray-600">
+  <div class="shrink-0 text-lg text-gray-600">
     {#if state.status === "queued" || state.status === "encryption-pending"}
       <IconPending />
     {:else if state.status === "encrypting"}
@@ -32,7 +32,7 @@
       <IconError class="text-red-500" />
     {/if}
   </div>
-  <div class="flex-grow overflow-hidden">
+  <div class="grow overflow-hidden">
     <p title={state.name} class="truncate font-medium">
       {state.name}
     </p>

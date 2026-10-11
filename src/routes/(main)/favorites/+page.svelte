@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { RowVirtualizer } from "$lib/components/atoms";
-  import { TopBar } from "$lib/components/molecules";
-  import { masterKeyStore } from "$lib/stores";
+  import { RowVirtualizer } from "#lib/components/atoms/index.js";
+  import { TopBar } from "#lib/components/molecules/index.js";
+  import { masterKeyStore } from "#lib/stores/index.js";
   import Directory from "./Directory.svelte";
   import File from "./File.svelte";
   import { requestFavoriteEntries, requestRemoveFavorite, type FavoriteEntry } from "./service";
@@ -48,12 +48,12 @@
   <TopBar title="즐겨찾기" showBackButton={false}>
     <button
       onclick={() => goto("/search?from=favorites")}
-      class="w-full rounded-full p-1 text-2xl active:bg-black active:bg-opacity-[0.04]"
+      class="w-full rounded-full p-1 text-2xl active:bg-black/4"
     >
       <IconSearch />
     </button>
   </TopBar>
-  <div class="flex flex-grow flex-col px-4 pb-4">
+  <div class="flex grow flex-col px-4 pb-4">
     {#if entries.length > 0}
       <RowVirtualizer
         count={entries.length}
@@ -79,7 +79,7 @@
         {/snippet}
       </RowVirtualizer>
     {:else}
-      <div class="flex flex-grow items-center justify-center">
+      <div class="flex grow items-center justify-center">
         <p class="text-gray-500">
           {#if isLoading}
             즐겨찾기 목록을 불러오고 있어요.

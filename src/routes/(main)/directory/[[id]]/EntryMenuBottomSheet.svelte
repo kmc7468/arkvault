@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { BottomSheet } from "$lib/components/atoms";
-  import { DirectoryEntryLabel, IconEntryButton } from "$lib/components/molecules";
+  import { BottomSheet } from "#lib/components/atoms/index.js";
+  import { DirectoryEntryLabel, IconEntryButton } from "#lib/components/molecules/index.js";
   import { useContext } from "./service.svelte";
 
   import IconFavorite from "~icons/material-symbols/favorite";
@@ -22,7 +22,7 @@
 {#if context.selectedEntry}
   {@const { name, type, isFavorite } = context.selectedEntry}
   <BottomSheet bind:isOpen class="p-4">
-    <DirectoryEntryLabel {type} {name} class="h-12 p-2" textClass="!font-semibold" />
+    <DirectoryEntryLabel {type} {name} class="h-12 p-2" textClass="font-semibold!" />
     <div class="my-2 h-px w-full bg-gray-200"></div>
     <IconEntryButton
       icon={isFavorite ? IconFavorite : IconFavoriteBorder}

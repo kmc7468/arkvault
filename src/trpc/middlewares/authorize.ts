@@ -4,7 +4,7 @@ import {
   authorizeInternal,
   type ClientSession,
   type SessionPermission,
-} from "$lib/server/modules/auth";
+} from "#lib/server/modules/auth.js";
 import { t } from "../init.server";
 
 const authorize = async (locals: App.Locals, requiredPermission: SessionPermission) => {

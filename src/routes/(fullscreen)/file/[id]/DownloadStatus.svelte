@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { isFileDownloading, type FileDownloadState } from "$lib/modules/file";
-  import { formatNetworkSpeed } from "$lib/utils";
+  import { isFileDownloading, type FileDownloadState } from "#lib/modules/file/index.js";
+  import { formatNetworkSpeed } from "#lib/utils/index.js";
 
   interface Props {
     state: FileDownloadState;

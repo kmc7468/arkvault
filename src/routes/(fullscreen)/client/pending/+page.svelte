@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { FullscreenDiv } from "$lib/components/atoms";
-  import { TitledDiv } from "$lib/components/molecules";
-  import { clientKeyStore, masterKeyStore } from "$lib/stores";
+  import { FullscreenDiv } from "#lib/components/atoms/index.js";
+  import { TitledDiv } from "#lib/components/molecules/index.js";
+  import { clientKeyStore, masterKeyStore } from "#lib/stores/index.js";
   import { generatePublicKeyFingerprint, requestMasterKeyDownload } from "./service";
 
   import IconFingerprint from "~icons/material-symbols/fingerprint";
@@ -22,7 +22,7 @@
       ($clientKeyStore &&
         (await requestMasterKeyDownload($clientKeyStore.decryptKey, $clientKeyStore.verifyKey)))
     ) {
-      await goto(data.redirectPath, { replaceState: true });
+      await goto(data.redirectPath, { replace: true });
     }
   });
 </script>

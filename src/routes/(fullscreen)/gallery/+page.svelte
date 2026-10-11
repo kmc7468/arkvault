@@ -1,15 +1,19 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { FileThumbnailButton, FullscreenDiv, RowVirtualizer } from "$lib/components/atoms";
-  import { TopBar } from "$lib/components/molecules";
+  import {
+    FileThumbnailButton,
+    FullscreenDiv,
+    RowVirtualizer,
+  } from "#lib/components/atoms/index.js";
+  import { TopBar } from "#lib/components/molecules/index.js";
   import {
     bulkGetFileInfo,
     type MaybeFileInfo,
     type SummarizedFileInfo,
-  } from "$lib/modules/filesystem";
-  import { masterKeyStore } from "$lib/stores";
-  import { formatDate, formatDateSortable, SortBy, sortEntries } from "$lib/utils";
+  } from "#lib/modules/filesystem/index.js";
+  import { masterKeyStore } from "#lib/stores/index.js";
+  import { formatDate, formatDateSortable, SortBy, sortEntries } from "#lib/utils/index.js";
 
   let { data } = $props();
 
@@ -65,7 +69,7 @@
     count={rows.length}
     estimateItemHeight={(index) =>
       rows[index]!.type === "header" ? 28 : 181 + (rows[index]!.isLast ? 16 : 4)}
-    class="flex flex-grow flex-col"
+    class="flex grow flex-col"
   >
     {#snippet item(index)}
       {@const row = rows[index]!}
@@ -83,7 +87,7 @@
       {/if}
     {/snippet}
     {#snippet placeholder()}
-      <div class="flex h-full flex-grow items-center justify-center">
+      <div class="flex h-full grow items-center justify-center">
         <p class="text-gray-500">
           {#if files.length === 0}
             업로드된 파일이 없어요.

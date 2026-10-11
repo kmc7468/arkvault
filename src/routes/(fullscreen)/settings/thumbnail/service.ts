@@ -1,11 +1,11 @@
 import { limitFunction } from "p-limit";
 import { SvelteMap } from "svelte/reactivity";
-import { storeFileThumbnailCache } from "$lib/modules/file";
-import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
-import { generateThumbnail } from "$lib/modules/thumbnail";
-import { requestFileDownload, requestFileThumbnailUpload } from "$lib/services/file";
-import { HybridPromise, Scheduler } from "$lib/utils";
-import type { RouterOutputs } from "$trpc/router.server";
+import { storeFileThumbnailCache } from "#lib/modules/file/index.js";
+import { getFileInfo, type FileInfo } from "#lib/modules/filesystem/index.js";
+import { generateThumbnail } from "#lib/modules/thumbnail.js";
+import { requestFileDownload, requestFileThumbnailUpload } from "#lib/services/file.js";
+import { HybridPromise, Scheduler } from "#lib/utils/index.js";
+import type { RouterOutputs } from "#trpc/router.server.js";
 
 export type GenerationStatus =
   "queued" | "generation-pending" | "generating" | "uploading" | "uploaded" | "error";

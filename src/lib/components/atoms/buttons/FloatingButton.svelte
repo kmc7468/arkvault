@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Component } from "svelte";
   import type { ClassValue, SvelteHTMLElements } from "svelte/elements";
-  import { AdaptiveDiv } from "$lib/components/atoms";
+  import { AdaptiveDiv } from "#lib/components/atoms/index.js";
 
   interface Props {
     class: ClassValue;
@@ -17,7 +17,7 @@
     <button
       onclick={onclick && (() => setTimeout(onclick, 100))}
       class={[
-        "pointer-events-auto absolute flex h-14 w-14 items-center justify-center rounded-full bg-gray-300 text-xl shadow-lg transition active:scale-95 active:bg-gray-400",
+        "pointer-events-auto absolute flex size-14 items-center justify-center rounded-full bg-gray-300 text-xl shadow-lg transition active:scale-95 active:bg-gray-400",
         className,
       ]}
     >

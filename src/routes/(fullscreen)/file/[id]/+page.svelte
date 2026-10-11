@@ -3,13 +3,13 @@
   import { untrack } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { FullscreenDiv } from "$lib/components/atoms";
-  import { Categories, IconEntryButton, TopBar } from "$lib/components/molecules";
-  import { getFileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
-  import { captureVideoThumbnail } from "$lib/modules/thumbnail";
-  import { getFileDownloadState } from "$lib/modules/file";
-  import { masterKeyStore } from "$lib/stores";
-  import { HybridPromise } from "$lib/utils";
+  import { FullscreenDiv } from "#lib/components/atoms/index.js";
+  import { Categories, IconEntryButton, TopBar } from "#lib/components/molecules/index.js";
+  import { getFileInfo, type MaybeFileInfo } from "#lib/modules/filesystem/index.js";
+  import { captureVideoThumbnail } from "#lib/modules/thumbnail.js";
+  import { getFileDownloadState } from "#lib/modules/file/index.js";
+  import { masterKeyStore } from "#lib/stores/index.js";
+  import { HybridPromise } from "#lib/utils/index.js";
   import AddToCategoryBottomSheet from "./AddToCategoryBottomSheet.svelte";
   import DownloadStatus from "./DownloadStatus.svelte";
   import {
@@ -150,7 +150,7 @@
   <div onclick={(e) => e.stopPropagation()}>
     <button
       onclick={() => (isMenuOpen = !isMenuOpen)}
-      class="w-full rounded-full p-1 text-2xl active:bg-black active:bg-opacity-[0.04]"
+      class="w-full rounded-full p-1 text-2xl active:bg-black/4"
     >
       <IconMoreVert />
     </button>

@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { BottomDiv, BottomSheet, Button, FullscreenDiv } from "$lib/components/atoms";
-  import { SubCategories } from "$lib/components/molecules";
+  import { BottomDiv, BottomSheet, Button, FullscreenDiv } from "#lib/components/atoms/index.js";
+  import { SubCategories } from "#lib/components/molecules/index.js";
   import {
     getCategoryInfo,
     type LocalCategoryInfo,
     type MaybeCategoryInfo,
-  } from "$lib/modules/filesystem";
-  import { masterKeyStore } from "$lib/stores";
-  import { HybridPromise } from "$lib/utils";
+  } from "#lib/modules/filesystem/index.js";
+  import { masterKeyStore } from "#lib/stores/index.js";
+  import { HybridPromise } from "#lib/utils/index.js";
 
   interface Props {
     isOpen: boolean;

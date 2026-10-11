@@ -4,9 +4,9 @@ import {
   type LocalDirectoryInfo,
   type FileInfo,
   type LocalCategoryInfo,
-} from "$lib/modules/filesystem";
-import { HybridPromise } from "$lib/utils";
-import { trpc } from "$trpc/client";
+} from "#lib/modules/filesystem/index.js";
+import { HybridPromise } from "#lib/utils/index.js";
+import { trpc } from "#trpc/client.js";
 
 export interface SearchFilter {
   ancestorId: DirectoryId;

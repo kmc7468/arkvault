@@ -9,10 +9,10 @@
 </script>
 
 <script lang="ts">
-  import { ActionEntryButton } from "$lib/components/atoms";
-  import { DirectoryEntryLabel } from "$lib/components/molecules";
-  import type { FileInfo } from "$lib/modules/filesystem";
-  import { formatDateTime } from "$lib/utils";
+  import { ActionEntryButton } from "#lib/components/atoms/index.js";
+  import { DirectoryEntryLabel } from "#lib/components/molecules/index.js";
+  import type { FileInfo } from "#lib/modules/filesystem/index.js";
+  import { formatDateTime } from "#lib/utils/index.js";
   import type { GenerationStatus } from "./service";
 
   import IconCamera from "~icons/material-symbols/camera";

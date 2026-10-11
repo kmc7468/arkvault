@@ -1,7 +1,7 @@
 import axios from "axios";
 import { limitFunction } from "p-limit";
-import { ENCRYPTED_CHUNK_SIZE } from "$lib/constants";
-import { decryptChunk, concatenateBuffers } from "$lib/modules/crypto";
+import { ENCRYPTED_CHUNK_SIZE } from "#lib/constants/index.js";
+import { decryptChunk, concatenateBuffers } from "#lib/modules/crypto/index.js";
 
 export interface FileDownloadState {
   id: number;

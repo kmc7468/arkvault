@@ -3,8 +3,8 @@ import {
   storeFileCacheIndex,
   deleteFileCacheIndex,
   type FileCacheIndex,
-} from "$lib/indexedDB";
-import { readFile, writeFile, deleteFile } from "$lib/modules/opfs";
+} from "#lib/indexedDB/index.js";
+import { readFile, writeFile, deleteFile } from "#lib/modules/opfs.js";
 
 const fileCacheIndex = new Map<number, FileCacheIndex>();
 

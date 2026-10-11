@@ -1,1 +1,1 @@
-export { requestLogout } from "$lib/services/auth";
+export { requestLogout } from "#lib/services/auth.js";

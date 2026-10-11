@@ -1,9 +1,15 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { BottomDiv, Button, FullscreenDiv, TextButton, TextInput } from "$lib/components/atoms";
-  import { TitledDiv } from "$lib/components/molecules";
-  import { ForceLoginModal } from "$lib/components/organisms";
-  import { clientKeyStore, masterKeyStore } from "$lib/stores";
+  import {
+    BottomDiv,
+    Button,
+    FullscreenDiv,
+    TextButton,
+    TextInput,
+  } from "#lib/components/atoms/index.js";
+  import { TitledDiv } from "#lib/components/molecules/index.js";
+  import { ForceLoginModal } from "#lib/components/organisms/index.js";
+  import { clientKeyStore, masterKeyStore } from "#lib/stores/index.js";
   import {
     requestLogin,
     requestClientRegistrationAndSessionUpgrade,

@@ -1,9 +1,9 @@
 import { LRUCache } from "lru-cache";
 import { writable, type Writable } from "svelte/store";
-import { decryptChunk } from "$lib/modules/crypto";
-import type { SummarizedFileInfo } from "$lib/modules/filesystem";
-import { readFile, writeFile, deleteFile, deleteDirectory } from "$lib/modules/opfs";
-import { getThumbnailUrl } from "$lib/modules/thumbnail";
+import { decryptChunk } from "#lib/modules/crypto/index.js";
+import type { SummarizedFileInfo } from "#lib/modules/filesystem/index.js";
+import { readFile, writeFile, deleteFile, deleteDirectory } from "#lib/modules/opfs.js";
+import { getThumbnailUrl } from "#lib/modules/thumbnail.js";
 
 const loadedThumbnails = new LRUCache<number, Writable<string>>({ max: 100 });
 const loadingThumbnails = new Map<number, Writable<string | undefined>>();

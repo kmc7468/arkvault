@@ -10,16 +10,16 @@ import {
   makeAESKeyNonextractable,
   wrapHmacSecret,
   generateHmacSecret,
-} from "$lib/modules/crypto";
-import { deserializeClientKeys } from "$lib/modules/key";
-import { clientKeyStore } from "$lib/stores";
+} from "#lib/modules/crypto/index.js";
+import { deserializeClientKeys } from "#lib/modules/key.js";
+import { clientKeyStore } from "#lib/stores/index.js";
 
-export { requestLogout } from "$lib/services/auth";
-export { requestDeletedFilesCleanup } from "$lib/services/file";
+export { requestLogout } from "#lib/services/auth.js";
+export { requestDeletedFilesCleanup } from "#lib/services/file.js";
 export {
   requestClientRegistrationAndSessionUpgrade,
   requestInitialMasterKeyAndHmacSecretRegistration,
-} from "$lib/services/key";
+} from "#lib/services/key.js";
 
 export const generateClientKeys = async () => {
   const { encryptKey, decryptKey } = await generateEncryptionKeyPair();

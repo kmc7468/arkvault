@@ -10,6 +10,6 @@
   let { children, class: className }: Props = $props();
 </script>
 
-<div class={["flex flex-grow flex-col justify-between px-4", className]}>
+<div class={["flex grow flex-col justify-between px-4", className]}>
   {@render children()}
 </div>

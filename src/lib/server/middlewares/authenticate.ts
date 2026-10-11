@@ -1,5 +1,6 @@
-import { error, redirect, type Handle } from "@sveltejs/kit";
-import { cookieOptions, authenticate, AuthenticationError } from "$lib/server/modules/auth";
+import { error, redirect } from "@sveltejs/kit";
+import type { Handle } from "@sveltejs/kit/hooks";
+import { cookieOptions, authenticate, AuthenticationError } from "#lib/server/modules/auth.js";
 
 export const authenticateMiddleware: Handle = async ({ event, resolve }) => {
   try {

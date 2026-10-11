@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { CategoryIdSchema } from "$lib/schemas";
-import { CategoryRepo, FileRepo, IntegrityError } from "$lib/server/db";
+import { CategoryIdSchema } from "#lib/schemas/index.js";
+import { CategoryRepo, FileRepo, IntegrityError } from "#lib/server/db/index.js";
 import { router, roleProcedure } from "../init.server";
 
 const categoryRouter = router({

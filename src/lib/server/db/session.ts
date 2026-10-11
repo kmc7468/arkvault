@@ -1,5 +1,5 @@
 import pg from "pg";
-import env from "$lib/server/loadenv";
+import env from "#lib/server/loadenv.js";
 import { IntegrityError } from "./error";
 import db from "./kysely";
 

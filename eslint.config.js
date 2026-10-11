@@ -1,5 +1,6 @@
 import { includeIgnoreFile } from "@eslint/compat";
 import js from "@eslint/js";
+import { loadConfig } from "@sveltejs/load-config";
 import { defineConfig } from "eslint/config";
 import prettier from "eslint-config-prettier";
 import svelte from "eslint-plugin-svelte";
@@ -7,7 +8,8 @@ import tailwind from "eslint-plugin-tailwindcss";
 import globals from "globals";
 import ts from "typescript-eslint";
 import { fileURLToPath } from "url";
-import svelteConfig from "./svelte.config.js";
+
+const svelteConfig = (await loadConfig("./", { traverse: false }))?.config;
 
 const gitignorePath = fileURLToPath(new URL("./.gitignore", import.meta.url));
 
@@ -16,7 +18,7 @@ export default defineConfig(
   js.configs.recommended,
   ...ts.configs.recommended,
   ...svelte.configs.recommended,
-  ...tailwind.configs["flat/recommended"],
+  tailwind.configs.recommended,
   prettier,
   ...svelte.configs.prettier,
   {
@@ -24,6 +26,11 @@ export default defineConfig(
       globals: {
         ...globals.browser,
         ...globals.node,
+      },
+    },
+    settings: {
+      tailwindcss: {
+        cssConfigPath: "./src/app.css",
       },
     },
     rules: {

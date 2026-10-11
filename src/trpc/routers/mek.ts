@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { ClientRepo, MekRepo, IntegrityError } from "$lib/server/db";
-import { verifySignature } from "$lib/server/modules/crypto";
+import { ClientRepo, MekRepo, IntegrityError } from "#lib/server/db/index.js";
+import { verifySignature } from "#lib/server/modules/crypto.js";
 import { router, roleProcedure } from "../init.server";
 
 const verifyClientEncMekSig = async (

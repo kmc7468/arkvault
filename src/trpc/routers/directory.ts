@@ -1,8 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { DirectoryIdSchema } from "$lib/schemas";
-import { DirectoryRepo, FileRepo, IntegrityError } from "$lib/server/db";
-import { safeUnlink } from "$lib/server/modules/filesystem";
+import { DirectoryIdSchema } from "#lib/schemas/index.js";
+import { DirectoryRepo, FileRepo, IntegrityError } from "#lib/server/db/index.js";
+import { safeUnlink } from "#lib/server/modules/filesystem.js";
 import { router, roleProcedure } from "../init.server";
 
 const directoryRouter = router({

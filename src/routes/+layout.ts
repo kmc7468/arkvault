@@ -1,6 +1,6 @@
 import { redirect } from "@sveltejs/kit";
 import { get } from "svelte/store";
-import { clientKeyStore, masterKeyStore } from "$lib/stores";
+import { clientKeyStore, masterKeyStore } from "#lib/stores/index.js";
 import type { LayoutLoad } from "./$types";
 
 export const ssr = false;

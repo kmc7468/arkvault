@@ -1,5 +1,5 @@
-import * as IndexedDB from "$lib/indexedDB";
-import { trpc, isTRPCClientError } from "$trpc/client";
+import * as IndexedDB from "#lib/indexedDB/index.js";
+import { trpc, isTRPCClientError } from "#trpc/client.js";
 import { FilesystemCache, decryptDirectoryMetadata, decryptFileMetadata } from "./internal.svelte";
 import type { DirectoryInfo, MaybeDirectoryInfo } from "./types";
 

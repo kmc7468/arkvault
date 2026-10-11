@@ -29,7 +29,7 @@
   class={["rounded-xl", className]}
 >
   <div id="children" class="flex h-full items-center gap-x-4 p-2 transition">
-    <div class="flex-grow overflow-x-hidden">
+    <div class="grow overflow-x-hidden">
       {@render children()}
     </div>
     {#if ActionButtonIcon}
@@ -41,7 +41,7 @@
             setTimeout(onActionButtonClick, 100);
           }
         }}
-        class={["flex-shrink-0 rounded-full p-1 text-lg active:bg-gray-100", actionButtonClassName]}
+        class={["shrink-0 rounded-full p-1 text-lg active:bg-gray-100", actionButtonClassName]}
       >
         <ActionButtonIcon />
       </button>
@@ -50,6 +50,8 @@
 </div>
 
 <style lang="postcss">
+  @reference "../../../../app.css";
+
   #container:active:not(:has(#action-button:active)) {
     @apply bg-gray-100;
   }

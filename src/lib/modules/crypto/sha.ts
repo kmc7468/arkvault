@@ -1,5 +1,5 @@
-import HmacWorker from "$workers/hmac?worker";
-import type { ComputeMessage, ResultMessage } from "$workers/hmac";
+import HmacWorker from "#workers/hmac.js?worker";
+import type { ComputeMessage, ResultMessage } from "#workers/hmac.js";
 
 export const digestMessage = async (message: BufferSource) => {
   return await crypto.subtle.digest("SHA-256", message);

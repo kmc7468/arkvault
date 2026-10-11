@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { BottomSheet } from "$lib/components/atoms";
-  import { CategoryLabel, IconEntryButton } from "$lib/components/molecules";
+  import { BottomSheet } from "#lib/components/atoms/index.js";
+  import { CategoryLabel, IconEntryButton } from "#lib/components/molecules/index.js";
   import { useContext } from "./service.svelte";
 
   import IconEdit from "~icons/material-symbols/edit";
@@ -19,7 +19,7 @@
 {#if context.selectedCategory}
   {@const { name } = context.selectedCategory}
   <BottomSheet bind:isOpen class="p-4">
-    <CategoryLabel {name} class="h-12 p-2" textClass="!font-semibold" />
+    <CategoryLabel {name} class="h-12 p-2" textClass="font-semibold!" />
     <div class="my-2 h-px w-full bg-gray-200"></div>
     <IconEntryButton icon={IconEdit} onclick={onRenameClick} class="h-12 w-full">
       이름 바꾸기

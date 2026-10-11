@@ -1,8 +1,8 @@
 import { error } from "@sveltejs/kit";
 import { z } from "zod";
-import { parseRangeHeader, getContentRangeHeader } from "$lib/modules/http";
-import { authorize } from "$lib/server/modules/auth";
-import { getFileStream, getFileThumbnailStream } from "$lib/server/services/file";
+import { parseRangeHeader, getContentRangeHeader } from "#lib/modules/http.js";
+import { authorize } from "#lib/server/modules/auth.js";
+import { getFileStream, getFileThumbnailStream } from "#lib/server/services/file.js";
 import type { RequestHandler, RouteParams } from "./$types";
 
 const downloadHandler = async (locals: App.Locals, params: RouteParams, request: Request) => {

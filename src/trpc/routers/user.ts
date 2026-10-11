@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { UserRepo } from "$lib/server/db";
+import { UserRepo } from "#lib/server/db/index.js";
 import { router, roleProcedure } from "../init.server";
 
 const userRouter = router({

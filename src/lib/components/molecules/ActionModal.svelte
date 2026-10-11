@@ -4,7 +4,7 @@
 
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import { Button, Modal } from "$lib/components/atoms";
+  import { Button, Modal } from "#lib/components/atoms/index.js";
 
   interface Props {
     cancelText?: string;

@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { FileCacheIndex } from "$lib/indexedDB";
-  import type { MaybeFileInfo } from "$lib/modules/filesystem";
-  import { formatDate, formatFileSize } from "$lib/utils";
+  import type { FileCacheIndex } from "#lib/indexedDB/index.js";
+  import type { MaybeFileInfo } from "#lib/modules/filesystem/index.js";
+  import { formatDate, formatFileSize } from "#lib/utils/index.js";
 
   import IconDraft from "~icons/material-symbols/draft";
   import IconScanDelete from "~icons/material-symbols/scan-delete";
@@ -18,15 +18,15 @@
 
 <div class="flex h-14 items-center gap-x-4 p-2">
   {#if info.exists}
-    <div class="flex-shrink-0 rounded-full bg-blue-100 p-1 text-xl">
+    <div class="shrink-0 rounded-full bg-blue-100 p-1 text-xl">
       <IconDraft class="text-blue-400" />
     </div>
   {:else}
-    <div class="flex-shrink-0 rounded-full bg-red-100 p-1 text-xl">
+    <div class="shrink-0 rounded-full bg-red-100 p-1 text-xl">
       <IconScanDelete class="text-red-400" />
     </div>
   {/if}
-  <div class="flex-grow overflow-hidden">
+  <div class="grow overflow-hidden">
     {#if info.exists}
       <p title={info.name} class="truncate font-medium">{info.name}</p>
     {:else}
@@ -38,7 +38,7 @@
   </div>
   <button
     onclick={() => setTimeout(() => onDeleteClick(index.fileId), 100)}
-    class="flex-shrink-0 rounded-full p-1 active:bg-gray-100"
+    class="shrink-0 rounded-full p-1 active:bg-gray-100"
   >
     <IconDelete class="text-lg text-gray-600" />
   </button>

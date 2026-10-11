@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { ActionEntryButton } from "$lib/components/atoms";
-  import { DirectoryEntryLabel } from "$lib/components/molecules";
-  import { getFileThumbnail } from "$lib/modules/file";
-  import type { CategoryFileInfo } from "$lib/modules/filesystem";
-  import { formatDateTime } from "$lib/utils";
+  import { ActionEntryButton } from "#lib/components/atoms/index.js";
+  import { DirectoryEntryLabel } from "#lib/components/molecules/index.js";
+  import { getFileThumbnail } from "#lib/modules/file/index.js";
+  import type { CategoryFileInfo } from "#lib/modules/filesystem/index.js";
+  import { formatDateTime } from "#lib/utils/index.js";
   import type { SelectedFile } from "./service.svelte";
 
   import IconClose from "~icons/material-symbols/close";

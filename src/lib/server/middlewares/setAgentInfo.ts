@@ -1,4 +1,5 @@
-import { error, type Handle } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
+import type { Handle } from "@sveltejs/kit/hooks";
 
 export const setAgentInfoMiddleware: Handle = async ({ event, resolve }) => {
   const ip = event.getClientAddress();

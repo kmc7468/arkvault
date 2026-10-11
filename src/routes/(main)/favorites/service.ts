@@ -4,10 +4,10 @@ import {
   type SummarizedFileInfo,
   type SubDirectoryInfo,
   type LocalDirectoryInfo,
-} from "$lib/modules/filesystem";
-import { HybridPromise, sortEntries } from "$lib/utils";
-import { trpc } from "$trpc/client";
-import type { RouterOutputs } from "$trpc/router.server";
+} from "#lib/modules/filesystem/index.js";
+import { HybridPromise, sortEntries } from "#lib/utils/index.js";
+import { trpc } from "#trpc/client.js";
+import type { RouterOutputs } from "#trpc/router.server.js";
 
 export type FavoriteEntry =
   | { type: "directory"; name: string; details: SubDirectoryInfo }

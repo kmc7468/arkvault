@@ -1,7 +1,7 @@
 import { Kysely, PostgresDialect } from "kysely";
 import { Migrator } from "kysely/migration";
 import pg from "pg";
-import env from "$lib/server/loadenv";
+import env from "#lib/server/loadenv.js";
 import migrations from "./migrations";
 import type { Database } from "./schema";
 

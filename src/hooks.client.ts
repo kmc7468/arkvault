@@ -1,7 +1,12 @@
-import type { ClientInit } from "@sveltejs/kit";
-import { cleanupDanglingInfos, getClientKey, getMasterKeys, getHmacSecrets } from "$lib/indexedDB";
-import { prepareFileCache } from "$lib/modules/file";
-import { clientKeyStore, masterKeyStore, hmacSecretStore } from "$lib/stores";
+import type { ClientInit } from "@sveltejs/kit/hooks";
+import {
+  cleanupDanglingInfos,
+  getClientKey,
+  getMasterKeys,
+  getHmacSecrets,
+} from "#lib/indexedDB/index.js";
+import { prepareFileCache } from "#lib/modules/file/index.js";
+import { clientKeyStore, masterKeyStore, hmacSecretStore } from "#lib/stores/index.js";
 
 const requestPersistentStorage = async () => {
   const isPersistent = await navigator.storage.persist();

@@ -1,9 +1,9 @@
 import { getContext, setContext } from "svelte";
-import { encryptString } from "$lib/modules/crypto";
-import type { SelectedCategory } from "$lib/components/molecules";
-import { trpc } from "$trpc/client";
+import { encryptString } from "#lib/modules/crypto/index.js";
+import type { SelectedCategory } from "#lib/components/molecules/index.js";
+import { trpc } from "#trpc/client.js";
 
-export { requestCategoryCreation, requestFileRemovalFromCategory } from "$lib/services/category";
+export { requestCategoryCreation, requestFileRemovalFromCategory } from "#lib/services/category.js";
 
 export interface SelectedFile {
   id: number;

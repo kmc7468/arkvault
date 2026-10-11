@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { ActionModal } from "$lib/components/molecules";
-  import { truncateString } from "$lib/utils";
+  import { ActionModal } from "#lib/components/molecules/index.js";
+  import { truncateString } from "#lib/utils/index.js";
 
   interface Props {
     file: File | undefined;

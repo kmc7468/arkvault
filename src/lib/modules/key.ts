@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { storeClientKey } from "$lib/indexedDB";
-import type { ClientKeys } from "$lib/stores";
+import { storeClientKey } from "#lib/indexedDB/index.js";
+import type { ClientKeys } from "#lib/stores/index.js";
 
 const SerializedClientKeysSchema = z.intersection(
   z.object({

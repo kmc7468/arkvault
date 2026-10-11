@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { BottomDiv, BottomSheet, Button, FullscreenDiv } from "$lib/components/atoms";
-  import { SubCategories } from "$lib/components/molecules";
-  import { CategoryCreateModal } from "$lib/components/organisms";
-  import { getCategoryInfo, type MaybeCategoryInfo } from "$lib/modules/filesystem";
-  import { masterKeyStore } from "$lib/stores";
-  import { HybridPromise } from "$lib/utils";
+  import { BottomDiv, BottomSheet, Button, FullscreenDiv } from "#lib/components/atoms/index.js";
+  import { SubCategories } from "#lib/components/molecules/index.js";
+  import { CategoryCreateModal } from "#lib/components/organisms/index.js";
+  import { getCategoryInfo, type MaybeCategoryInfo } from "#lib/modules/filesystem/index.js";
+  import { masterKeyStore } from "#lib/stores/index.js";
+  import { HybridPromise } from "#lib/utils/index.js";
   import { requestCategoryCreation } from "./service";
 
   interface Props {
