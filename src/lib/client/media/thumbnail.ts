@@ -60,24 +60,53 @@ export const captureVideoThumbnail = (video: HTMLVideoElement) => {
   });
 };
 
+const VIDEO_THUMBNAIL_TIMEOUT_MS = 30_000;
+
 const generateVideoThumbnail = (videoUrl: string, time = 0) => {
   return new Promise<Blob>((resolve, reject) => {
     const video = document.createElement("video");
+    let isCaptured = false;
+
+    const cleanup = () => {
+      clearTimeout(timeout);
+      video.onloadedmetadata = video.onloadeddata = video.onseeked = video.onerror = null;
+      video.removeAttribute("src");
+      video.load(); // Stops loading the video
+    };
+    const fail = (reason: unknown) => {
+      cleanup();
+      reject(reason);
+    };
+    const captureFrame = () => {
+      if (isCaptured || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+      isCaptured = true;
+      captureVideoThumbnail(video).then(resolve, reject).finally(cleanup);
+    };
+
+    // Streamed videos may stall without any error
+    const timeout = setTimeout(
+      () => fail(new Error("Timed out while loading the video")),
+      VIDEO_THUMBNAIL_TIMEOUT_MS,
+    );
+
     video.onloadedmetadata = () => {
       if (video.videoWidth === 0 || video.videoHeight === 0) {
-        return reject();
+        return fail(new Error("Invalid video size"));
       }
 
-      const callbackId = video.requestVideoFrameCallback(() => {
-        captureVideoThumbnail(video).then(resolve).catch(reject);
-        video.cancelVideoFrameCallback(callbackId);
-      });
+      // Frame callbacks aren't guaranteed for videos not in the document, so also wait for seeking
+      video.requestVideoFrameCallback(captureFrame);
+      video.onseeked = captureFrame;
+      if (time === 0) {
+        video.onloadeddata = captureFrame;
+      }
       video.currentTime = Math.min(time, video.duration);
     };
-    video.onerror = reject;
+    video.onerror = () => fail(video.error);
 
     video.muted = true;
     video.playsInline = true;
+    video.preload = "auto";
     video.src = videoUrl;
   });
 };
