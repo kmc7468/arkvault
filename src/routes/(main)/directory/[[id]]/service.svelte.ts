@@ -5,16 +5,10 @@ import {
   storeFileThumbnailCache,
   deleteFileThumbnailCache,
 } from "#lib/client/cache/index.js";
-import { storeHmacSecrets } from "#lib/client/storage/indexedDB/index.js";
+import { keyring } from "#lib/client/keys/index.js";
 import { uploadFile } from "#lib/client/transfer/index.js";
 import type { DataKey } from "#lib/modules/filesystem/index.js";
-import {
-  generateDataKey,
-  wrapDataKey,
-  unwrapHmacSecret,
-  encryptString,
-} from "#lib/shared/crypto/index.js";
-import { hmacSecretStore, type MasterKey, type HmacSecret } from "#lib/stores/index.js";
+import { generateDataKey, wrapDataKey, encryptString } from "#lib/shared/crypto/index.js";
 import { trpc } from "#trpc/client.js";
 
 export interface SelectedEntry {
@@ -36,35 +30,8 @@ export const useContext = () => {
   return getContext<ReturnType<typeof createContext>>("context");
 };
 
-export const requestHmacSecretDownload = async (masterKey: CryptoKey) => {
-  // TODO: MEK rotation
-
-  let hmacSecretsWrapped;
-  try {
-    hmacSecretsWrapped = await trpc.hsk.list.query();
-  } catch {
-    // TODO: Error Handling
-    return false;
-  }
-
-  const hmacSecrets = await Promise.all(
-    hmacSecretsWrapped.map(async ({ version, state, hsk: hmacSecretWrapped }) => {
-      const { hmacSecret } = await unwrapHmacSecret(hmacSecretWrapped, masterKey);
-      return { version, state, secret: hmacSecret };
-    }),
-  );
-
-  await storeHmacSecrets(hmacSecrets);
-  hmacSecretStore.set(new Map(hmacSecrets.map((hmacSecret) => [hmacSecret.version, hmacSecret])));
-
-  return true;
-};
-
-export const requestDirectoryCreation = async (
-  name: string,
-  parentId: "root" | number,
-  masterKey: MasterKey,
-) => {
+export const requestDirectoryCreation = async (name: string, parentId: "root" | number) => {
+  const masterKey = keyring.activeMasterKey;
   const { dataKey, dataKeyVersion } = await generateDataKey();
   const nameEncrypted = await encryptString(name, dataKey);
 
@@ -87,11 +54,9 @@ export const requestDirectoryCreation = async (
 export const requestFileUpload = async (
   file: File,
   parentId: "root" | number,
-  masterKey: MasterKey,
-  hmacSecret: HmacSecret,
   onDuplicate: () => Promise<boolean>,
 ) => {
-  const res = await uploadFile(file, parentId, masterKey, hmacSecret, onDuplicate);
+  const res = await uploadFile(file, parentId, onDuplicate);
   if (!res) return false;
 
   if (res.fileBuffer) {

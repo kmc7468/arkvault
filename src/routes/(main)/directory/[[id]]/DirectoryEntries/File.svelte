@@ -37,7 +37,7 @@
 >
   <DirectoryEntryLabel
     type="file"
-    thumbnail={$thumbnail}
+    thumbnail={thumbnail?.url}
     name={info.name}
     subtext={formatDateTime(info.createdAt ?? info.lastModifiedAt)}
     isFavorite={info.isFavorite}

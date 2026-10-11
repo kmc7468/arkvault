@@ -8,7 +8,6 @@
     deleteFileCache as doDeleteFileCache,
   } from "#lib/client/cache/index.js";
   import { bulkGetFileInfo, type MaybeFileInfo } from "#lib/modules/filesystem/index.js";
-  import { masterKeyStore } from "#lib/stores/index.js";
   import { formatFileSize } from "#lib/utils/index.js";
   import File from "./File.svelte";
 
@@ -29,10 +28,7 @@
 
   onMount(async () => {
     const indexes = getFileCacheIndex();
-    const infos = await bulkGetFileInfo(
-      indexes.map(({ fileId }) => fileId),
-      $masterKeyStore?.get(1)?.key!,
-    );
+    const infos = await bulkGetFileInfo(indexes.map(({ fileId }) => fileId));
     fileCache = indexes
       .map((index) => ({ index, info: infos.get(index.fileId)! }))
       .sort((a, b) => a.index.lastRetrievedAt.getTime() - b.index.lastRetrievedAt.getTime());

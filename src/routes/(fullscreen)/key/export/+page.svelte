@@ -3,15 +3,15 @@
   import { goto } from "$app/navigation";
   import { BottomDiv, Button, FullscreenDiv, TextButton } from "#lib/components/atoms/index.js";
   import { TitledDiv } from "#lib/components/molecules/index.js";
-  import { serializeClientKeys, storeClientKeys } from "#lib/modules/key.js";
-  import { clientKeyStore } from "#lib/stores/index.js";
-  import BeforeContinueBottomSheet from "./BeforeContinueBottomSheet.svelte";
-  import BeforeContinueModal from "./BeforeContinueModal.svelte";
   import {
+    keyring,
+    registerInitialMasterKeyAndHmacSecret,
     requestClientRegistration,
     requestSessionUpgrade,
-    requestInitialMasterKeyAndHmacSecretRegistration,
-  } from "./service";
+    serializeClientKeys,
+  } from "#lib/client/keys/index.js";
+  import BeforeContinueBottomSheet from "./BeforeContinueBottomSheet.svelte";
+  import BeforeContinueModal from "./BeforeContinueModal.svelte";
 
   import IconKey from "~icons/material-symbols/key";
 
@@ -33,40 +33,17 @@
   };
 
   const registerPubKeys = async () => {
-    if (!$clientKeyStore) {
-      throw new Error("Failed to find client keys");
-    }
-
     try {
-      if (
-        !(await requestClientRegistration(
-          data.encryptKeyBase64,
-          $clientKeyStore.decryptKey,
-          data.verifyKeyBase64,
-          $clientKeyStore.signKey,
-        ))
-      )
-        throw new Error("Failed to register client");
+      if (!(await requestClientRegistration())) throw new Error("Failed to register client");
 
-      await storeClientKeys($clientKeyStore);
+      await keyring.persistClientKeys();
+
+      if (!(await requestSessionUpgrade())[0]) throw new Error("Failed to upgrade session");
 
       if (
-        !(
-          await requestSessionUpgrade(
-            data.encryptKeyBase64,
-            $clientKeyStore.decryptKey,
-            data.verifyKeyBase64,
-            $clientKeyStore.signKey,
-          )
-        )[0]
-      )
-        throw new Error("Failed to upgrade session");
-
-      if (
-        !(await requestInitialMasterKeyAndHmacSecretRegistration(
+        !(await registerInitialMasterKeyAndHmacSecret(
           data.masterKeyWrapped,
           data.hmacSecretWrapped,
-          $clientKeyStore.signKey,
         ))
       )
         throw new Error("Failed to register initial MEK and HSK");

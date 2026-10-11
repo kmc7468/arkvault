@@ -32,7 +32,7 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
     }
   },
 
-  async fetchFromServer(id, _cachedInfo, masterKey) {
+  async fetchFromServer(id, _cachedInfo) {
     try {
       const file = await trpc.file.get.query({ id });
       const [categories, metadata] = await Promise.all([
@@ -40,10 +40,10 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
           file.categories.map(async (category) => ({
             id: category.id,
             parentId: category.parent,
-            ...(await decryptCategoryMetadata(category, masterKey)),
+            ...(await decryptCategoryMetadata(category)),
           })),
         ),
-        decryptFileMetadata(file, masterKey),
+        decryptFileMetadata(file),
       ]);
 
       return storeToIndexedDB({
@@ -98,7 +98,7 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
     );
   },
 
-  async bulkFetchFromServer(ids, masterKey) {
+  async bulkFetchFromServer(ids) {
     const idsArray = [...ids.keys()];
 
     const filesRaw = await trpc.file.bulkGet.query({ ids: idsArray });
@@ -109,10 +109,10 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
             categoriesRaw.map(async (category) => ({
               id: category.id,
               parentId: category.parent,
-              ...(await decryptCategoryMetadata(category, masterKey)),
+              ...(await decryptCategoryMetadata(category)),
             })),
           ),
-          decryptFileMetadata(metadataRaw, masterKey),
+          decryptFileMetadata(metadataRaw),
         ]);
 
         return {
@@ -173,10 +173,10 @@ const bulkStoreToIndexedDB = (infos: FileInfo[]) => {
 
 export const getFileInfo = (
   id: number,
-  masterKey: CryptoKey,
   options?: {
     serverResponse?: {
       parent: DirectoryId;
+      mekVersion: number;
       dek: string;
       dekVersion: Date;
       contentType: string;
@@ -190,11 +190,11 @@ export const getFileInfo = (
     };
   },
 ) => {
-  return cache.get(id, masterKey, {
+  return cache.get(id, {
     fetchFromServer:
       options?.serverResponse &&
       (async (cachedValue) => {
-        const metadata = await decryptFileMetadata(options!.serverResponse!, masterKey);
+        const metadata = await decryptFileMetadata(options!.serverResponse!);
         return storeToIndexedDB({
           categories: [],
           ...cachedValue,
@@ -208,6 +208,6 @@ export const getFileInfo = (
   });
 };
 
-export const bulkGetFileInfo = (ids: number[], masterKey: CryptoKey) => {
-  return cache.bulkGet(new Set(ids), masterKey);
+export const bulkGetFileInfo = (ids: number[]) => {
+  return cache.bulkGet(new Set(ids));
 };

@@ -3,7 +3,6 @@
   import { SubCategories } from "#lib/components/molecules/index.js";
   import { CategoryCreateModal } from "#lib/components/organisms/index.js";
   import { getCategoryInfo, type MaybeCategoryInfo } from "#lib/modules/filesystem/index.js";
-  import { masterKeyStore } from "#lib/stores/index.js";
   import { HybridPromise } from "#lib/utils/index.js";
   import { requestCategoryCreation } from "./service";
 
@@ -20,9 +19,7 @@
 
   $effect(() => {
     if (isOpen) {
-      HybridPromise.resolve(getCategoryInfo("root", $masterKeyStore?.get(1)?.key!)).then(
-        (result) => (categoryInfo = result),
-      );
+      HybridPromise.resolve(getCategoryInfo("root")).then((result) => (categoryInfo = result));
     }
   });
 </script>
@@ -34,9 +31,7 @@
         class="py-4"
         info={categoryInfo}
         onSubCategoryClick={({ id }) =>
-          HybridPromise.resolve(getCategoryInfo(id, $masterKeyStore?.get(1)?.key!)).then(
-            (result) => (categoryInfo = result),
-          )}
+          HybridPromise.resolve(getCategoryInfo(id)).then((result) => (categoryInfo = result))}
         onSubCategoryCreateClick={() => (isCategoryCreateModalOpen = true)}
         subCategoryCreatePosition="top"
       />
@@ -54,8 +49,8 @@
 <CategoryCreateModal
   bind:isOpen={isCategoryCreateModalOpen}
   onCreateClick={async (name: string) => {
-    if (await requestCategoryCreation(name, categoryInfo!.id, $masterKeyStore?.get(1)!)) {
-      void getCategoryInfo(categoryInfo!.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+    if (await requestCategoryCreation(name, categoryInfo!.id)) {
+      void getCategoryInfo(categoryInfo!.id); // TODO: FIXME
       return true;
     }
     return false;

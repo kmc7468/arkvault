@@ -1,12 +1,19 @@
 import { LRUCache } from "lru-cache";
-import { writable, type Writable } from "svelte/store";
-import { getThumbnailUrl } from "#lib/client/media/thumbnail.js";
-import { readFile, writeFile, deleteFile, deleteDirectory } from "#lib/client/storage/opfs.js";
+import { deleteDirectory, deleteFile, readFile, writeFile } from "#lib/client/storage/opfs.js";
 import type { SummarizedFileInfo } from "#lib/modules/filesystem/index.js";
-import { decryptChunk } from "#lib/shared/crypto/index.js";
+import { decryptChunk, encodeToBase64 } from "#lib/shared/crypto/index.js";
 
-const loadedThumbnails = new LRUCache<number, Writable<string>>({ max: 100 });
-const loadingThumbnails = new Map<number, Writable<string | undefined>>();
+export interface Thumbnail {
+  url?: string;
+}
+
+const getThumbnailUrl = (thumbnailBuffer: ArrayBuffer) => {
+  return `data:image/webp;base64,${encodeToBase64(thumbnailBuffer)}`;
+};
+
+// Thumbnails are reactive so that they can be updated in place
+const loadedThumbnails = new LRUCache<number, Thumbnail>({ max: 100 });
+const loadingThumbnails = new Map<number, Thumbnail>();
 
 const fetchFromOpfs = async (fileId: number) => {
   const thumbnailBuffer = await readFile(`/thumbnail/file/${fileId}`);
@@ -30,22 +37,22 @@ export const getFileThumbnail = (file: SummarizedFileInfo) => {
     return undefined;
   }
 
-  const thumbnail = loadedThumbnails.get(file.id);
+  const thumbnail = loadedThumbnails.get(file.id) ?? loadingThumbnails.get(file.id);
   if (thumbnail) return thumbnail;
 
-  let loadingThumbnail = loadingThumbnails.get(file.id);
-  if (loadingThumbnail) return loadingThumbnail;
-
-  loadingThumbnail = writable(undefined);
+  const loadingThumbnail: Thumbnail = $state({});
   loadingThumbnails.set(file.id, loadingThumbnail);
 
   fetchFromOpfs(file.id)
-    .then((thumbnail) => thumbnail ?? (file.dataKey && fetchFromServer(file.id, file.dataKey.key)))
-    .then((thumbnail) => {
-      if (thumbnail) {
-        loadingThumbnail.set(thumbnail);
-        loadedThumbnails.set(file.id, loadingThumbnail as Writable<string>);
+    .then((url) => url ?? (file.dataKey && fetchFromServer(file.id, file.dataKey.key)))
+    .then((url) => {
+      if (url) {
+        loadingThumbnail.url = url;
+        loadedThumbnails.set(file.id, loadingThumbnail);
       }
+    })
+    .catch(console.error)
+    .finally(() => {
       loadingThumbnails.delete(file.id);
     });
   return loadingThumbnail;
@@ -54,11 +61,13 @@ export const getFileThumbnail = (file: SummarizedFileInfo) => {
 export const storeFileThumbnailCache = async (fileId: number, thumbnailBuffer: ArrayBuffer) => {
   await writeFile(`/thumbnail/file/${fileId}`, thumbnailBuffer);
 
-  const oldThumbnail = loadedThumbnails.get(fileId);
-  if (oldThumbnail) {
-    oldThumbnail.set(getThumbnailUrl(thumbnailBuffer));
+  const url = getThumbnailUrl(thumbnailBuffer);
+  const thumbnail = loadedThumbnails.get(fileId) ?? loadingThumbnails.get(fileId);
+  if (thumbnail) {
+    thumbnail.url = url;
   } else {
-    loadedThumbnails.set(fileId, writable(getThumbnailUrl(thumbnailBuffer)));
+    const newThumbnail: Thumbnail = $state({ url });
+    loadedThumbnails.set(fileId, newThumbnail);
   }
 };
 

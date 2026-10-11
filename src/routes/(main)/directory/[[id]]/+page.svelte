@@ -1,11 +1,9 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import { FloatingButton } from "#lib/components/atoms/index.js";
   import { TopBar } from "#lib/components/molecules/index.js";
   import { getDirectoryInfo, type MaybeDirectoryInfo } from "#lib/modules/filesystem/index.js";
-  import { masterKeyStore, hmacSecretStore } from "#lib/stores/index.js";
   import { HybridPromise } from "#lib/utils/index.js";
   import DirectoryCreateModal from "./DirectoryCreateModal.svelte";
   import DirectoryEntries from "./DirectoryEntries";
@@ -18,7 +16,6 @@
   import UploadStatusCard from "./UploadStatusCard.svelte";
   import {
     createContext,
-    requestHmacSecretDownload,
     requestDirectoryCreation,
     requestFileUpload,
     requestEntryRename,
@@ -64,7 +61,7 @@
     if (!files || files.length === 0) return;
 
     for (const file of files) {
-      requestFileUpload(file, data.id, $masterKeyStore?.get(1)!, $hmacSecretStore?.get(1)!, () => {
+      requestFileUpload(file, data.id, () => {
         return new Promise((resolve) => {
           duplicatedFile = file;
           resolveForDuplicateFileModal = resolve;
@@ -74,7 +71,7 @@
         .then((res) => {
           if (!res) return;
           // TODO: FIXME
-          void getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!);
+          void getDirectoryInfo(data.id);
         })
         .catch((e: Error) => {
           // TODO: FIXME
@@ -85,20 +82,12 @@
     fileInput!.value = "";
   };
 
-  onMount(async () => {
-    if (!$hmacSecretStore && !(await requestHmacSecretDownload($masterKeyStore?.get(1)?.key!))) {
-      throw new Error("Failed to download hmac secrets");
-    }
-  });
-
   $effect(() => {
-    HybridPromise.resolve(getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!)).then(
-      (result) => {
-        if (data.id === result.id) {
-          info = result;
-        }
-      },
-    );
+    HybridPromise.resolve(getDirectoryInfo(data.id)).then((result) => {
+      if (data.id === result.id) {
+        info = result;
+      }
+    });
   });
 </script>
 
@@ -162,8 +151,8 @@
 <DirectoryCreateModal
   bind:isOpen={isDirectoryCreateModalOpen}
   onCreateClick={async (name) => {
-    if (await requestDirectoryCreation(name, data.id, $masterKeyStore?.get(1)!)) {
-      void getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+    if (await requestDirectoryCreation(name, data.id)) {
+      void getDirectoryInfo(data.id); // TODO: FIXME
       return true;
     }
     return false;
@@ -195,7 +184,7 @@
   onFavoriteClick={async () => {
     if (await requestFavoriteToggle(context.selectedEntry!)) {
       isEntryMenuBottomSheetOpen = false;
-      void getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+      void getDirectoryInfo(data.id); // TODO: FIXME
     }
   }}
 />
@@ -203,7 +192,7 @@
   bind:isOpen={isEntryRenameModalOpen}
   onRenameClick={async (newName: string) => {
     if (await requestEntryRename(context.selectedEntry!, newName)) {
-      void getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+      void getDirectoryInfo(data.id); // TODO: FIXME
       return true;
     }
     return false;
@@ -213,7 +202,7 @@
   bind:isOpen={isEntryDeleteModalOpen}
   onDeleteClick={async () => {
     if (await requestEntryDeletion(context.selectedEntry!)) {
-      void getDirectoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+      void getDirectoryInfo(data.id); // TODO: FIXME
       return true;
     }
     return false;

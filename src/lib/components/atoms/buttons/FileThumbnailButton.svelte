@@ -18,8 +18,8 @@
   onclick={onclick && (() => setTimeout(() => onclick(info), 100))}
   class="relative aspect-square overflow-hidden rounded-sm transition active:scale-95 active:brightness-90"
 >
-  {#if $thumbnail}
-    <img src={$thumbnail} alt={info.name} class="size-full object-cover" />
+  {#if thumbnail?.url}
+    <img src={thumbnail?.url} alt={info.name} class="size-full object-cover" />
   {:else}
     <div class="size-full bg-gray-100"></div>
   {/if}

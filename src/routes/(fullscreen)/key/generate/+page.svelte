@@ -4,19 +4,18 @@
   import { BottomDiv, Button, FullscreenDiv, TextButton } from "#lib/components/atoms/index.js";
   import { TitledDiv } from "#lib/components/molecules/index.js";
   import { ForceLoginModal } from "#lib/components/organisms/index.js";
-  import { storeClientKeys } from "#lib/modules/key.js";
-  import { clientKeyStore } from "#lib/stores/index.js";
-  import { gotoStateful } from "#lib/utils/index.js";
-  import Order from "./Order.svelte";
   import {
     generateClientKeys,
-    generateInitialMasterKey,
     generateInitialHmacSecret,
+    generateInitialMasterKey,
     importClientKeys,
+    keyring,
+    registerInitialMasterKeyAndHmacSecret,
     requestClientRegistrationAndSessionUpgrade,
-    requestInitialMasterKeyAndHmacSecretRegistration,
-    requestDeletedFilesCleanup,
-  } from "./service";
+  } from "#lib/client/keys/index.js";
+  import { requestDeletedFilesCleanup } from "#lib/services/file.js";
+  import { gotoStateful } from "#lib/utils/index.js";
+  import Order from "./Order.svelte";
 
   import IconKey from "~icons/material-symbols/key";
 
@@ -62,10 +61,7 @@
   };
 
   const upgradeSession = async (force: boolean) => {
-    const [upgradeRes, upgradeError] = await requestClientRegistrationAndSessionUpgrade(
-      $clientKeyStore!,
-      force,
-    );
+    const [upgradeRes, upgradeError] = await requestClientRegistrationAndSessionUpgrade(force);
     if (!force && upgradeError === "Already logged in") {
       isForceLoginModalOpen = true;
       return;
@@ -75,19 +71,13 @@
     }
 
     const { masterKey, masterKeyWrapped } = await generateInitialMasterKey(
-      $clientKeyStore!.encryptKey,
+      keyring.requireClientKeys().encryptKey,
     );
     const { hmacSecretWrapped } = await generateInitialHmacSecret(masterKey);
 
-    await storeClientKeys($clientKeyStore!);
+    await keyring.persistClientKeys();
 
-    if (
-      !(await requestInitialMasterKeyAndHmacSecretRegistration(
-        masterKeyWrapped,
-        hmacSecretWrapped,
-        $clientKeyStore!.signKey,
-      ))
-    ) {
+    if (!(await registerInitialMasterKeyAndHmacSecret(masterKeyWrapped, hmacSecretWrapped))) {
       // TODO: Error Handling
       return;
     }
@@ -110,7 +100,7 @@
   };
 
   onMount(async () => {
-    if ($clientKeyStore) {
+    if (keyring.clientKeys) {
       await goto(data.redirectPath, { replace: true });
     }
   });

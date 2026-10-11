@@ -1,13 +1,8 @@
 import type { ClientInit } from "@sveltejs/kit/hooks";
 import { prepareFileCache } from "#lib/client/cache/index.js";
+import { keyring } from "#lib/client/keys/index.js";
 import { listenForMetadataRequests } from "#lib/client/serviceWorker.js";
-import {
-  cleanupDanglingInfos,
-  getClientKey,
-  getMasterKeys,
-  getHmacSecrets,
-} from "#lib/client/storage/indexedDB/index.js";
-import { clientKeyStore, masterKeyStore, hmacSecretStore } from "#lib/stores/index.js";
+import { cleanupDanglingInfos } from "#lib/client/storage/indexedDB/index.js";
 
 const requestPersistentStorage = async () => {
   const isPersistent = await navigator.storage.persist();
@@ -18,42 +13,10 @@ const requestPersistentStorage = async () => {
   }
 };
 
-const prepareClientKeyStore = async () => {
-  const [encryptKey, decryptKey, signKey, verifyKey] = await Promise.all([
-    getClientKey("encrypt"),
-    getClientKey("decrypt"),
-    getClientKey("sign"),
-    getClientKey("verify"),
-  ]);
-  if (encryptKey && decryptKey && signKey && verifyKey) {
-    clientKeyStore.set({ encryptKey, decryptKey, signKey, verifyKey });
-  }
-};
-
-const prepareMasterKeyStore = async () => {
-  const masterKeys = await getMasterKeys();
-  if (masterKeys.length > 0) {
-    masterKeyStore.set(new Map(masterKeys.map((masterKey) => [masterKey.version, masterKey])));
-  }
-};
-
-const prepareHmacSecretStore = async () => {
-  const hmacSecrets = await getHmacSecrets();
-  if (hmacSecrets.length > 0) {
-    hmacSecretStore.set(new Map(hmacSecrets.map((hmacSecret) => [hmacSecret.version, hmacSecret])));
-  }
-};
-
 export const init: ClientInit = async () => {
   listenForMetadataRequests();
 
-  await Promise.all([
-    requestPersistentStorage(),
-    prepareFileCache(),
-    prepareClientKeyStore(),
-    prepareMasterKeyStore(),
-    prepareHmacSecretStore(),
-  ]);
+  await Promise.all([requestPersistentStorage(), prepareFileCache(), keyring.load()]);
 
   cleanupDanglingInfos(); // Intended
 };

@@ -6,7 +6,6 @@
     type LocalCategoryInfo,
     type MaybeCategoryInfo,
   } from "#lib/modules/filesystem/index.js";
-  import { masterKeyStore } from "#lib/stores/index.js";
   import { HybridPromise } from "#lib/utils/index.js";
 
   interface Props {
@@ -21,9 +20,7 @@
 
   $effect(() => {
     if (isOpen) {
-      HybridPromise.resolve(getCategoryInfo("root", $masterKeyStore?.get(1)?.key!)).then(
-        (result) => (categoryInfo = result),
-      );
+      HybridPromise.resolve(getCategoryInfo("root")).then((result) => (categoryInfo = result));
     }
   });
 </script>
@@ -35,9 +32,7 @@
         class="py-4"
         info={categoryInfo}
         onSubCategoryClick={({ id }) =>
-          HybridPromise.resolve(getCategoryInfo(id, $masterKeyStore?.get(1)?.key!)).then(
-            (result) => (categoryInfo = result),
-          )}
+          HybridPromise.resolve(getCategoryInfo(id)).then((result) => (categoryInfo = result))}
       />
       {#if categoryInfo.id !== "root"}
         <BottomDiv>

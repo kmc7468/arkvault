@@ -5,7 +5,6 @@
   import { CategoryCreateModal } from "#lib/components/organisms/index.js";
   import { updateCategoryInfo } from "#lib/client/storage/indexedDB/index.js";
   import { getCategoryInfo, type MaybeCategoryInfo } from "#lib/modules/filesystem/index.js";
-  import { masterKeyStore } from "#lib/stores/index.js";
   import { HybridPromise, sortEntries } from "#lib/utils/index.js";
   import CategoryDeleteModal from "./CategoryDeleteModal.svelte";
   import CategoryMenuBottomSheet from "./CategoryMenuBottomSheet.svelte";
@@ -56,13 +55,11 @@
   });
 
   $effect(() => {
-    HybridPromise.resolve(getCategoryInfo(data.id, $masterKeyStore?.get(1)?.key!)).then(
-      (result) => {
-        if (data.id === result.id) {
-          info = result;
-        }
-      },
-    );
+    HybridPromise.resolve(getCategoryInfo(data.id)).then((result) => {
+      if (data.id === result.id) {
+        info = result;
+      }
+    });
   });
 </script>
 
@@ -114,7 +111,7 @@
                 onRemoveClick={!details.isRecursive
                   ? async ({ id }) => {
                       await requestFileRemovalFromCategory(id, data.id as number);
-                      void getCategoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+                      void getCategoryInfo(data.id); // TODO: FIXME
                     }
                   : undefined}
               />
@@ -132,8 +129,8 @@
 <CategoryCreateModal
   bind:isOpen={isCategoryCreateModalOpen}
   onCreateClick={async (name: string) => {
-    if (await requestCategoryCreation(name, data.id, $masterKeyStore?.get(1)!)) {
-      void getCategoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+    if (await requestCategoryCreation(name, data.id)) {
+      void getCategoryInfo(data.id); // TODO: FIXME
       return true;
     }
     return false;
@@ -155,7 +152,7 @@
   bind:isOpen={isCategoryRenameModalOpen}
   onRenameClick={async (newName: string) => {
     if (await requestCategoryRename(context.selectedCategory!, newName)) {
-      void getCategoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+      void getCategoryInfo(data.id); // TODO: FIXME
       return true;
     }
     return false;
@@ -165,7 +162,7 @@
   bind:isOpen={isCategoryDeleteModalOpen}
   onDeleteClick={async () => {
     if (await requestCategoryDeletion(context.selectedCategory!)) {
-      void getCategoryInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+      void getCategoryInfo(data.id); // TODO: FIXME
       return true;
     }
     return false;

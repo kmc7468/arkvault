@@ -3,7 +3,6 @@
   import { goto } from "$app/navigation";
   import { RowVirtualizer } from "#lib/components/atoms/index.js";
   import { TopBar } from "#lib/components/molecules/index.js";
-  import { masterKeyStore } from "#lib/stores/index.js";
   import Directory from "./Directory.svelte";
   import File from "./File.svelte";
   import { requestFavoriteEntries, requestRemoveFavorite, type FavoriteEntry } from "./service";
@@ -16,10 +15,7 @@
   let isLoading = $state(true);
 
   onMount(async () => {
-    const masterKey = $masterKeyStore?.get(1)?.key;
-    if (masterKey) {
-      entries = await requestFavoriteEntries(data.favorites, masterKey);
-    }
+    entries = await requestFavoriteEntries(data.favorites);
     isLoading = false;
   });
 

@@ -1,6 +1,4 @@
 import { z } from "zod";
-import { storeClientKey } from "#lib/client/storage/indexedDB/index.js";
-import type { ClientKeys } from "#lib/stores/index.js";
 
 const SerializedClientKeysSchema = z.intersection(
   z.object({
@@ -53,13 +51,4 @@ export const deserializeClientKeys = (serialized: string) => {
     } satisfies DeserializedClientKeys;
   }
   return undefined;
-};
-
-export const storeClientKeys = async (clientKeys: ClientKeys) => {
-  await Promise.all([
-    storeClientKey(clientKeys.encryptKey, "encrypt"),
-    storeClientKey(clientKeys.decryptKey, "decrypt"),
-    storeClientKey(clientKeys.signKey, "sign"),
-    storeClientKey(clientKeys.verifyKey, "verify"),
-  ]);
 };

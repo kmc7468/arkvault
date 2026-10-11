@@ -12,7 +12,6 @@
     type MaybeFileInfo,
     type SummarizedFileInfo,
   } from "#lib/modules/filesystem/index.js";
-  import { masterKeyStore } from "#lib/stores/index.js";
   import { formatDate, formatDateSortable, SortBy, sortEntries } from "#lib/utils/index.js";
 
   let { data } = $props();
@@ -55,7 +54,7 @@
   });
 
   onMount(async () => {
-    files = Array.from((await bulkGetFileInfo(data.files, $masterKeyStore?.get(1)?.key!)).values());
+    files = Array.from((await bulkGetFileInfo(data.files)).values());
   });
 </script>
 

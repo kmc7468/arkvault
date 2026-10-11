@@ -10,7 +10,6 @@
     type LocalCategoryInfo,
     type MaybeDirectoryInfo,
   } from "#lib/modules/filesystem/index.js";
-  import { masterKeyStore } from "#lib/stores/index.js";
   import { HybridPromise, searchString, sortEntries } from "#lib/utils/index.js";
   import Directory from "./Directory.svelte";
   import File from "./File.svelte";
@@ -122,12 +121,10 @@
 
   $effect.pre(() => {
     if (data.directoryId) {
-      HybridPromise.resolve(getDirectoryInfo(data.directoryId, $masterKeyStore?.get(1)?.key!)).then(
-        (res) => {
-          directoryInfo = res;
-          filters.searchInDirectory = res.exists;
-        },
-      );
+      HybridPromise.resolve(getDirectoryInfo(data.directoryId)).then((res) => {
+        directoryInfo = res;
+        filters.searchInDirectory = res.exists;
+      });
     } else {
       directoryInfo = undefined;
       filters.searchInDirectory = false;
@@ -151,14 +148,11 @@
     }
 
     if (hasAnyFilter) {
-      requestSearch(
-        {
-          ancestorId: filters.searchInDirectory ? data.directoryId! : "root",
-          inFavorites: filters.searchInFavorites,
-          categories: filters.categories,
-        },
-        $masterKeyStore?.get(1)?.key!,
-      ).then((res) => {
+      requestSearch({
+        ancestorId: filters.searchInDirectory ? data.directoryId! : "root",
+        inFavorites: filters.searchInFavorites,
+        categories: filters.categories,
+      }).then((res) => {
         serverResult = res;
       });
     }

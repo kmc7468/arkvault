@@ -1,5 +1,3 @@
-import { encodeToBase64 } from "#lib/shared/crypto/index.js";
-
 const scaleSize = (width: number, height: number, targetSize: number) => {
   if (width <= targetSize || height <= targetSize) {
     return { width, height };
@@ -115,8 +113,4 @@ export const generateThumbnail = async (blob: Blob) => {
       URL.revokeObjectURL(url);
     }
   }
-};
-
-export const getThumbnailUrl = (thumbnailBuffer: ArrayBuffer) => {
-  return `data:image/webp;base64,${encodeToBase64(thumbnailBuffer)}`;
 };

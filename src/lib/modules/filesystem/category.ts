@@ -48,7 +48,7 @@ const cache = new FilesystemCache<CategoryId, MaybeCategoryInfo>({
     }
   },
 
-  async fetchFromServer(id, cachedInfo, masterKey) {
+  async fetchFromServer(id, cachedInfo) {
     try {
       const category = await trpc.category.get.query({ id, recurse: true });
       const [subCategories, files, metadata] = await Promise.all([
@@ -56,7 +56,7 @@ const cache = new FilesystemCache<CategoryId, MaybeCategoryInfo>({
           category.subCategories.map(async (category) => ({
             id: category.id,
             parentId: id,
-            ...(await decryptCategoryMetadata(category, masterKey)),
+            ...(await decryptCategoryMetadata(category)),
           })),
         ),
         category.files &&
@@ -67,10 +67,10 @@ const cache = new FilesystemCache<CategoryId, MaybeCategoryInfo>({
               contentType: file.contentType,
               isFavorite: file.isFavorite,
               isRecursive: file.isRecursive,
-              ...(await decryptFileMetadata(file, masterKey)),
+              ...(await decryptFileMetadata(file)),
             })),
           ),
-        category.metadata && decryptCategoryMetadata(category.metadata, masterKey),
+        category.metadata && decryptCategoryMetadata(category.metadata),
       ]);
 
       return storeToIndexedDB(
@@ -118,6 +118,6 @@ const storeToIndexedDB = (info: CategoryInfo) => {
   return { ...info, exists: true as const };
 };
 
-export const getCategoryInfo = (id: CategoryId, masterKey: CryptoKey) => {
-  return cache.get(id, masterKey);
+export const getCategoryInfo = (id: CategoryId) => {
+  return cache.get(id);
 };

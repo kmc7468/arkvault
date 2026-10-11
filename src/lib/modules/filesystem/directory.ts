@@ -31,7 +31,7 @@ const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>({
     }
   },
 
-  async fetchFromServer(id, _cachedInfo, masterKey) {
+  async fetchFromServer(id, _cachedInfo) {
     try {
       const directory = await trpc.directory.get.query({ id });
       const [subDirectories, files, metadata] = await Promise.all([
@@ -40,7 +40,7 @@ const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>({
             id: directory.id,
             parentId: id,
             isFavorite: directory.isFavorite,
-            ...(await decryptDirectoryMetadata(directory, masterKey)),
+            ...(await decryptDirectoryMetadata(directory)),
           })),
         ),
         Promise.all(
@@ -49,10 +49,10 @@ const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>({
             parentId: id,
             contentType: file.contentType,
             isFavorite: file.isFavorite,
-            ...(await decryptFileMetadata(file, masterKey)),
+            ...(await decryptFileMetadata(file)),
           })),
         ),
-        directory.metadata && decryptDirectoryMetadata(directory.metadata, masterKey),
+        directory.metadata && decryptDirectoryMetadata(directory.metadata),
       ]);
 
       return storeToIndexedDB(
@@ -103,10 +103,10 @@ const storeToIndexedDB = (info: DirectoryInfo) => {
 
 export const getDirectoryInfo = (
   id: DirectoryId,
-  masterKey: CryptoKey,
   options?: {
     serverResponse?: {
       parent: DirectoryId;
+      mekVersion: number;
       dek: string;
       dekVersion: Date;
       name: string;
@@ -115,11 +115,11 @@ export const getDirectoryInfo = (
     };
   },
 ) => {
-  return cache.get(id, masterKey, {
+  return cache.get(id, {
     fetchFromServer:
       options?.serverResponse &&
       (async (cachedValue) => {
-        const metadata = await decryptDirectoryMetadata(options!.serverResponse!, masterKey);
+        const metadata = await decryptDirectoryMetadata(options!.serverResponse!);
         return storeToIndexedDB({
           subDirectories: [],
           files: [],

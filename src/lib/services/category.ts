@@ -1,12 +1,9 @@
+import { keyring } from "#lib/client/keys/index.js";
 import { generateDataKey, wrapDataKey, encryptString } from "#lib/shared/crypto/index.js";
-import type { MasterKey } from "#lib/stores/index.js";
 import { trpc } from "#trpc/client.js";
 
-export const requestCategoryCreation = async (
-  name: string,
-  parentId: "root" | number,
-  masterKey: MasterKey,
-) => {
+export const requestCategoryCreation = async (name: string, parentId: "root" | number) => {
+  const masterKey = keyring.activeMasterKey;
   const { dataKey, dataKeyVersion } = await generateDataKey();
   const nameEncrypted = await encryptString(name, dataKey);
 

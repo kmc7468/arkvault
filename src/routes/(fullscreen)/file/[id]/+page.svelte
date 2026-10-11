@@ -8,7 +8,6 @@
   import { getFileInfo, type MaybeFileInfo } from "#lib/modules/filesystem/index.js";
   import { captureVideoThumbnail } from "#lib/client/media/thumbnail.js";
   import { getFileDownloadState } from "#lib/client/transfer/index.js";
-  import { masterKeyStore } from "#lib/stores/index.js";
   import { HybridPromise } from "#lib/utils/index.js";
   import AddToCategoryBottomSheet from "./AddToCategoryBottomSheet.svelte";
   import DownloadStatus from "./DownloadStatus.svelte";
@@ -68,21 +67,21 @@
   const addToCategory = async (categoryId: number) => {
     await requestFileAdditionToCategory(data.id, categoryId);
     isAddToCategoryBottomSheetOpen = false;
-    void getFileInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+    void getFileInfo(data.id); // TODO: FIXME
   };
 
   const removeFromCategory = async (categoryId: number) => {
     await requestFileRemovalFromCategory(data.id, categoryId);
-    void getFileInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+    void getFileInfo(data.id); // TODO: FIXME
   };
 
   const toggleFavorite = async () => {
     await requestFavoriteToggle(data.id, !!info?.isFavorite);
-    void getFileInfo(data.id, $masterKeyStore?.get(1)?.key!); // TODO: FIXME
+    void getFileInfo(data.id); // TODO: FIXME
   };
 
   $effect(() => {
-    HybridPromise.resolve(getFileInfo(data.id, $masterKeyStore?.get(1)?.key!)).then((result) => {
+    HybridPromise.resolve(getFileInfo(data.id)).then((result) => {
       if (data.id === result.id) {
         info = result;
       }

@@ -1,5 +1,11 @@
 import { limitFunction } from "p-limit";
 import { signMessageHmac } from "#lib/client/crypto/hmac.js";
+import {
+  ensureHmacSecrets,
+  keyring,
+  type HmacSecret,
+  type MasterKey,
+} from "#lib/client/keys/index.js";
 import { extractExifDateTime } from "#lib/client/media/exif.js";
 import { generateThumbnail } from "#lib/client/media/thumbnail.js";
 import { uploadBlob } from "#lib/client/transfer/chunkedUpload.js";
@@ -10,7 +16,6 @@ import {
   encryptString,
 } from "#lib/shared/crypto/index.js";
 import { getChunkCount } from "#lib/shared/format/index.js";
-import type { MasterKey, HmacSecret } from "#lib/stores/index.js";
 import { Scheduler } from "#lib/utils/index.js";
 import { trpc } from "#trpc/client.js";
 
@@ -184,8 +189,6 @@ const requestFileUpload = limitFunction(
 export const uploadFile = async (
   file: File,
   parentId: "root" | number,
-  masterKey: MasterKey,
-  hmacSecret: HmacSecret,
   onDuplicate: () => Promise<boolean>,
 ) => {
   uploadingFiles.push({
@@ -198,6 +201,10 @@ export const uploadFile = async (
 
   return await scheduler.schedule(file.size, async () => {
     try {
+      await ensureHmacSecrets();
+      const masterKey = keyring.activeMasterKey;
+      const hmacSecret = keyring.activeHmacSecret;
+
       const { fileSigned } = await requestDuplicateFileScan(state, file, hmacSecret, onDuplicate);
 
       if (!fileSigned) {

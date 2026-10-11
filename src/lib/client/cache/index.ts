@@ -1,2 +1,2 @@
 export * from "./fileCache";
-export * from "./thumbnailCache";
+export * from "./thumbnailCache.svelte";

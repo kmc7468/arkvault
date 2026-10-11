@@ -13,21 +13,18 @@ export type FavoriteEntry =
   | { type: "directory"; name: string; details: SubDirectoryInfo }
   | { type: "file"; name: string; details: SummarizedFileInfo };
 
-export const requestFavoriteEntries = async (
-  favorites: RouterOutputs["favorites"]["get"],
-  masterKey: CryptoKey,
-) => {
+export const requestFavoriteEntries = async (favorites: RouterOutputs["favorites"]["get"]) => {
   const [directories, files] = await HybridPromise.all([
     HybridPromise.all(
       favorites.directories.map((directory) =>
-        getDirectoryInfo(directory.id, masterKey, {
+        getDirectoryInfo(directory.id, {
           serverResponse: { ...directory, isFavorite: true },
         }),
       ),
     ),
     HybridPromise.all(
       favorites.files.map((file) =>
-        getFileInfo(file.id, masterKey, { serverResponse: { ...file, isFavorite: true } }),
+        getFileInfo(file.id, { serverResponse: { ...file, isFavorite: true } }),
       ),
     ),
   ]);

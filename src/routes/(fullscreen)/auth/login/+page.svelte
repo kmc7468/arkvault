@@ -9,14 +9,14 @@
   } from "#lib/components/atoms/index.js";
   import { TitledDiv } from "#lib/components/molecules/index.js";
   import { ForceLoginModal } from "#lib/components/organisms/index.js";
-  import { clientKeyStore, masterKeyStore } from "#lib/stores/index.js";
   import {
-    requestLogin,
+    downloadMasterKeys,
+    keyring,
     requestClientRegistrationAndSessionUpgrade,
-    requestMasterKeyDownload,
-    requestDeletedFilesCleanup,
-    requestLogout,
-  } from "./service";
+  } from "#lib/client/keys/index.js";
+  import { requestLogout } from "#lib/services/auth.js";
+  import { requestDeletedFilesCleanup } from "#lib/services/file.js";
+  import { requestLogin } from "./service";
 
   let { data } = $props();
 
@@ -31,10 +31,7 @@
 
   const upgradeSession = async (force: boolean) => {
     try {
-      const [upgradeRes, upgradeError] = await requestClientRegistrationAndSessionUpgrade(
-        $clientKeyStore!,
-        force,
-      );
+      const [upgradeRes, upgradeError] = await requestClientRegistrationAndSessionUpgrade(force);
       if (!force && upgradeError === "Already logged in") {
         isForceLoginModalOpen = true;
         return;
@@ -44,10 +41,7 @@
 
       // TODO: Multi-user support
 
-      if (
-        $masterKeyStore ||
-        (await requestMasterKeyDownload($clientKeyStore!.decryptKey, $clientKeyStore!.verifyKey))
-      ) {
+      if (keyring.hasMasterKeys || (await downloadMasterKeys())) {
         await requestDeletedFilesCleanup();
         await goto(data.redirectPath);
       } else {
@@ -65,7 +59,7 @@
     try {
       if (!(await requestLogin(email, password))) throw new Error("Failed to login");
 
-      if (!$clientKeyStore) return await redirect("/key/generate");
+      if (!keyring.clientKeys) return await redirect("/key/generate");
 
       await upgradeSession(false);
     } catch (e) {

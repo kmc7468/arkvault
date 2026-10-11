@@ -27,10 +27,9 @@ export const clearThumbnailGenerationStatuses = () => {
 
 export const requestMissingThumbnailFiles = async (
   filesRaw: RouterOutputs["file"]["listWithoutThumbnail"],
-  masterKey: CryptoKey,
 ) => {
   const files = await HybridPromise.all(
-    filesRaw.map((file) => getFileInfo(file.id, masterKey, { serverResponse: file })),
+    filesRaw.map((file) => getFileInfo(file.id, { serverResponse: file })),
   );
   return files;
 };

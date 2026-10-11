@@ -19,7 +19,7 @@ export interface SearchResult {
   files: FileInfo[];
 }
 
-export const requestSearch = async (filter: SearchFilter, masterKey: CryptoKey) => {
+export const requestSearch = async (filter: SearchFilter) => {
   const { directories: directoriesRaw, files: filesRaw } = await trpc.search.search.query({
     ancestor: filter.ancestorId,
     inFavorites: filter.inFavorites,
@@ -33,12 +33,10 @@ export const requestSearch = async (filter: SearchFilter, masterKey: CryptoKey) 
   const [directories, files] = await HybridPromise.all([
     HybridPromise.all(
       directoriesRaw.map((directory) =>
-        getDirectoryInfo(directory.id, masterKey, { serverResponse: directory }),
+        getDirectoryInfo(directory.id, { serverResponse: directory }),
       ),
     ),
-    HybridPromise.all(
-      filesRaw.map((file) => getFileInfo(file.id, masterKey, { serverResponse: file })),
-    ),
+    HybridPromise.all(filesRaw.map((file) => getFileInfo(file.id, { serverResponse: file }))),
   ]);
   return { directories, files } as SearchResult;
 };
