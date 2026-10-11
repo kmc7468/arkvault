@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { BottomDiv, BottomSheet, Button, FullscreenDiv } from "#lib/components/atoms/index.js";
-  import { SubCategories } from "#lib/components/molecules/index.js";
+  import { SubCategories } from "#lib/features/filesystem/components/index.js";
   import { useCategory, type LocalCategoryInfo } from "#lib/features/filesystem/index.js";
+  import { BottomDiv, BottomSheet, Button, FullscreenDiv } from "#lib/ui/index.js";
 
   interface Props {
     isOpen: boolean;

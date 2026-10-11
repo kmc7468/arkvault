@@ -1,13 +1,17 @@
 <script lang="ts">
-  import { ActionEntryButton, RowVirtualizer } from "#lib/components/atoms/index.js";
-  import { DirectoryEntryLabel } from "#lib/components/molecules/index.js";
   import { getUploadingFiles, type LiveFileUploadState } from "#lib/client/transfer/index.js";
-  import type { DirectoryInfo } from "#lib/features/filesystem/index.js";
+  import { DirectoryEntry, FileEntry } from "#lib/features/filesystem/components/index.js";
+  import type {
+    DirectoryInfo,
+    SubDirectoryInfo,
+    SummarizedFileInfo,
+  } from "#lib/features/filesystem/index.js";
+  import { ActionEntryButton, RowVirtualizer, DirectoryEntryLabel } from "#lib/ui/index.js";
   import { sortEntries } from "#lib/utils/index.js";
-  import File from "./File.svelte";
-  import SubDirectory from "./SubDirectory.svelte";
   import UploadingFile from "./UploadingFile.svelte";
   import type { SelectedEntry } from "../service.svelte";
+
+  import IconMoreVert from "~icons/material-symbols/more-vert";
 
   interface Props {
     info: DirectoryInfo;
@@ -34,6 +38,11 @@
   const toEntry =
     <T extends Exclude<Entry["type"], "parent">>(type: T) =>
     (details: Extract<Entry, { type: T }>["details"]) => ({ type, name: details.name, details });
+
+  const toSelectedEntry = (
+    type: SelectedEntry["type"],
+    { id, parentId, dataKey, name, isFavorite }: SubDirectoryInfo | SummarizedFileInfo,
+  ): SelectedEntry => ({ type, id, parentId, dataKey, name, isFavorite });
 
   let entries = $derived([
     ...(showParentEntry ? ([{ type: "parent" }] as const) : []),
@@ -63,13 +72,19 @@
           <DirectoryEntryLabel type="parent-directory" name=".." />
         </ActionEntryButton>
       {:else if entry.type === "directory"}
-        <SubDirectory
+        {@const selected = toSelectedEntry("directory", entry.details)}
+        <DirectoryEntry
           info={entry.details}
-          onclick={onEntryClick}
-          onOpenMenuClick={onEntryMenuClick}
+          onclick={() => onEntryClick(selected)}
+          action={{ icon: IconMoreVert, onclick: () => onEntryMenuClick(selected) }}
         />
       {:else if entry.type === "file"}
-        <File info={entry.details} onclick={onEntryClick} onOpenMenuClick={onEntryMenuClick} />
+        {@const selected = toSelectedEntry("file", entry.details)}
+        <FileEntry
+          info={entry.details}
+          onclick={() => onEntryClick(selected)}
+          action={{ icon: IconMoreVert, onclick: () => onEntryMenuClick(selected) }}
+        />
       {:else}
         <UploadingFile state={entry.details} />
       {/if}

@@ -1,17 +1,16 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { RowVirtualizer } from "#lib/components/atoms/index.js";
-  import { TopBar } from "#lib/components/molecules/index.js";
-  import Directory from "./Directory.svelte";
-  import File from "./File.svelte";
-  import { showErrorToast, tryAction } from "#lib/client/toast.svelte.js";
+  import { showErrorToast, tryAction } from "#lib/features/errors.js";
   import {
     getFavoriteEntries,
     removeFavorite,
     type FavoriteEntry,
   } from "#lib/features/favorites/index.js";
+  import { DirectoryEntry, FileEntry } from "#lib/features/filesystem/components/index.js";
+  import { RowVirtualizer, TopBar } from "#lib/ui/index.js";
 
+  import IconClose from "~icons/material-symbols/close";
   import IconSearch from "~icons/material-symbols/search";
 
   let entries: FavoriteEntry[] = $state([]);
@@ -68,16 +67,16 @@
         {#snippet item(index)}
           {@const entry = entries[index]!}
           {#if entry.type === "directory"}
-            <Directory
+            <DirectoryEntry
               info={entry.details}
               onclick={() => handleClick(entry)}
-              onRemoveClick={() => handleRemove(entry)}
+              action={{ icon: IconClose, onclick: () => handleRemove(entry) }}
             />
           {:else}
-            <File
+            <FileEntry
               info={entry.details}
               onclick={() => handleClick(entry)}
-              onRemoveClick={() => handleRemove(entry)}
+              action={{ icon: IconClose, onclick: () => handleRemove(entry) }}
             />
           {/if}
         {/snippet}

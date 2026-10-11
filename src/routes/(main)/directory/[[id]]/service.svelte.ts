@@ -1,4 +1,4 @@
-import { getContext, setContext } from "svelte";
+import { createContext as createSvelteContext } from "svelte";
 import {
   deleteDirectory,
   deleteFile,
@@ -18,16 +18,18 @@ export interface SelectedEntry {
   isFavorite: boolean;
 }
 
+interface Context {
+  selectedEntry?: SelectedEntry;
+}
+
+const [getContext, setContext] = createSvelteContext<Context>();
+
 export const createContext = () => {
-  const context = $state({
-    selectedEntry: undefined as SelectedEntry | undefined,
-  });
-  return setContext("context", context);
+  const context: Context = $state({});
+  return setContext(context);
 };
 
-export const useContext = () => {
-  return getContext<ReturnType<typeof createContext>>("context");
-};
+export const useContext = getContext;
 
 export const renameEntry = async (entry: SelectedEntry, newName: string) => {
   if (entry.type === "directory") {

@@ -1,12 +1,11 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { BottomDiv, Button, FullscreenDiv } from "#lib/components/atoms/index.js";
-  import { IconEntryButton, TopBar } from "#lib/components/molecules/index.js";
   import { deleteAllFileThumbnailCaches } from "#lib/client/cache/index.js";
+  import { FileEntry } from "#lib/features/filesystem/components/index.js";
   import type { MaybeFileInfo } from "#lib/features/filesystem/index.js";
+  import { BottomDiv, Button, FullscreenDiv, IconEntryButton, TopBar } from "#lib/ui/index.js";
   import { sortEntries } from "#lib/utils/index.js";
-  import File from "./File.svelte";
   import {
     getThumbnailGenerationStatus,
     clearThumbnailGenerationStatuses,
@@ -15,9 +14,18 @@
     type GenerationStatus,
   } from "./service";
 
+  import IconCamera from "~icons/material-symbols/camera";
   import IconDelete from "~icons/material-symbols/delete";
 
   let { data } = $props();
+
+  const statusTexts = {
+    queued: "대기 중",
+    "generation-pending": "준비 중",
+    generating: "생성하는 중",
+    uploading: "업로드하는 중",
+    error: "실패",
+  } as const;
 
   let fileInfos: MaybeFileInfo[] = $state([]);
   let files = $derived(
@@ -69,11 +77,18 @@
           <div class="space-y-2">
             {#each files as { info, status } (info.id)}
               {#if info.exists}
-                <File
+                <FileEntry
                   {info}
-                  {status}
-                  onclick={({ id }) => goto(`/file/${id}`)}
-                  onGenerateThumbnailClick={requestThumbnailGeneration}
+                  showThumbnail={false}
+                  subtext={status && statusTexts[status]}
+                  onclick={() => goto(`/file/${info.id}`)}
+                  action={!status || status === "error"
+                    ? {
+                        icon: IconCamera,
+                        onclick: () => requestThumbnailGeneration(info),
+                        class: "text-gray-800",
+                      }
+                    : undefined}
                 />
               {/if}
             {/each}

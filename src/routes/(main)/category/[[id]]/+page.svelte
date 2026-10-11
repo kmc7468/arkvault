@@ -1,9 +1,11 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { CheckBox, RowVirtualizer } from "#lib/components/atoms/index.js";
-  import { SubCategories, TopBar } from "#lib/components/molecules/index.js";
-  import { CategoryCreateModal } from "#lib/components/organisms/index.js";
-  import { tryAction } from "#lib/client/toast.svelte.js";
+  import { tryAction } from "#lib/features/errors.js";
+  import {
+    FileEntry,
+    SubCategories,
+    CategoryCreateModal,
+  } from "#lib/features/filesystem/components/index.js";
   import {
     createCategory,
     deleteCategory,
@@ -13,13 +15,14 @@
     useCategory,
     type LocalCategoryInfo,
   } from "#lib/features/filesystem/index.js";
+  import { CheckBox, OverlayGroup, RowVirtualizer, TopBar } from "#lib/ui/index.js";
   import { sortEntries } from "#lib/utils/index.js";
   import CategoryDeleteModal from "./CategoryDeleteModal.svelte";
   import CategoryMenuBottomSheet from "./CategoryMenuBottomSheet.svelte";
   import CategoryRenameModal from "./CategoryRenameModal.svelte";
-  import File from "./File.svelte";
   import { createContext } from "./service.svelte";
 
+  import IconClose from "~icons/material-symbols/close";
   import IconMoreVert from "~icons/material-symbols/more-vert";
 
   let { data } = $props();
@@ -28,10 +31,9 @@
   const category = useCategory(() => data.id);
   let info = $derived(category.current);
 
-  let isCategoryCreateModalOpen = $state(false);
-  let isCategoryMenuBottomSheetOpen = $state(false);
-  let isCategoryRenameModalOpen = $state(false);
-  let isCategoryDeleteModalOpen = $state(false);
+  const overlays = new OverlayGroup<
+    "categoryCreate" | "categoryMenu" | "categoryRename" | "categoryDelete"
+  >();
 
   let files = $derived(
     sortEntries(
@@ -59,11 +61,11 @@
         <SubCategories
           {info}
           onSubCategoryClick={({ id }) => goto(`/category/${id}`)}
-          onSubCategoryCreateClick={() => (isCategoryCreateModalOpen = true)}
+          onSubCategoryCreateClick={() => overlays.open("categoryCreate")}
           subCategoryCreatePosition="bottom"
           onSubCategoryMenuClick={(subCategory) => {
             context.selectedCategory = subCategory;
-            isCategoryMenuBottomSheetOpen = true;
+            overlays.open("categoryMenu");
           }}
           subCategoryMenuIcon={IconMoreVert}
         />
@@ -89,15 +91,18 @@
           >
             {#snippet item(index)}
               {@const { details } = files[index]!}
-              <File
+              <FileEntry
                 info={details}
-                onclick={({ id }) => goto(`/file/${id}?from=category`)}
-                onRemoveClick={!details.isRecursive
-                  ? ({ id }) =>
-                      tryAction(
-                        () => removeFileFromCategory(id, data.id as number),
-                        "카테고리에서 파일을 제거하지 못했어요.",
-                      )
+                onclick={() => goto(`/file/${details.id}?from=category`)}
+                action={!details.isRecursive
+                  ? {
+                      icon: IconClose,
+                      onclick: () =>
+                        tryAction(
+                          () => removeFileFromCategory(details.id, data.id as number),
+                          "카테고리에서 파일을 제거하지 못했어요.",
+                        ),
+                    }
                   : undefined}
               />
             {/snippet}
@@ -112,24 +117,18 @@
 </div>
 
 <CategoryCreateModal
-  bind:isOpen={isCategoryCreateModalOpen}
+  bind:isOpen={overlays.getter("categoryCreate"), overlays.setter("categoryCreate")}
   onCreateClick={(name: string) =>
     tryAction(() => createCategory(data.id, name), "카테고리를 만들지 못했어요.")}
 />
 
 <CategoryMenuBottomSheet
-  bind:isOpen={isCategoryMenuBottomSheetOpen}
-  onRenameClick={() => {
-    isCategoryMenuBottomSheetOpen = false;
-    isCategoryRenameModalOpen = true;
-  }}
-  onDeleteClick={() => {
-    isCategoryMenuBottomSheetOpen = false;
-    isCategoryDeleteModalOpen = true;
-  }}
+  bind:isOpen={overlays.getter("categoryMenu"), overlays.setter("categoryMenu")}
+  onRenameClick={() => overlays.open("categoryRename")}
+  onDeleteClick={() => overlays.open("categoryDelete")}
 />
 <CategoryRenameModal
-  bind:isOpen={isCategoryRenameModalOpen}
+  bind:isOpen={overlays.getter("categoryRename"), overlays.setter("categoryRename")}
   onRenameClick={(newName: string) =>
     tryAction(
       () => renameCategory({ ...context.selectedCategory!, parentId: data.id }, newName),
@@ -137,7 +136,7 @@
     )}
 />
 <CategoryDeleteModal
-  bind:isOpen={isCategoryDeleteModalOpen}
+  bind:isOpen={overlays.getter("categoryDelete"), overlays.setter("categoryDelete")}
   onDeleteClick={() =>
     tryAction(
       () => deleteCategory({ ...context.selectedCategory!, parentId: data.id }),

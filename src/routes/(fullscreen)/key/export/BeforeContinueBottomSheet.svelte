@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { BottomDiv, BottomSheet, Button, FullscreenDiv } from "#lib/components/atoms/index.js";
+  import { BottomDiv, BottomSheet, Button, FullscreenDiv } from "#lib/ui/index.js";
 
   interface Props {
     onRetryClick: () => void;

@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { BottomSheet } from "#lib/components/atoms/index.js";
-  import { CategoryLabel, IconEntryButton } from "#lib/components/molecules/index.js";
+  import { BottomSheet, CategoryLabel, IconEntryButton } from "#lib/ui/index.js";
   import { useContext } from "./service.svelte";
 
   import IconEdit from "~icons/material-symbols/edit";

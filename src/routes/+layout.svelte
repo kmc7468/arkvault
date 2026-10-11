@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getDownloadingFiles, getUploadingFiles } from "#lib/client/transfer/index.js";
-  import { Toasts } from "#lib/components/atoms/index.js";
+  import { Toasts } from "#lib/ui/index.js";
   import "../app.css";
 
   let { children } = $props();

@@ -1,8 +1,8 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import MenuEntryButton from "./MenuEntryButton.svelte";
-  import { tryAction } from "#lib/client/toast.svelte.js";
   import { logout as requestLogout } from "#lib/features/auth/index.js";
+  import { tryAction } from "#lib/features/errors.js";
 
   import IconStorage from "~icons/material-symbols/storage";
   import IconImage from "~icons/material-symbols/image";

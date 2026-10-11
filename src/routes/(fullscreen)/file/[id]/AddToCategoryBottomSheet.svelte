@@ -1,9 +1,8 @@
 <script lang="ts">
-  import { BottomDiv, BottomSheet, Button, FullscreenDiv } from "#lib/components/atoms/index.js";
-  import { SubCategories } from "#lib/components/molecules/index.js";
-  import { CategoryCreateModal } from "#lib/components/organisms/index.js";
-  import { tryAction } from "#lib/client/toast.svelte.js";
+  import { tryAction } from "#lib/features/errors.js";
+  import { SubCategories, CategoryCreateModal } from "#lib/features/filesystem/components/index.js";
   import { createCategory, useCategory } from "#lib/features/filesystem/index.js";
+  import { BottomDiv, BottomSheet, Button, FullscreenDiv } from "#lib/ui/index.js";
 
   interface Props {
     onAddToCategoryClick: (categoryId: number) => void;

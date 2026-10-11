@@ -1,9 +1,16 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { BottomDiv, Button, FullscreenDiv, TextInput } from "#lib/components/atoms/index.js";
-  import { TitledDiv, TopBar } from "#lib/components/molecules/index.js";
-  import { showToast, tryAction } from "#lib/client/toast.svelte.js";
   import { changePassword as requestPasswordChange } from "#lib/features/auth/index.js";
+  import { tryAction } from "#lib/features/errors.js";
+  import {
+    BottomDiv,
+    Button,
+    FullscreenDiv,
+    TextInput,
+    TitledDiv,
+    TopBar,
+    showToast,
+  } from "#lib/ui/index.js";
 
   let oldPassword = $state("");
   let newPassword = $state("");

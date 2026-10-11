@@ -3,11 +3,10 @@
   import { untrack } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { FullscreenDiv } from "#lib/components/atoms/index.js";
-  import { Categories, IconEntryButton, TopBar } from "#lib/components/molecules/index.js";
   import { captureVideoThumbnail } from "#lib/client/media/thumbnail.js";
   import { getFileDownloadState } from "#lib/client/transfer/index.js";
-  import { showErrorToast, tryAction } from "#lib/client/toast.svelte.js";
+  import { showErrorToast, tryAction } from "#lib/features/errors.js";
+  import { Categories } from "#lib/features/filesystem/components/index.js";
   import {
     addFileToCategory,
     getFileContent,
@@ -19,6 +18,7 @@
     type DataKey,
     type FileInfo,
   } from "#lib/features/filesystem/index.js";
+  import { FullscreenDiv, IconEntryButton, TopBar } from "#lib/ui/index.js";
   import AddToCategoryBottomSheet from "./AddToCategoryBottomSheet.svelte";
   import DownloadStatus from "./DownloadStatus.svelte";
   import TopBarMenu from "./TopBarMenu.svelte";

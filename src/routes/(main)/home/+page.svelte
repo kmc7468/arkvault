@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { EntryButton, FileThumbnailButton } from "#lib/components/atoms/index.js";
+  import { FileThumbnailButton } from "#lib/features/filesystem/components/index.js";
   import { type SummarizedFileInfo } from "#lib/features/filesystem/index.js";
+  import { EntryButton } from "#lib/ui/index.js";
   import { requestFreshMediaFilesRetrieval } from "./service";
 
   let mediaFiles: SummarizedFileInfo[] = $state([]);

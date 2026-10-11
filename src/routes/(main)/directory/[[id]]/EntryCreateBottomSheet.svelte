@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { BottomSheet } from "#lib/components/atoms/index.js";
-  import { IconEntryButton } from "#lib/components/molecules/index.js";
+  import { BottomSheet, IconEntryButton } from "#lib/ui/index.js";
 
   import IconCreateNewFolder from "~icons/material-symbols/create-new-folder";
   import IconUploadFile from "~icons/material-symbols/upload-file";

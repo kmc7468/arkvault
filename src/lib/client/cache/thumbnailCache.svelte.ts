@@ -1,7 +1,6 @@
 /* eslint-disable svelte/prefer-svelte-reactivity -- Lookup tables of reactive entries */
 import { LRUCache } from "lru-cache";
 import { deleteDirectory, deleteFile, readFile, writeFile } from "#lib/client/storage/opfs.js";
-import type { SummarizedFileInfo } from "#lib/features/filesystem/index.js";
 import { decryptChunk, encodeToBase64 } from "#lib/shared/crypto/index.js";
 
 export interface Thumbnail {
@@ -33,7 +32,11 @@ const fetchFromServer = async (fileId: number, dataKey: CryptoKey) => {
   return getThumbnailUrl(thumbnailBuffer);
 };
 
-export const getFileThumbnail = (file: SummarizedFileInfo) => {
+export const getFileThumbnail = (file: {
+  id: number;
+  contentType: string;
+  dataKey?: { key: CryptoKey };
+}) => {
   if (!(file.contentType.startsWith("image/") || file.contentType.startsWith("video/"))) {
     return undefined;
   }

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { RenameModal } from "#lib/components/organisms/index.js";
+  import { RenameModal } from "#lib/ui/index.js";
   import { useContext } from "./service.svelte";
 
   interface Props {

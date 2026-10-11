@@ -1,22 +1,23 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import {
+    downloadMasterKeys,
+    keyring,
+    requestClientRegistrationAndSessionUpgrade,
+  } from "#lib/client/keys/index.js";
+  import { ForceLoginModal } from "#lib/features/auth/components/index.js";
+  import { login as requestLogin, logout as requestLogout } from "#lib/features/auth/index.js";
+  import { showErrorToast } from "#lib/features/errors.js";
+  import { cleanupDeletedFileCaches } from "#lib/features/filesystem/index.js";
+  import {
     BottomDiv,
     Button,
     FullscreenDiv,
     TextButton,
     TextInput,
-  } from "#lib/components/atoms/index.js";
-  import { TitledDiv } from "#lib/components/molecules/index.js";
-  import { ForceLoginModal } from "#lib/components/organisms/index.js";
-  import {
-    downloadMasterKeys,
-    keyring,
-    requestClientRegistrationAndSessionUpgrade,
-  } from "#lib/client/keys/index.js";
-  import { showErrorToast, showToast } from "#lib/client/toast.svelte.js";
-  import { login as requestLogin, logout as requestLogout } from "#lib/features/auth/index.js";
-  import { cleanupDeletedFileCaches } from "#lib/features/filesystem/index.js";
+    TitledDiv,
+    showToast,
+  } from "#lib/ui/index.js";
   import { isTRPCClientError } from "#trpc/client.js";
 
   let { data } = $props();

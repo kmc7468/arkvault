@@ -1,10 +1,9 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { FloatingButton } from "#lib/components/atoms/index.js";
-  import { TopBar } from "#lib/components/molecules/index.js";
-  import { tryAction } from "#lib/client/toast.svelte.js";
+  import { tryAction } from "#lib/features/errors.js";
   import { createDirectory, uploadFile, useDirectory } from "#lib/features/filesystem/index.js";
+  import { FloatingButton, OverlayGroup, TopBar } from "#lib/ui/index.js";
   import DirectoryCreateModal from "./DirectoryCreateModal.svelte";
   import DirectoryEntries from "./DirectoryEntries";
   import DownloadStatusCard from "./DownloadStatusCard.svelte";
@@ -28,13 +27,11 @@
   let duplicatedFile: File | undefined = $state();
   let resolveForDuplicateFileModal: ((res: boolean) => void) | undefined = $state();
 
-  let isEntryCreateBottomSheetOpen = $state(false);
-  let isDirectoryCreateModalOpen = $state(false);
+  const overlays = new OverlayGroup<
+    "entryCreate" | "directoryCreate" | "entryMenu" | "entryRename" | "entryDelete"
+  >();
+  // Shown independently as it is requested while uploading in the background
   let isDuplicateFileModalOpen = $state(false);
-
-  let isEntryMenuBottomSheetOpen = $state(false);
-  let isEntryRenameModalOpen = $state(false);
-  let isEntryDeleteModalOpen = $state(false);
 
   let showParentEntry = $derived(
     ["file", "search", "favorite"].includes(page.url.searchParams.get("from") ?? ""),
@@ -96,7 +93,7 @@
           onEntryClick={({ type, id }) => goto(`/${type}/${id}`)}
           onEntryMenuClick={(entry) => {
             context.selectedEntry = entry;
-            isEntryMenuBottomSheetOpen = true;
+            overlays.open("entryMenu");
           }}
           showParentEntry={showParentEntry && data.id !== "root"}
           onParentClick={() =>
@@ -114,23 +111,20 @@
 <FloatingButton
   icon={IconAdd}
   onclick={() => {
-    isEntryCreateBottomSheetOpen = true;
+    overlays.open("entryCreate");
   }}
   class="right-4 bottom-24"
 />
 <EntryCreateBottomSheet
-  bind:isOpen={isEntryCreateBottomSheetOpen}
-  onDirectoryCreateClick={() => {
-    isEntryCreateBottomSheetOpen = false;
-    isDirectoryCreateModalOpen = true;
-  }}
+  bind:isOpen={overlays.getter("entryCreate"), overlays.setter("entryCreate")}
+  onDirectoryCreateClick={() => overlays.open("directoryCreate")}
   onFileUploadClick={() => {
-    isEntryCreateBottomSheetOpen = false;
+    overlays.close();
     fileInput?.click();
   }}
 />
 <DirectoryCreateModal
-  bind:isOpen={isDirectoryCreateModalOpen}
+  bind:isOpen={overlays.getter("directoryCreate"), overlays.setter("directoryCreate")}
   onCreateClick={(name) =>
     tryAction(() => createDirectory(data.id, name), "폴더를 만들지 못했어요.")}
 />
@@ -148,15 +142,9 @@
 />
 
 <EntryMenuBottomSheet
-  bind:isOpen={isEntryMenuBottomSheetOpen}
-  onRenameClick={() => {
-    isEntryMenuBottomSheetOpen = false;
-    isEntryRenameModalOpen = true;
-  }}
-  onDeleteClick={() => {
-    isEntryMenuBottomSheetOpen = false;
-    isEntryDeleteModalOpen = true;
-  }}
+  bind:isOpen={overlays.getter("entryMenu"), overlays.setter("entryMenu")}
+  onRenameClick={() => overlays.open("entryRename")}
+  onDeleteClick={() => overlays.open("entryDelete")}
   onFavoriteClick={async () => {
     if (
       await tryAction(
@@ -164,16 +152,16 @@
         "즐겨찾기를 변경하지 못했어요.",
       )
     ) {
-      isEntryMenuBottomSheetOpen = false;
+      overlays.close();
     }
   }}
 />
 <EntryRenameModal
-  bind:isOpen={isEntryRenameModalOpen}
+  bind:isOpen={overlays.getter("entryRename"), overlays.setter("entryRename")}
   onRenameClick={(newName: string) =>
     tryAction(() => renameEntry(context.selectedEntry!, newName), "이름을 바꾸지 못했어요.")}
 />
 <EntryDeleteModal
-  bind:isOpen={isEntryDeleteModalOpen}
+  bind:isOpen={overlays.getter("entryDelete"), overlays.setter("entryDelete")}
   onDeleteClick={() => tryAction(() => deleteEntry(context.selectedEntry!), "삭제하지 못했어요.")}
 />

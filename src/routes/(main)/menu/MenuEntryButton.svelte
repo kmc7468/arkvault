@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Component, Snippet } from "svelte";
   import type { ClassValue, SvelteHTMLElements } from "svelte/elements";
-  import { IconEntryButton } from "#lib/components/molecules/index.js";
+  import { IconEntryButton } from "#lib/ui/index.js";
 
   interface Props {
     children: Snippet;

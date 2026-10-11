@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ActionModal } from "#lib/components/molecules/index.js";
+  import { ActionModal } from "#lib/ui/index.js";
 
   interface Props {
     isOpen: boolean;

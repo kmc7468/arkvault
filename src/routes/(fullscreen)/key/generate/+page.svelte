@@ -1,9 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { BottomDiv, Button, FullscreenDiv, TextButton } from "#lib/components/atoms/index.js";
-  import { TitledDiv } from "#lib/components/molecules/index.js";
-  import { ForceLoginModal } from "#lib/components/organisms/index.js";
   import {
     generateClientKeys,
     generateInitialHmacSecret,
@@ -13,8 +10,16 @@
     registerInitialMasterKeyAndHmacSecret,
     requestClientRegistrationAndSessionUpgrade,
   } from "#lib/client/keys/index.js";
-  import { showToast } from "#lib/client/toast.svelte.js";
+  import { ForceLoginModal } from "#lib/features/auth/components/index.js";
   import { cleanupDeletedFileCaches } from "#lib/features/filesystem/index.js";
+  import {
+    BottomDiv,
+    Button,
+    FullscreenDiv,
+    TextButton,
+    TitledDiv,
+    showToast,
+  } from "#lib/ui/index.js";
   import { gotoStateful } from "#lib/utils/index.js";
   import Order from "./Order.svelte";
 

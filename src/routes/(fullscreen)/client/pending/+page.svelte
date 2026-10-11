@@ -1,13 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { FullscreenDiv } from "#lib/components/atoms/index.js";
-  import { TitledDiv } from "#lib/components/molecules/index.js";
   import {
     downloadMasterKeys,
     generatePublicKeyFingerprint,
     keyring,
   } from "#lib/client/keys/index.js";
+  import { FullscreenDiv, TitledDiv } from "#lib/ui/index.js";
 
   import IconFingerprint from "~icons/material-symbols/fingerprint";
 

@@ -1,8 +1,6 @@
 <script lang="ts">
   import FileSaver from "file-saver";
   import { goto } from "$app/navigation";
-  import { BottomDiv, Button, FullscreenDiv, TextButton } from "#lib/components/atoms/index.js";
-  import { TitledDiv } from "#lib/components/molecules/index.js";
   import {
     keyring,
     registerInitialMasterKeyAndHmacSecret,
@@ -10,7 +8,14 @@
     requestSessionUpgrade,
     serializeClientKeys,
   } from "#lib/client/keys/index.js";
-  import { showToast } from "#lib/client/toast.svelte.js";
+  import {
+    BottomDiv,
+    Button,
+    FullscreenDiv,
+    TextButton,
+    TitledDiv,
+    showToast,
+  } from "#lib/ui/index.js";
   import BeforeContinueBottomSheet from "./BeforeContinueBottomSheet.svelte";
   import BeforeContinueModal from "./BeforeContinueModal.svelte";
 

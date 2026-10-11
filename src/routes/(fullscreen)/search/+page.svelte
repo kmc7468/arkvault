@@ -4,17 +4,16 @@
   import { untrack } from "svelte";
   import { slide } from "svelte/transition";
   import { goto } from "$app/navigation";
-  import { Chip, FullscreenDiv, RowVirtualizer } from "#lib/components/atoms/index.js";
-  import { showErrorToast } from "#lib/client/toast.svelte.js";
+  import { showErrorToast } from "#lib/features/errors.js";
+  import { DirectoryEntry, FileEntry } from "#lib/features/filesystem/components/index.js";
   import {
     getDirectoryInfo,
     type LocalCategoryInfo,
     type MaybeDirectoryInfo,
   } from "#lib/features/filesystem/index.js";
   import { search, type SearchFilter, type SearchResult } from "#lib/features/search/index.js";
+  import { Chip, FullscreenDiv, RowVirtualizer } from "#lib/ui/index.js";
   import { searchString, sortEntries } from "#lib/utils/index.js";
-  import Directory from "./Directory.svelte";
-  import File from "./File.svelte";
   import SearchBar from "./SearchBar.svelte";
   import SelectCategoryBottomSheet from "./SelectCategoryBottomSheet.svelte";
 
@@ -236,9 +235,9 @@
             {#snippet item(index)}
               {@const info = result[index]!}
               {#if info.type === "directory"}
-                <Directory {info} onclick={() => goto(`/directory/${info.id}?from=search`)} />
+                <DirectoryEntry {info} onclick={() => goto(`/directory/${info.id}?from=search`)} />
               {:else}
-                <File {info} onclick={() => goto(`/file/${info.id}?from=search`)} />
+                <FileEntry {info} onclick={() => goto(`/file/${info.id}?from=search`)} />
               {/if}
             {/snippet}
           </RowVirtualizer>

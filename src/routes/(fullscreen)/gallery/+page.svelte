@@ -1,17 +1,13 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import {
-    FileThumbnailButton,
-    FullscreenDiv,
-    RowVirtualizer,
-  } from "#lib/components/atoms/index.js";
-  import { TopBar } from "#lib/components/molecules/index.js";
+  import { FileThumbnailButton } from "#lib/features/filesystem/components/index.js";
   import {
     bulkGetFileInfo,
     type MaybeFileInfo,
     type SummarizedFileInfo,
   } from "#lib/features/filesystem/index.js";
+  import { FullscreenDiv, RowVirtualizer, TopBar } from "#lib/ui/index.js";
   import { formatDate, formatDateSortable, SortBy, sortEntries } from "#lib/utils/index.js";
 
   let { data } = $props();
