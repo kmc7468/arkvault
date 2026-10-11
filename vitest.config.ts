@@ -3,7 +3,7 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   // Compiles runes in `.svelte.ts` files
-  plugins: [svelte()],
+  plugins: [svelte({ configFile: false })],
   test: {
     projects: [
       {

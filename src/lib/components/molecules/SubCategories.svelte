@@ -6,7 +6,7 @@
     IconEntryButton,
     type SelectedCategory,
   } from "#lib/components/molecules/index.js";
-  import type { CategoryInfo } from "#lib/modules/filesystem/index.js";
+  import type { CategoryInfo } from "#lib/features/filesystem/index.js";
 
   import IconAddCircle from "~icons/material-symbols/add-circle";
 

@@ -3,35 +3,35 @@
   import { CheckBox, RowVirtualizer } from "#lib/components/atoms/index.js";
   import { SubCategories, TopBar } from "#lib/components/molecules/index.js";
   import { CategoryCreateModal } from "#lib/components/organisms/index.js";
-  import { updateCategoryInfo } from "#lib/client/storage/indexedDB/index.js";
-  import { getCategoryInfo, type MaybeCategoryInfo } from "#lib/modules/filesystem/index.js";
-  import { HybridPromise, sortEntries } from "#lib/utils/index.js";
+  import { tryAction } from "#lib/client/toast.svelte.js";
+  import {
+    createCategory,
+    deleteCategory,
+    removeFileFromCategory,
+    renameCategory,
+    setCategoryFileRecursive,
+    useCategory,
+    type LocalCategoryInfo,
+  } from "#lib/features/filesystem/index.js";
+  import { sortEntries } from "#lib/utils/index.js";
   import CategoryDeleteModal from "./CategoryDeleteModal.svelte";
   import CategoryMenuBottomSheet from "./CategoryMenuBottomSheet.svelte";
   import CategoryRenameModal from "./CategoryRenameModal.svelte";
   import File from "./File.svelte";
-  import {
-    createContext,
-    requestCategoryCreation,
-    requestFileRemovalFromCategory,
-    requestCategoryRename,
-    requestCategoryDeletion,
-  } from "./service.svelte";
+  import { createContext } from "./service.svelte";
 
   import IconMoreVert from "~icons/material-symbols/more-vert";
 
   let { data } = $props();
   let context = createContext();
 
-  let info: MaybeCategoryInfo | undefined = $state();
+  const category = useCategory(() => data.id);
+  let info = $derived(category.current);
 
   let isCategoryCreateModalOpen = $state(false);
   let isCategoryMenuBottomSheetOpen = $state(false);
   let isCategoryRenameModalOpen = $state(false);
   let isCategoryDeleteModalOpen = $state(false);
-
-  let lastCategoryId: CategoryId | undefined = $state();
-  let lastIsFileRecursive: boolean | undefined = $state();
 
   let files = $derived(
     sortEntries(
@@ -40,27 +40,6 @@
         .filter(({ details }) => info?.isFileRecursive || !details.isRecursive) ?? [],
     ),
   );
-
-  $effect(() => {
-    if (!info || info.id === "root" || info.isFileRecursive === undefined) return;
-    if (lastCategoryId !== info.id) {
-      lastCategoryId = info.id;
-      lastIsFileRecursive = info.isFileRecursive;
-      return;
-    }
-    if (lastIsFileRecursive === info.isFileRecursive) return;
-
-    lastIsFileRecursive = info.isFileRecursive;
-    void updateCategoryInfo(info.id, { isFileRecursive: info.isFileRecursive });
-  });
-
-  $effect(() => {
-    HybridPromise.resolve(getCategoryInfo(data.id)).then((result) => {
-      if (data.id === result.id) {
-        info = result;
-      }
-    });
-  });
 </script>
 
 <svelte:head>
@@ -93,7 +72,12 @@
         <div class="space-y-2 bg-white p-4">
           <div class="flex items-center justify-between">
             <p class="text-lg font-bold text-gray-800">파일</p>
-            <CheckBox bind:checked={info.isFileRecursive}>
+            <CheckBox
+              bind:checked={
+                () => info.isFileRecursive,
+                (value) => setCategoryFileRecursive(info as LocalCategoryInfo, value)
+              }
+            >
               <p class="font-medium">하위 카테고리의 파일</p>
             </CheckBox>
           </div>
@@ -109,10 +93,11 @@
                 info={details}
                 onclick={({ id }) => goto(`/file/${id}?from=category`)}
                 onRemoveClick={!details.isRecursive
-                  ? async ({ id }) => {
-                      await requestFileRemovalFromCategory(id, data.id as number);
-                      void getCategoryInfo(data.id); // TODO: FIXME
-                    }
+                  ? ({ id }) =>
+                      tryAction(
+                        () => removeFileFromCategory(id, data.id as number),
+                        "카테고리에서 파일을 제거하지 못했어요.",
+                      )
                   : undefined}
               />
             {/snippet}
@@ -128,13 +113,8 @@
 
 <CategoryCreateModal
   bind:isOpen={isCategoryCreateModalOpen}
-  onCreateClick={async (name: string) => {
-    if (await requestCategoryCreation(name, data.id)) {
-      void getCategoryInfo(data.id); // TODO: FIXME
-      return true;
-    }
-    return false;
-  }}
+  onCreateClick={(name: string) =>
+    tryAction(() => createCategory(data.id, name), "카테고리를 만들지 못했어요.")}
 />
 
 <CategoryMenuBottomSheet
@@ -150,21 +130,17 @@
 />
 <CategoryRenameModal
   bind:isOpen={isCategoryRenameModalOpen}
-  onRenameClick={async (newName: string) => {
-    if (await requestCategoryRename(context.selectedCategory!, newName)) {
-      void getCategoryInfo(data.id); // TODO: FIXME
-      return true;
-    }
-    return false;
-  }}
+  onRenameClick={(newName: string) =>
+    tryAction(
+      () => renameCategory({ ...context.selectedCategory!, parentId: data.id }, newName),
+      "이름을 바꾸지 못했어요.",
+    )}
 />
 <CategoryDeleteModal
   bind:isOpen={isCategoryDeleteModalOpen}
-  onDeleteClick={async () => {
-    if (await requestCategoryDeletion(context.selectedCategory!)) {
-      void getCategoryInfo(data.id); // TODO: FIXME
-      return true;
-    }
-    return false;
-  }}
+  onDeleteClick={() =>
+    tryAction(
+      () => deleteCategory({ ...context.selectedCategory!, parentId: data.id }),
+      "카테고리를 삭제하지 못했어요.",
+    )}
 />

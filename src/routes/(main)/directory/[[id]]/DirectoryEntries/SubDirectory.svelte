@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ActionEntryButton } from "#lib/components/atoms/index.js";
   import { DirectoryEntryLabel } from "#lib/components/molecules/index.js";
-  import type { SubDirectoryInfo } from "#lib/modules/filesystem/index.js";
+  import type { SubDirectoryInfo } from "#lib/features/filesystem/index.js";
   import type { SelectedEntry } from "../service.svelte";
 
   import IconMoreVert from "~icons/material-symbols/more-vert";
@@ -18,6 +18,7 @@
     callback({
       type: "directory",
       id: info.id,
+      parentId: info.parentId,
       dataKey: info.dataKey,
       name: info.name,
       isFavorite: info.isFavorite,

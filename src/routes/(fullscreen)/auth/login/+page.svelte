@@ -14,9 +14,10 @@
     keyring,
     requestClientRegistrationAndSessionUpgrade,
   } from "#lib/client/keys/index.js";
-  import { requestLogout } from "#lib/services/auth.js";
-  import { requestDeletedFilesCleanup } from "#lib/services/file.js";
-  import { requestLogin } from "./service";
+  import { showErrorToast, showToast } from "#lib/client/toast.svelte.js";
+  import { login as requestLogin, logout as requestLogout } from "#lib/features/auth/index.js";
+  import { cleanupDeletedFileCaches } from "#lib/features/filesystem/index.js";
+  import { isTRPCClientError } from "#trpc/client.js";
 
   let { data } = $props();
 
@@ -30,42 +31,45 @@
   };
 
   const upgradeSession = async (force: boolean) => {
-    try {
-      const [upgradeRes, upgradeError] = await requestClientRegistrationAndSessionUpgrade(force);
-      if (!force && upgradeError === "Already logged in") {
-        isForceLoginModalOpen = true;
-        return;
-      } else if (!upgradeRes) {
-        throw new Error("Failed to upgrade session");
-      }
+    const [upgradeRes, upgradeError] = await requestClientRegistrationAndSessionUpgrade(force);
+    if (!force && upgradeError === "Already logged in") {
+      isForceLoginModalOpen = true;
+      return;
+    } else if (!upgradeRes) {
+      showToast("로그인하지 못했어요.");
+      return;
+    }
 
-      // TODO: Multi-user support
+    // TODO: Multi-user support
 
-      if (keyring.hasMasterKeys || (await downloadMasterKeys())) {
-        await requestDeletedFilesCleanup();
-        await goto(data.redirectPath);
-      } else {
-        await redirect("/client/pending");
-      }
-    } catch (e) {
-      // TODO
-      throw e;
+    if (keyring.hasMasterKeys || (await downloadMasterKeys())) {
+      await cleanupDeletedFileCaches().catch(console.error);
+      await goto(data.redirectPath);
+    } else {
+      await redirect("/client/pending");
     }
   };
 
   const login = async () => {
-    // TODO: Validation
+    if (!email || !password) {
+      showToast("이메일과 비밀번호를 입력해 주세요.");
+      return;
+    }
 
     try {
-      if (!(await requestLogin(email, password))) throw new Error("Failed to login");
-
-      if (!keyring.clientKeys) return await redirect("/key/generate");
-
-      await upgradeSession(false);
+      await requestLogin(email, password);
     } catch (e) {
-      // TODO: Alert
-      throw e;
+      if (isTRPCClientError(e) && e.data?.code === "UNAUTHORIZED") {
+        showToast("이메일 또는 비밀번호가 올바르지 않아요.");
+      } else {
+        showErrorToast(e, "로그인하지 못했어요.");
+      }
+      return;
     }
+
+    if (!keyring.clientKeys) return await redirect("/key/generate");
+
+    await upgradeSession(false);
   };
 </script>
 
@@ -93,6 +97,6 @@
 
 <ForceLoginModal
   bind:isOpen={isForceLoginModalOpen}
-  oncancel={requestLogout}
+  oncancel={() => requestLogout().catch(console.error)}
   onLoginClick={() => upgradeSession(true)}
 />

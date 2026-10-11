@@ -63,8 +63,8 @@ export const requestClientRegistration = async () => {
       answerSig: await answerChallenge(challenge, clientKeys),
     });
     return true;
-  } catch {
-    // TODO: Error Handling
+  } catch (e) {
+    console.error(e);
     return false;
   }
 };
@@ -95,9 +95,9 @@ export const registerInitialMasterKeyAndHmacSecret = async (
     });
   } catch (e) {
     if (isTRPCClientError(e) && (e.data?.code === "FORBIDDEN" || e.data?.code === "CONFLICT")) {
-      return true;
+      return true; // Already registered by another client
     }
-    // TODO: Error Handling
+    console.error(e);
     return false;
   }
 
@@ -107,8 +107,8 @@ export const registerInitialMasterKeyAndHmacSecret = async (
       hsk: hmacSecretWrapped,
     });
     return true;
-  } catch {
-    // TODO: Error Handling
+  } catch (e) {
+    console.error(e);
     return false;
   }
 };
@@ -117,8 +117,8 @@ export const downloadHmacSecrets = async () => {
   let hmacSecretsWrapped;
   try {
     hmacSecretsWrapped = await trpc.hsk.list.query();
-  } catch {
-    // TODO: Error Handling
+  } catch (e) {
+    console.error(e);
     return false;
   }
 
@@ -143,8 +143,8 @@ export const downloadMasterKeys = async () => {
   let masterKeysWrapped;
   try {
     masterKeysWrapped = await trpc.mek.list.query();
-  } catch {
-    // TODO: Error Handling
+  } catch (e) {
+    console.error(e);
     return false;
   }
 

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ActionEntryButton } from "#lib/components/atoms/index.js";
   import { DirectoryEntryLabel } from "#lib/components/molecules/index.js";
-  import type { SubDirectoryInfo } from "#lib/modules/filesystem/index.js";
+  import type { SubDirectoryInfo } from "#lib/features/filesystem/index.js";
 
   import IconClose from "~icons/material-symbols/close";
 

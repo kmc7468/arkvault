@@ -2,7 +2,7 @@
   import { ActionEntryButton, RowVirtualizer } from "#lib/components/atoms/index.js";
   import { DirectoryEntryLabel } from "#lib/components/molecules/index.js";
   import { getUploadingFiles, type LiveFileUploadState } from "#lib/client/transfer/index.js";
-  import type { DirectoryInfo } from "#lib/modules/filesystem/index.js";
+  import type { DirectoryInfo } from "#lib/features/filesystem/index.js";
   import { sortEntries } from "#lib/utils/index.js";
   import File from "./File.svelte";
   import SubDirectory from "./SubDirectory.svelte";

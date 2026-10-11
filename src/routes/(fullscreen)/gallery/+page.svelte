@@ -11,7 +11,7 @@
     bulkGetFileInfo,
     type MaybeFileInfo,
     type SummarizedFileInfo,
-  } from "#lib/modules/filesystem/index.js";
+  } from "#lib/features/filesystem/index.js";
   import { formatDate, formatDateSortable, SortBy, sortEntries } from "#lib/utils/index.js";
 
   let { data } = $props();

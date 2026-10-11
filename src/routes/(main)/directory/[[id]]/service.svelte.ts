@@ -1,19 +1,18 @@
 import { getContext, setContext } from "svelte";
 import {
-  storeFileCache,
-  deleteFileCache,
-  storeFileThumbnailCache,
-  deleteFileThumbnailCache,
-} from "#lib/client/cache/index.js";
-import { keyring } from "#lib/client/keys/index.js";
-import { uploadFile } from "#lib/client/transfer/index.js";
-import type { DataKey } from "#lib/modules/filesystem/index.js";
-import { generateDataKey, wrapDataKey, encryptString } from "#lib/shared/crypto/index.js";
-import { trpc } from "#trpc/client.js";
+  deleteDirectory,
+  deleteFile,
+  renameDirectory,
+  renameFile,
+  setDirectoryFavorite,
+  setFileFavorite,
+  type DataKey,
+} from "#lib/features/filesystem/index.js";
 
 export interface SelectedEntry {
   type: "directory" | "file";
   id: number;
+  parentId: DirectoryId;
   dataKey: DataKey | undefined;
   name: string;
   isFavorite: boolean;
@@ -30,115 +29,26 @@ export const useContext = () => {
   return getContext<ReturnType<typeof createContext>>("context");
 };
 
-export const requestDirectoryCreation = async (name: string, parentId: "root" | number) => {
-  const masterKey = keyring.activeMasterKey;
-  const { dataKey, dataKeyVersion } = await generateDataKey();
-  const nameEncrypted = await encryptString(name, dataKey);
-
-  try {
-    await trpc.directory.create.mutate({
-      parent: parentId,
-      mekVersion: masterKey.version,
-      dek: await wrapDataKey(dataKey, masterKey.key),
-      dekVersion: dataKeyVersion,
-      name: nameEncrypted.ciphertext,
-      nameIv: nameEncrypted.iv,
-    });
-    return true;
-  } catch {
-    // TODO: Error Handling
-    return false;
+export const renameEntry = async (entry: SelectedEntry, newName: string) => {
+  if (entry.type === "directory") {
+    await renameDirectory(entry, newName);
+  } else {
+    await renameFile(entry, newName);
   }
 };
 
-export const requestFileUpload = async (
-  file: File,
-  parentId: "root" | number,
-  onDuplicate: () => Promise<boolean>,
-) => {
-  const res = await uploadFile(file, parentId, onDuplicate);
-  if (!res) return false;
-
-  if (res.fileBuffer) {
-    storeFileCache(res.fileId, res.fileBuffer); // Intended
-  }
-  if (res.thumbnailBuffer) {
-    storeFileThumbnailCache(res.fileId, res.thumbnailBuffer); // Intended
-  }
-
-  return true;
-};
-
-export const requestEntryRename = async (entry: SelectedEntry, newName: string) => {
-  if (!entry.dataKey) {
-    // TODO: Error Handling
-    return false;
-  }
-
-  const newNameEncrypted = await encryptString(newName, entry.dataKey.key);
-
-  try {
-    if (entry.type === "directory") {
-      await trpc.directory.rename.mutate({
-        id: entry.id,
-        dekVersion: entry.dataKey.version,
-        name: newNameEncrypted.ciphertext,
-        nameIv: newNameEncrypted.iv,
-      });
-    } else {
-      await trpc.file.rename.mutate({
-        id: entry.id,
-        dekVersion: entry.dataKey.version,
-        name: newNameEncrypted.ciphertext,
-        nameIv: newNameEncrypted.iv,
-      });
-    }
-    return true;
-  } catch {
-    // TODO: Error Handling
-    return false;
+export const deleteEntry = async (entry: SelectedEntry) => {
+  if (entry.type === "directory") {
+    await deleteDirectory(entry);
+  } else {
+    await deleteFile(entry);
   }
 };
 
-export const requestEntryDeletion = async (entry: SelectedEntry) => {
-  try {
-    if (entry.type === "directory") {
-      const { deletedFiles } = await trpc.directory.delete.mutate({ id: entry.id });
-      await Promise.all(
-        deletedFiles.flatMap((fileId) => [
-          deleteFileCache(fileId),
-          deleteFileThumbnailCache(fileId),
-        ]),
-      );
-    } else {
-      await trpc.file.delete.mutate({ id: entry.id });
-      await Promise.all([deleteFileCache(entry.id), deleteFileThumbnailCache(entry.id)]);
-    }
-    return true;
-  } catch {
-    // TODO: Error Handling
-    return false;
-  }
-};
-
-export const requestFavoriteToggle = async (entry: SelectedEntry) => {
-  try {
-    if (entry.type === "directory") {
-      if (entry.isFavorite) {
-        await trpc.favorites.removeDirectory.mutate({ id: entry.id });
-      } else {
-        await trpc.favorites.addDirectory.mutate({ id: entry.id });
-      }
-    } else {
-      if (entry.isFavorite) {
-        await trpc.favorites.removeFile.mutate({ id: entry.id });
-      } else {
-        await trpc.favorites.addFile.mutate({ id: entry.id });
-      }
-    }
-    return true;
-  } catch {
-    // TODO: Error Handling
-    return false;
+export const toggleEntryFavorite = async (entry: SelectedEntry) => {
+  if (entry.type === "directory") {
+    await setDirectoryFavorite(entry, !entry.isFavorite);
+  } else {
+    await setFileFavorite(entry, !entry.isFavorite);
   }
 };

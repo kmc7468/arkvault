@@ -3,8 +3,8 @@
   import { page } from "$app/state";
   import { FloatingButton } from "#lib/components/atoms/index.js";
   import { TopBar } from "#lib/components/molecules/index.js";
-  import { getDirectoryInfo, type MaybeDirectoryInfo } from "#lib/modules/filesystem/index.js";
-  import { HybridPromise } from "#lib/utils/index.js";
+  import { tryAction } from "#lib/client/toast.svelte.js";
+  import { createDirectory, uploadFile, useDirectory } from "#lib/features/filesystem/index.js";
   import DirectoryCreateModal from "./DirectoryCreateModal.svelte";
   import DirectoryEntries from "./DirectoryEntries";
   import DownloadStatusCard from "./DownloadStatusCard.svelte";
@@ -14,14 +14,7 @@
   import EntryMenuBottomSheet from "./EntryMenuBottomSheet.svelte";
   import EntryRenameModal from "./EntryRenameModal.svelte";
   import UploadStatusCard from "./UploadStatusCard.svelte";
-  import {
-    createContext,
-    requestDirectoryCreation,
-    requestFileUpload,
-    requestEntryRename,
-    requestEntryDeletion,
-    requestFavoriteToggle,
-  } from "./service.svelte";
+  import { createContext, deleteEntry, renameEntry, toggleEntryFavorite } from "./service.svelte";
 
   import IconSearch from "~icons/material-symbols/search";
   import IconAdd from "~icons/material-symbols/add";
@@ -29,7 +22,8 @@
   let { data } = $props();
   let context = createContext();
 
-  let info: MaybeDirectoryInfo | undefined = $state();
+  const directory = useDirectory(() => data.id);
+  let info = $derived(directory.current);
   let fileInput: HTMLInputElement | undefined = $state();
   let duplicatedFile: File | undefined = $state();
   let resolveForDuplicateFileModal: ((res: boolean) => void) | undefined = $state();
@@ -56,46 +50,33 @@
     await goto(`/search${query ? `?${query}` : ""}`);
   };
 
-  const uploadFile = () => {
+  const uploadFiles = () => {
     const files = fileInput?.files;
     if (!files || files.length === 0) return;
 
     for (const file of files) {
-      requestFileUpload(file, data.id, () => {
-        return new Promise((resolve) => {
-          duplicatedFile = file;
-          resolveForDuplicateFileModal = resolve;
-          isDuplicateFileModalOpen = true;
-        });
-      })
-        .then((res) => {
-          if (!res) return;
-          // TODO: FIXME
-          void getDirectoryInfo(data.id);
-        })
-        .catch((e: Error) => {
-          // TODO: FIXME
-          console.error(e);
-        });
+      void tryAction(
+        () =>
+          uploadFile(file, data.id, () => {
+            return new Promise((resolve) => {
+              duplicatedFile = file;
+              resolveForDuplicateFileModal = resolve;
+              isDuplicateFileModalOpen = true;
+            });
+          }),
+        `'${file.name}' 파일을 업로드하지 못했어요.`,
+      );
     }
 
     fileInput!.value = "";
   };
-
-  $effect(() => {
-    HybridPromise.resolve(getDirectoryInfo(data.id)).then((result) => {
-      if (data.id === result.id) {
-        info = result;
-      }
-    });
-  });
 </script>
 
 <svelte:head>
   <title>내 파일</title>
 </svelte:head>
 
-<input bind:this={fileInput} onchange={uploadFile} type="file" multiple class="hidden" />
+<input bind:this={fileInput} onchange={uploadFiles} type="file" multiple class="hidden" />
 
 <div class="flex h-full flex-col">
   <TopBar title={info?.name ?? "내 파일"} {showBackButton} class="shrink-0">
@@ -150,13 +131,8 @@
 />
 <DirectoryCreateModal
   bind:isOpen={isDirectoryCreateModalOpen}
-  onCreateClick={async (name) => {
-    if (await requestDirectoryCreation(name, data.id)) {
-      void getDirectoryInfo(data.id); // TODO: FIXME
-      return true;
-    }
-    return false;
-  }}
+  onCreateClick={(name) =>
+    tryAction(() => createDirectory(data.id, name), "폴더를 만들지 못했어요.")}
 />
 <DuplicateFileModal
   bind:isOpen={isDuplicateFileModalOpen}
@@ -182,29 +158,22 @@
     isEntryDeleteModalOpen = true;
   }}
   onFavoriteClick={async () => {
-    if (await requestFavoriteToggle(context.selectedEntry!)) {
+    if (
+      await tryAction(
+        () => toggleEntryFavorite(context.selectedEntry!),
+        "즐겨찾기를 변경하지 못했어요.",
+      )
+    ) {
       isEntryMenuBottomSheetOpen = false;
-      void getDirectoryInfo(data.id); // TODO: FIXME
     }
   }}
 />
 <EntryRenameModal
   bind:isOpen={isEntryRenameModalOpen}
-  onRenameClick={async (newName: string) => {
-    if (await requestEntryRename(context.selectedEntry!, newName)) {
-      void getDirectoryInfo(data.id); // TODO: FIXME
-      return true;
-    }
-    return false;
-  }}
+  onRenameClick={(newName: string) =>
+    tryAction(() => renameEntry(context.selectedEntry!, newName), "이름을 바꾸지 못했어요.")}
 />
 <EntryDeleteModal
   bind:isOpen={isEntryDeleteModalOpen}
-  onDeleteClick={async () => {
-    if (await requestEntryDeletion(context.selectedEntry!)) {
-      void getDirectoryInfo(data.id); // TODO: FIXME
-      return true;
-    }
-    return false;
-  }}
+  onDeleteClick={() => tryAction(() => deleteEntry(context.selectedEntry!), "삭제하지 못했어요.")}
 />

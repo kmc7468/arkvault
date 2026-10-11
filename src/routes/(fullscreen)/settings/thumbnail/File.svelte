@@ -11,7 +11,7 @@
 <script lang="ts">
   import { ActionEntryButton } from "#lib/components/atoms/index.js";
   import { DirectoryEntryLabel } from "#lib/components/molecules/index.js";
-  import type { FileInfo } from "#lib/modules/filesystem/index.js";
+  import type { FileInfo } from "#lib/features/filesystem/index.js";
   import { formatDateTime } from "#lib/utils/index.js";
   import type { GenerationStatus } from "./service";
 

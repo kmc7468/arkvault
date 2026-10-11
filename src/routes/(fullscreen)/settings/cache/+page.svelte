@@ -7,7 +7,7 @@
     getFileCacheIndex,
     deleteFileCache as doDeleteFileCache,
   } from "#lib/client/cache/index.js";
-  import { bulkGetFileInfo, type MaybeFileInfo } from "#lib/modules/filesystem/index.js";
+  import { bulkGetFileInfo, type MaybeFileInfo } from "#lib/features/filesystem/index.js";
   import { formatFileSize } from "#lib/utils/index.js";
   import File from "./File.svelte";
 

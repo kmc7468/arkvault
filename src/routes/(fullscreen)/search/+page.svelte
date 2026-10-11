@@ -5,17 +5,18 @@
   import { slide } from "svelte/transition";
   import { goto } from "$app/navigation";
   import { Chip, FullscreenDiv, RowVirtualizer } from "#lib/components/atoms/index.js";
+  import { showErrorToast } from "#lib/client/toast.svelte.js";
   import {
     getDirectoryInfo,
     type LocalCategoryInfo,
     type MaybeDirectoryInfo,
-  } from "#lib/modules/filesystem/index.js";
-  import { HybridPromise, searchString, sortEntries } from "#lib/utils/index.js";
+  } from "#lib/features/filesystem/index.js";
+  import { search, type SearchFilter, type SearchResult } from "#lib/features/search/index.js";
+  import { searchString, sortEntries } from "#lib/utils/index.js";
   import Directory from "./Directory.svelte";
   import File from "./File.svelte";
   import SearchBar from "./SearchBar.svelte";
   import SelectCategoryBottomSheet from "./SelectCategoryBottomSheet.svelte";
-  import { requestSearch, type SearchFilter, type SearchResult } from "./service";
 
   let { data } = $props();
 
@@ -121,10 +122,18 @@
 
   $effect.pre(() => {
     if (data.directoryId) {
-      HybridPromise.resolve(getDirectoryInfo(data.directoryId)).then((res) => {
+      const applyDirectoryInfo = (res: MaybeDirectoryInfo) => {
         directoryInfo = res;
         filters.searchInDirectory = res.exists;
-      });
+      };
+
+      // Apply synchronously if cached so that a restored snapshot isn't overwritten later
+      const res = getDirectoryInfo(data.directoryId);
+      if (res instanceof Promise) {
+        res.then(applyDirectoryInfo).catch(() => {});
+      } else {
+        applyDirectoryInfo(res);
+      }
     } else {
       directoryInfo = undefined;
       filters.searchInDirectory = false;
@@ -148,13 +157,15 @@
     }
 
     if (hasAnyFilter) {
-      requestSearch({
+      search({
         ancestorId: filters.searchInDirectory ? data.directoryId! : "root",
         inFavorites: filters.searchInFavorites,
         categories: filters.categories,
-      }).then((res) => {
-        serverResult = res;
-      });
+      })
+        .then((res) => {
+          serverResult = res;
+        })
+        .catch((e) => showErrorToast(e, "검색하지 못했어요."));
     }
   });
 </script>

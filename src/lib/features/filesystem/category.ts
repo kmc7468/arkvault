@@ -1,7 +1,15 @@
 import * as IndexedDB from "#lib/client/storage/indexedDB/index.js";
-import { trpc, isTRPCClientError } from "#trpc/client.js";
-import { FilesystemCache, decryptFileMetadata, decryptCategoryMetadata } from "./internal.svelte";
-import type { CategoryInfo, MaybeCategoryInfo } from "./types";
+import { isTRPCClientError, trpc } from "#trpc/client.js";
+import { FilesystemCache } from "./cache.svelte";
+import { invalidateFile } from "./file";
+import {
+  decryptCategoryMetadata,
+  decryptFileMetadata,
+  encryptName,
+  generateEntryKeys,
+} from "./metadata";
+import { useResource } from "./resource.svelte";
+import type { CategoryInfo, DataKey, LocalCategoryInfo, MaybeCategoryInfo } from "./types";
 
 const cache = new FilesystemCache<CategoryId, MaybeCategoryInfo>({
   async fetchFromIndexedDB(id) {
@@ -120,4 +128,58 @@ const storeToIndexedDB = (info: CategoryInfo) => {
 
 export const getCategoryInfo = (id: CategoryId) => {
   return cache.get(id);
+};
+
+export const useCategory = (getId: () => CategoryId) => {
+  return useResource(getId, (id) => getCategoryInfo(id));
+};
+
+export const invalidateCategory = (id: CategoryId) => {
+  cache.invalidate(id);
+};
+
+export const createCategory = async (parentId: CategoryId, name: string) => {
+  await trpc.category.create.mutate({ parent: parentId, ...(await generateEntryKeys(name)) });
+  invalidateCategory(parentId);
+};
+
+export const renameCategory = async (
+  category: { id: number; parentId: CategoryId; dataKey?: DataKey },
+  newName: string,
+) => {
+  if (!category.dataKey) {
+    throw new Error("Data key not loaded");
+  }
+
+  await trpc.category.rename.mutate({
+    id: category.id,
+    dekVersion: category.dataKey.version,
+    ...(await encryptName(newName, category.dataKey.key)),
+  });
+  invalidateCategory(category.parentId);
+  invalidateCategory(category.id);
+};
+
+export const deleteCategory = async (category: { id: number; parentId: CategoryId }) => {
+  await trpc.category.delete.mutate({ id: category.id });
+  cache.evict(category.id);
+  invalidateCategory(category.parentId);
+};
+
+export const addFileToCategory = async (fileId: number, categoryId: number) => {
+  await trpc.category.addFile.mutate({ id: categoryId, file: fileId });
+  invalidateFile(fileId);
+  invalidateCategory(categoryId);
+};
+
+export const removeFileFromCategory = async (fileId: number, categoryId: number) => {
+  await trpc.category.removeFile.mutate({ id: categoryId, file: fileId });
+  invalidateFile(fileId);
+  invalidateCategory(categoryId);
+};
+
+// Whether to show the files of subcategories is a local preference
+export const setCategoryFileRecursive = async (category: LocalCategoryInfo, value: boolean) => {
+  category.isFileRecursive = value;
+  await IndexedDB.updateCategoryInfo(category.id, { isFileRecursive: value });
 };

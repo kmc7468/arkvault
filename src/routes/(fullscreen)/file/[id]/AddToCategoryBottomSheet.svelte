@@ -2,9 +2,8 @@
   import { BottomDiv, BottomSheet, Button, FullscreenDiv } from "#lib/components/atoms/index.js";
   import { SubCategories } from "#lib/components/molecules/index.js";
   import { CategoryCreateModal } from "#lib/components/organisms/index.js";
-  import { getCategoryInfo, type MaybeCategoryInfo } from "#lib/modules/filesystem/index.js";
-  import { HybridPromise } from "#lib/utils/index.js";
-  import { requestCategoryCreation } from "./service";
+  import { tryAction } from "#lib/client/toast.svelte.js";
+  import { createCategory, useCategory } from "#lib/features/filesystem/index.js";
 
   interface Props {
     onAddToCategoryClick: (categoryId: number) => void;
@@ -13,13 +12,15 @@
 
   let { onAddToCategoryClick, isOpen = $bindable() }: Props = $props();
 
-  let categoryInfo: MaybeCategoryInfo | undefined = $state();
+  let categoryId: CategoryId = $state("root");
+  const category = useCategory(() => categoryId);
+  let categoryInfo = $derived(category.current);
 
   let isCategoryCreateModalOpen = $state(false);
 
-  $effect(() => {
+  $effect.pre(() => {
     if (isOpen) {
-      HybridPromise.resolve(getCategoryInfo("root")).then((result) => (categoryInfo = result));
+      categoryId = "root";
     }
   });
 </script>
@@ -30,8 +31,7 @@
       <SubCategories
         class="py-4"
         info={categoryInfo}
-        onSubCategoryClick={({ id }) =>
-          HybridPromise.resolve(getCategoryInfo(id)).then((result) => (categoryInfo = result))}
+        onSubCategoryClick={({ id }) => (categoryId = id)}
         onSubCategoryCreateClick={() => (isCategoryCreateModalOpen = true)}
         subCategoryCreatePosition="top"
       />
@@ -48,11 +48,6 @@
 
 <CategoryCreateModal
   bind:isOpen={isCategoryCreateModalOpen}
-  onCreateClick={async (name: string) => {
-    if (await requestCategoryCreation(name, categoryInfo!.id)) {
-      void getCategoryInfo(categoryInfo!.id); // TODO: FIXME
-      return true;
-    }
-    return false;
-  }}
+  onCreateClick={(name: string) =>
+    tryAction(() => createCategory(categoryId, name), "카테고리를 만들지 못했어요.")}
 />

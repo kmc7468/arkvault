@@ -13,7 +13,8 @@
     registerInitialMasterKeyAndHmacSecret,
     requestClientRegistrationAndSessionUpgrade,
   } from "#lib/client/keys/index.js";
-  import { requestDeletedFilesCleanup } from "#lib/services/file.js";
+  import { showToast } from "#lib/client/toast.svelte.js";
+  import { cleanupDeletedFileCaches } from "#lib/features/filesystem/index.js";
   import { gotoStateful } from "#lib/utils/index.js";
   import Order from "./Order.svelte";
 
@@ -46,8 +47,6 @@
   ];
 
   const generateKeys = async () => {
-    // TODO: Loading indicator
-
     const { encryptKey, ...clientKeys } = await generateClientKeys();
     const { masterKey, masterKeyWrapped } = await generateInitialMasterKey(encryptKey);
     const { hmacSecretWrapped } = await generateInitialHmacSecret(masterKey);
@@ -66,7 +65,7 @@
       isForceLoginModalOpen = true;
       return;
     } else if (!upgradeRes) {
-      // TODO: Error Handling
+      showToast("이 디바이스를 등록하지 못했어요.");
       return;
     }
 
@@ -78,11 +77,11 @@
     await keyring.persistClientKeys();
 
     if (!(await registerInitialMasterKeyAndHmacSecret(masterKeyWrapped, hmacSecretWrapped))) {
-      // TODO: Error Handling
+      showToast("암호 키를 등록하지 못했어요.");
       return;
     }
 
-    await requestDeletedFilesCleanup();
+    await cleanupDeletedFileCaches().catch(console.error);
     await goto("/client/pending?redirect=" + encodeURIComponent(data.redirectPath));
   };
 
@@ -90,10 +89,10 @@
     const file = fileInput?.files?.[0];
     if (!file) return;
 
-    if (await importClientKeys(await file.text())) {
+    if (await importClientKeys(await file.text()).catch(() => false)) {
       await upgradeSession(false);
     } else {
-      // TODO: Error Handling
+      showToast("올바른 암호 키 파일이 아니에요.");
     }
 
     fileInput!.value = "";

@@ -2,7 +2,8 @@
   import { goto } from "$app/navigation";
   import { BottomDiv, Button, FullscreenDiv, TextInput } from "#lib/components/atoms/index.js";
   import { TitledDiv, TopBar } from "#lib/components/molecules/index.js";
-  import { requestPasswordChange } from "./service";
+  import { showToast, tryAction } from "#lib/client/toast.svelte.js";
+  import { changePassword as requestPasswordChange } from "#lib/features/auth/index.js";
 
   let oldPassword = $state("");
   let newPassword = $state("");
@@ -10,11 +11,16 @@
 
   const changePassword = async () => {
     if (newPassword !== confirmPassword) {
-      // TODO: Alert
+      showToast("새 비밀번호가 일치하지 않아요.");
       return;
     }
 
-    if (await requestPasswordChange(oldPassword, newPassword)) {
+    if (
+      await tryAction(
+        () => requestPasswordChange(oldPassword, newPassword),
+        "비밀번호를 바꾸지 못했어요. 기존 비밀번호를 확인해 주세요.",
+      )
+    ) {
       await goto("/menu");
     }
   };

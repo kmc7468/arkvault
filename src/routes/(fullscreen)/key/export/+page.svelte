@@ -10,6 +10,7 @@
     requestSessionUpgrade,
     serializeClientKeys,
   } from "#lib/client/keys/index.js";
+  import { showToast } from "#lib/client/toast.svelte.js";
   import BeforeContinueBottomSheet from "./BeforeContinueBottomSheet.svelte";
   import BeforeContinueModal from "./BeforeContinueModal.svelte";
 
@@ -33,26 +34,26 @@
   };
 
   const registerPubKeys = async () => {
-    try {
-      if (!(await requestClientRegistration())) throw new Error("Failed to register client");
-
-      await keyring.persistClientKeys();
-
-      if (!(await requestSessionUpgrade())[0]) throw new Error("Failed to upgrade session");
-
-      if (
-        !(await registerInitialMasterKeyAndHmacSecret(
-          data.masterKeyWrapped,
-          data.hmacSecretWrapped,
-        ))
-      )
-        throw new Error("Failed to register initial MEK and HSK");
-
-      await goto("/client/pending?redirect=" + encodeURIComponent(data.redirectPath));
-    } catch (e) {
-      // TODO: Error handling
-      throw e;
+    if (!(await requestClientRegistration())) {
+      showToast("이 디바이스를 등록하지 못했어요.");
+      return;
     }
+
+    await keyring.persistClientKeys();
+
+    if (!(await requestSessionUpgrade())[0]) {
+      showToast("로그인하지 못했어요.");
+      return;
+    }
+
+    if (
+      !(await registerInitialMasterKeyAndHmacSecret(data.masterKeyWrapped, data.hmacSecretWrapped))
+    ) {
+      showToast("암호 키를 등록하지 못했어요.");
+      return;
+    }
+
+    await goto("/client/pending?redirect=" + encodeURIComponent(data.redirectPath));
   };
 </script>
 

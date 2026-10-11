@@ -5,22 +5,30 @@
   import { TopBar } from "#lib/components/molecules/index.js";
   import Directory from "./Directory.svelte";
   import File from "./File.svelte";
-  import { requestFavoriteEntries, requestRemoveFavorite, type FavoriteEntry } from "./service";
+  import { showErrorToast, tryAction } from "#lib/client/toast.svelte.js";
+  import {
+    getFavoriteEntries,
+    removeFavorite,
+    type FavoriteEntry,
+  } from "#lib/features/favorites/index.js";
 
   import IconSearch from "~icons/material-symbols/search";
-
-  let { data } = $props();
 
   let entries: FavoriteEntry[] = $state([]);
   let isLoading = $state(true);
 
   onMount(async () => {
-    entries = await requestFavoriteEntries(data.favorites);
-    isLoading = false;
+    try {
+      entries = await getFavoriteEntries();
+    } catch (e) {
+      showErrorToast(e, "즐겨찾기를 불러오지 못했어요.");
+    } finally {
+      isLoading = false;
+    }
   });
 
   const handleRemove = async (entry: FavoriteEntry) => {
-    if (await requestRemoveFavorite(entry.type, entry.details.id)) {
+    if (await tryAction(() => removeFavorite(entry), "즐겨찾기를 해제하지 못했어요.")) {
       entries = entries.filter(
         (e) => !(e.type === entry.type && e.details.id === entry.details.id),
       );

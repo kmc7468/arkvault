@@ -49,7 +49,7 @@ export type CategoryFileInfo = SummarizedFileInfo & { isRecursive: boolean };
 
 export interface LocalCategoryInfo {
   id: number;
-  parentId: DirectoryId;
+  parentId: CategoryId;
   dataKey?: DataKey;
   name: string;
   subCategories: SubCategoryInfo[];

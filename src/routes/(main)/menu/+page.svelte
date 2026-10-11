@@ -1,7 +1,8 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import MenuEntryButton from "./MenuEntryButton.svelte";
-  import { requestLogout } from "./service";
+  import { tryAction } from "#lib/client/toast.svelte.js";
+  import { logout as requestLogout } from "#lib/features/auth/index.js";
 
   import IconStorage from "~icons/material-symbols/storage";
   import IconImage from "~icons/material-symbols/image";
@@ -11,7 +12,7 @@
   let { data } = $props();
 
   const logout = async () => {
-    if (await requestLogout()) {
+    if (await tryAction(requestLogout, "로그아웃하지 못했어요.")) {
       await goto("/auth/login");
     }
   };

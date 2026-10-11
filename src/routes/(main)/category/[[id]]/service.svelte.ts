@@ -1,9 +1,5 @@
 import { getContext, setContext } from "svelte";
 import type { SelectedCategory } from "#lib/components/molecules/index.js";
-import { encryptString } from "#lib/shared/crypto/index.js";
-import { trpc } from "#trpc/client.js";
-
-export { requestCategoryCreation, requestFileRemovalFromCategory } from "#lib/services/category.js";
 
 export interface SelectedFile {
   id: number;
@@ -19,36 +15,4 @@ export const createContext = () => {
 
 export const useContext = () => {
   return getContext<ReturnType<typeof createContext>>("context");
-};
-
-export const requestCategoryRename = async (category: SelectedCategory, newName: string) => {
-  if (!category.dataKey) {
-    // TODO: Error Handling
-    return false;
-  }
-
-  const newNameEncrypted = await encryptString(newName, category.dataKey.key);
-
-  try {
-    await trpc.category.rename.mutate({
-      id: category.id,
-      dekVersion: category.dataKey.version,
-      name: newNameEncrypted.ciphertext,
-      nameIv: newNameEncrypted.iv,
-    });
-    return true;
-  } catch {
-    // TODO: Error Handling
-    return false;
-  }
-};
-
-export const requestCategoryDeletion = async (category: SelectedCategory) => {
-  try {
-    await trpc.category.delete.mutate({ id: category.id });
-    return true;
-  } catch {
-    // TODO: Error Handling
-    return false;
-  }
 };

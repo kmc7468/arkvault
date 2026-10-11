@@ -1,6 +1,7 @@
+/* eslint-disable svelte/prefer-svelte-reactivity -- Lookup tables of reactive entries */
 import { LRUCache } from "lru-cache";
 import { deleteDirectory, deleteFile, readFile, writeFile } from "#lib/client/storage/opfs.js";
-import type { SummarizedFileInfo } from "#lib/modules/filesystem/index.js";
+import type { SummarizedFileInfo } from "#lib/features/filesystem/index.js";
 import { decryptChunk, encodeToBase64 } from "#lib/shared/crypto/index.js";
 
 export interface Thumbnail {

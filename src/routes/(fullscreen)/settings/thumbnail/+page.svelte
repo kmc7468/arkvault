@@ -4,7 +4,7 @@
   import { BottomDiv, Button, FullscreenDiv } from "#lib/components/atoms/index.js";
   import { IconEntryButton, TopBar } from "#lib/components/molecules/index.js";
   import { deleteAllFileThumbnailCaches } from "#lib/client/cache/index.js";
-  import type { MaybeFileInfo } from "#lib/modules/filesystem/index.js";
+  import type { MaybeFileInfo } from "#lib/features/filesystem/index.js";
   import { sortEntries } from "#lib/utils/index.js";
   import File from "./File.svelte";
   import {

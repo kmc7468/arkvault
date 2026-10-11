@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FileDownloadState } from "#lib/client/transfer/index.js";
-  import type { SummarizedFileInfo } from "#lib/modules/filesystem/index.js";
+  import type { SummarizedFileInfo } from "#lib/features/filesystem/index.js";
   import { formatNetworkSpeed } from "#lib/utils/index.js";
 
   import IconCloud from "~icons/material-symbols/cloud";

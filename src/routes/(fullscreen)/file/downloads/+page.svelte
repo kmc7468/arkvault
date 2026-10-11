@@ -7,7 +7,7 @@
     clearDownloadedFiles,
     type FileDownloadState,
   } from "#lib/client/transfer/index.js";
-  import { bulkGetFileInfo, type MaybeFileInfo } from "#lib/modules/filesystem/index.js";
+  import { bulkGetFileInfo, type MaybeFileInfo } from "#lib/features/filesystem/index.js";
   import File from "./File.svelte";
 
   let downloadingFiles: { info: MaybeFileInfo; state: FileDownloadState }[] = $state([]);

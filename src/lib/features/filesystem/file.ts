@@ -1,7 +1,11 @@
+import { deleteFileCache, deleteFileThumbnailCache } from "#lib/client/cache/index.js";
 import * as IndexedDB from "#lib/client/storage/indexedDB/index.js";
-import { trpc, isTRPCClientError } from "#trpc/client.js";
-import { FilesystemCache, decryptFileMetadata, decryptCategoryMetadata } from "./internal.svelte";
-import type { FileInfo, MaybeFileInfo } from "./types";
+import { isTRPCClientError, trpc } from "#trpc/client.js";
+import { FilesystemCache } from "./cache.svelte";
+import { invalidateDirectory } from "./directory";
+import { decryptCategoryMetadata, decryptFileMetadata, encryptName } from "./metadata";
+import { useResource } from "./resource.svelte";
+import type { DataKey, FileInfo, MaybeFileInfo } from "./types";
 
 const cache = new FilesystemCache<number, MaybeFileInfo>({
   async fetchFromIndexedDB(id) {
@@ -32,7 +36,7 @@ const cache = new FilesystemCache<number, MaybeFileInfo>({
     }
   },
 
-  async fetchFromServer(id, _cachedInfo) {
+  async fetchFromServer(id) {
     try {
       const file = await trpc.file.get.query({ id });
       const [categories, metadata] = await Promise.all([
@@ -210,4 +214,50 @@ export const getFileInfo = (
 
 export const bulkGetFileInfo = (ids: number[]) => {
   return cache.bulkGet(new Set(ids));
+};
+
+export const useFile = (getId: () => number) => {
+  return useResource(getId, (id) => getFileInfo(id));
+};
+
+export const invalidateFile = (id: number) => {
+  cache.invalidate(id);
+};
+
+export const renameFile = async (
+  file: { id: number; parentId: DirectoryId; dataKey?: DataKey },
+  newName: string,
+) => {
+  if (!file.dataKey) {
+    throw new Error("Data key not loaded");
+  }
+
+  await trpc.file.rename.mutate({
+    id: file.id,
+    dekVersion: file.dataKey.version,
+    ...(await encryptName(newName, file.dataKey.key)),
+  });
+  invalidateDirectory(file.parentId);
+  invalidateFile(file.id);
+};
+
+export const deleteFile = async (file: { id: number; parentId: DirectoryId }) => {
+  await trpc.file.delete.mutate({ id: file.id });
+  cache.evict(file.id);
+  invalidateDirectory(file.parentId);
+
+  await Promise.all([deleteFileCache(file.id), deleteFileThumbnailCache(file.id)]);
+};
+
+export const setFileFavorite = async (
+  file: { id: number; parentId: DirectoryId },
+  isFavorite: boolean,
+) => {
+  if (isFavorite) {
+    await trpc.favorites.addFile.mutate({ id: file.id });
+  } else {
+    await trpc.favorites.removeFile.mutate({ id: file.id });
+  }
+  invalidateDirectory(file.parentId);
+  invalidateFile(file.id);
 };

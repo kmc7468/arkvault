@@ -5,20 +5,22 @@
   import { page } from "$app/state";
   import { FullscreenDiv } from "#lib/components/atoms/index.js";
   import { Categories, IconEntryButton, TopBar } from "#lib/components/molecules/index.js";
-  import { getFileInfo, type MaybeFileInfo } from "#lib/modules/filesystem/index.js";
   import { captureVideoThumbnail } from "#lib/client/media/thumbnail.js";
   import { getFileDownloadState } from "#lib/client/transfer/index.js";
-  import { HybridPromise } from "#lib/utils/index.js";
+  import { showErrorToast, tryAction } from "#lib/client/toast.svelte.js";
+  import {
+    addFileToCategory,
+    getFileContent,
+    getFileStreamUrl,
+    removeFileFromCategory,
+    setFileFavorite,
+    uploadFileThumbnail,
+    useFile,
+    type DataKey,
+    type FileInfo,
+  } from "#lib/features/filesystem/index.js";
   import AddToCategoryBottomSheet from "./AddToCategoryBottomSheet.svelte";
   import DownloadStatus from "./DownloadStatus.svelte";
-  import {
-    requestFileRemovalFromCategory,
-    requestFileDownload,
-    requestThumbnailUpload,
-    requestFileAdditionToCategory,
-    requestVideoStream,
-    requestFavoriteToggle,
-  } from "./service";
   import TopBarMenu from "./TopBarMenu.svelte";
 
   import IconMoreVert from "~icons/material-symbols/more-vert";
@@ -28,7 +30,8 @@
 
   let { data } = $props();
 
-  let info: MaybeFileInfo | undefined = $state();
+  const file = useFile(() => data.id);
+  let info = $derived(file.current);
   let downloadState = $derived(getFileDownloadState(data.id));
 
   let isMenuOpen = $state(false);
@@ -59,33 +62,43 @@
     );
   };
 
-  const updateThumbnail = async (dataKey: CryptoKey, dataKeyVersion: Date) => {
-    const thumbnail = await captureVideoThumbnail(videoElement!);
-    await requestThumbnailUpload(data.id, thumbnail, dataKey, dataKeyVersion);
-  };
+  const updateThumbnail = (dataKey: DataKey) =>
+    tryAction(async () => {
+      const thumbnail = await captureVideoThumbnail(videoElement!);
+      await uploadFileThumbnail(data.id, thumbnail, dataKey);
+    }, "썸네일을 설정하지 못했어요.");
 
   const addToCategory = async (categoryId: number) => {
-    await requestFileAdditionToCategory(data.id, categoryId);
-    isAddToCategoryBottomSheetOpen = false;
-    void getFileInfo(data.id); // TODO: FIXME
+    if (
+      await tryAction(
+        () => addFileToCategory(data.id, categoryId),
+        "카테고리에 파일을 추가하지 못했어요.",
+      )
+    ) {
+      isAddToCategoryBottomSheetOpen = false;
+    }
   };
 
-  const removeFromCategory = async (categoryId: number) => {
-    await requestFileRemovalFromCategory(data.id, categoryId);
-    void getFileInfo(data.id); // TODO: FIXME
-  };
+  const removeFromCategory = (categoryId: number) =>
+    tryAction(
+      () => removeFileFromCategory(data.id, categoryId),
+      "카테고리에서 파일을 제거하지 못했어요.",
+    );
 
-  const toggleFavorite = async () => {
-    await requestFavoriteToggle(data.id, !!info?.isFavorite);
-    void getFileInfo(data.id); // TODO: FIXME
-  };
+  const toggleFavorite = () =>
+    tryAction(
+      () => setFileFavorite(info as FileInfo, !info?.isFavorite),
+      "즐겨찾기를 변경하지 못했어요.",
+    );
 
-  $effect(() => {
-    HybridPromise.resolve(getFileInfo(data.id)).then((result) => {
-      if (data.id === result.id) {
-        info = result;
-      }
+  const loadContent = (dataKey: CryptoKey, isLegacy: boolean) =>
+    getFileContent(data.id, dataKey, isLegacy).catch((e) => {
+      showErrorToast(e, "파일을 불러오지 못했어요.");
+      throw e;
     });
+
+  $effect.pre(() => {
+    void data.id; // Reset the viewer when navigating to another file
     isDownloadRequested = false;
     viewerType = undefined;
   });
@@ -103,25 +116,24 @@
         if (!downloadState && !isDownloadRequested) {
           isDownloadRequested = true;
 
-          if (viewerType === "video" && !info!.isLegacy) {
-            requestVideoStream(data.id, info!.dataKey!.key, contentType).then((streamUrl) => {
-              if (streamUrl) {
+          const { key } = info!.dataKey!;
+          const isLegacy = !!info!.isLegacy;
+          if (viewerType === "video" && !isLegacy) {
+            getFileStreamUrl(data.id, key, contentType)
+              .then((streamUrl) => {
                 videoStreamUrl = streamUrl;
-              } else {
-                requestFileDownload(data.id, info!.dataKey!.key, info!.isLegacy!).then((buffer) =>
-                  updateViewer(buffer, contentType),
-                );
+              })
+              .catch(async () => {
+                // Fall back to downloading the whole file
+                await updateViewer(await loadContent(key, isLegacy), contentType);
+              });
+          } else {
+            void loadContent(key, isLegacy).then(async (buffer) => {
+              const blob = await updateViewer(buffer, contentType);
+              if (!viewerType) {
+                FileSaver.saveAs(blob, info!.name);
               }
             });
-          } else {
-            requestFileDownload(data.id, info!.dataKey!.key, info!.isLegacy!).then(
-              async (buffer) => {
-                const blob = await updateViewer(buffer, contentType);
-                if (!viewerType) {
-                  FileSaver.saveAs(blob, info!.name);
-                }
-              },
-            );
           }
         }
       });
@@ -192,7 +204,7 @@
               ></video>
               <IconEntryButton
                 icon={IconCamera}
-                onclick={() => updateThumbnail(info?.dataKey?.key!, info?.dataKey?.version!)}
+                onclick={() => updateThumbnail(info!.dataKey!)}
                 class="w-full"
               >
                 이 장면을 썸네일로 설정하기

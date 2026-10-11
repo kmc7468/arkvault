@@ -1,12 +1,7 @@
 <script lang="ts">
   import { BottomDiv, BottomSheet, Button, FullscreenDiv } from "#lib/components/atoms/index.js";
   import { SubCategories } from "#lib/components/molecules/index.js";
-  import {
-    getCategoryInfo,
-    type LocalCategoryInfo,
-    type MaybeCategoryInfo,
-  } from "#lib/modules/filesystem/index.js";
-  import { HybridPromise } from "#lib/utils/index.js";
+  import { useCategory, type LocalCategoryInfo } from "#lib/features/filesystem/index.js";
 
   interface Props {
     isOpen: boolean;
@@ -16,11 +11,13 @@
 
   let { isOpen = $bindable(), mode, onSelectCategoryClick }: Props = $props();
 
-  let categoryInfo: MaybeCategoryInfo | undefined = $state();
+  let categoryId: CategoryId = $state("root");
+  const category = useCategory(() => categoryId);
+  let categoryInfo = $derived(category.current);
 
-  $effect(() => {
+  $effect.pre(() => {
     if (isOpen) {
-      HybridPromise.resolve(getCategoryInfo("root")).then((result) => (categoryInfo = result));
+      categoryId = "root";
     }
   });
 </script>
@@ -31,8 +28,7 @@
       <SubCategories
         class="py-4"
         info={categoryInfo}
-        onSubCategoryClick={({ id }) =>
-          HybridPromise.resolve(getCategoryInfo(id)).then((result) => (categoryInfo = result))}
+        onSubCategoryClick={({ id }) => (categoryId = id)}
       />
       {#if categoryInfo.id !== "root"}
         <BottomDiv>

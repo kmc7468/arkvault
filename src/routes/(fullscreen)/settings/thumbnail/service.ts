@@ -1,10 +1,13 @@
 import { limitFunction } from "p-limit";
 import { SvelteMap } from "svelte/reactivity";
-import { storeFileThumbnailCache } from "#lib/client/cache/index.js";
 import { generateThumbnail } from "#lib/client/media/thumbnail.js";
-import { getFileInfo, type FileInfo } from "#lib/modules/filesystem/index.js";
-import { requestFileDownload, requestFileThumbnailUpload } from "#lib/services/file.js";
-import { HybridPromise, Scheduler } from "#lib/utils/index.js";
+import {
+  getFileContent,
+  getFileInfo,
+  uploadFileThumbnail,
+  type FileInfo,
+} from "#lib/features/filesystem/index.js";
+import { Scheduler } from "#lib/utils/index.js";
 import type { RouterOutputs } from "#trpc/router.server.js";
 
 export type GenerationStatus =
@@ -28,34 +31,26 @@ export const clearThumbnailGenerationStatuses = () => {
 export const requestMissingThumbnailFiles = async (
   filesRaw: RouterOutputs["file"]["listWithoutThumbnail"],
 ) => {
-  const files = await HybridPromise.all(
+  const files = await Promise.all(
     filesRaw.map((file) => getFileInfo(file.id, { serverResponse: file })),
   );
   return files;
 };
 
-const requestThumbnailUpload = limitFunction(
+const generateAndUploadThumbnail = limitFunction(
   async (fileInfo: FileInfo, fileBuffer: ArrayBuffer) => {
     statuses.set(fileInfo.id, "generating");
 
     const thumbnail = await generateThumbnail(
       new Blob([fileBuffer], { type: fileInfo.contentType }),
     );
-    if (!thumbnail) return false;
+    if (!thumbnail) {
+      throw new Error("Failed to generate thumbnail");
+    }
 
     statuses.set(fileInfo.id, "uploading");
-
-    const res = await requestFileThumbnailUpload(
-      fileInfo.id,
-      thumbnail,
-      fileInfo.dataKey?.key!,
-      fileInfo.dataKey?.version!,
-    );
-    if (!res) return false;
-
+    await uploadFileThumbnail(fileInfo.id, thumbnail, fileInfo.dataKey!);
     statuses.set(fileInfo.id, "uploaded");
-    void thumbnail.arrayBuffer().then((buffer) => storeFileThumbnailCache(fileInfo.id, buffer));
-    return true;
   },
   { concurrency: 4 },
 );
@@ -74,17 +69,13 @@ export const requestThumbnailGeneration = async (fileInfo: FileInfo) => {
     await scheduler.schedule(
       async () => {
         statuses.set(fileInfo.id, "generation-pending");
-        file = await requestFileDownload(fileInfo.id, fileInfo.dataKey?.key!, fileInfo.isLegacy!);
+        file = await getFileContent(fileInfo.id, fileInfo.dataKey!.key, !!fileInfo.isLegacy);
         return file.byteLength;
       },
-      async () => {
-        if (!(await requestThumbnailUpload(fileInfo, file!))) {
-          statuses.set(fileInfo.id, "error");
-        }
-      },
+      () => generateAndUploadThumbnail(fileInfo, file!),
     );
   } catch (e) {
+    console.error(e);
     statuses.set(fileInfo.id, "error");
-    throw e;
   }
 };
