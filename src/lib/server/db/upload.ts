@@ -1,5 +1,6 @@
 import { sql } from "kysely";
 import { IntegrityError } from "./error";
+import { ensureDirectoryExists } from "./directory";
 import db from "./kysely";
 import type { Ciphertext } from "./schema";
 
@@ -61,6 +62,8 @@ export const createFileUploadSession = async (
         throw new IntegrityError("Inactive HSK version");
       }
     }
+
+    await ensureDirectoryExists(trx, params.userId, params.parentId);
 
     await trx
       .insertInto("upload_session")

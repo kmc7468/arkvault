@@ -15,5 +15,11 @@ export interface DecryptionReadyMessage {
   fileId: number;
 }
 
+// Sent with a MessagePort to which the client replies with `FileMetadata | null`
+export interface DecryptionMetadataRequestMessage {
+  type: "decryption-metadata-request";
+  fileId: number;
+}
+
 export type ServiceWorkerMessage = DecryptionPrepareMessage;
-export type ServiceWorkerResponse = DecryptionReadyMessage;
+export type ServiceWorkerResponse = DecryptionReadyMessage | DecryptionMetadataRequestMessage;

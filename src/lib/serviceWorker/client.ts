@@ -3,6 +3,25 @@ import type { FileMetadata, ServiceWorkerMessage, ServiceWorkerResponse } from "
 
 const PREPARE_TIMEOUT_MS = 5000;
 
+// The service worker may be terminated at any time, losing its in-memory metadata.
+// Keep a copy here so that it can be re-requested on demand.
+const preparedFiles = new Map<number, FileMetadata>();
+let isListeningForMetadataRequests = false;
+
+export const listenForMetadataRequests = () => {
+  if (isListeningForMetadataRequests) return;
+  isListeningForMetadataRequests = true;
+
+  navigator.serviceWorker.addEventListener(
+    "message",
+    (event: MessageEvent<ServiceWorkerResponse>) => {
+      if (event.data.type === "decryption-metadata-request") {
+        event.ports[0]?.postMessage(preparedFiles.get(event.data.fileId) ?? null);
+      }
+    },
+  );
+};
+
 const getServiceWorker = async () => {
   const registration = await navigator.serviceWorker.ready;
   const sw = registration.active;
@@ -13,6 +32,9 @@ const getServiceWorker = async () => {
 };
 
 export const prepareFileDecryption = async (id: number, metadata: FileMetadata) => {
+  preparedFiles.set(id, metadata);
+  listenForMetadataRequests();
+
   const sw = await getServiceWorker();
   return new Promise<void>((resolve, reject) => {
     const timeout = setTimeout(

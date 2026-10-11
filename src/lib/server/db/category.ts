@@ -14,6 +14,26 @@ interface Category {
 
 export type NewCategory = Omit<Category, "id">;
 
+export const ensureCategoryExists = async (
+  trx: typeof db,
+  userId: number,
+  categoryId: CategoryId,
+) => {
+  if (categoryId === "root") return;
+
+  const category = await trx
+    .selectFrom("category")
+    .select("id")
+    .where("id", "=", categoryId)
+    .where("user_id", "=", userId)
+    .limit(1)
+    .forShare()
+    .executeTakeFirst();
+  if (!category) {
+    throw new IntegrityError("Category not found");
+  }
+};
+
 export const registerCategory = async (params: NewCategory) => {
   await db.transaction().execute(async (trx) => {
     const mek = await trx
@@ -27,6 +47,8 @@ export const registerCategory = async (params: NewCategory) => {
     if (mek?.version !== params.mekVersion) {
       throw new IntegrityError("Inactive MEK version");
     }
+
+    await ensureCategoryExists(trx, params.userId, params.parentId);
 
     const { categoryId } = await trx
       .insertInto("category")

@@ -1,8 +1,8 @@
 import { DECRYPTED_FILE_URL_PREFIX, CHUNK_SIZE, ENCRYPTED_CHUNK_SIZE } from "../constants";
 import { decryptChunk, getEncryptedRange, getDecryptedSize } from "../modules/crypto";
 import { parseRangeHeader, getContentRangeHeader } from "../modules/http";
+import { getFileMetadata } from "../modules/metadata";
 import { getFile } from "../modules/opfs";
-import { fileMetadataStore } from "../stores";
 import type { FileMetadata } from "../types";
 
 const createResponse = (
@@ -131,15 +131,15 @@ const streamFromServer = async (
   );
 };
 
-const decryptFileHandler = async (request: Request) => {
+const decryptFileHandler = async (request: Request, clientId: string) => {
   const url = new URL(request.url);
   const fileId = parseInt(url.pathname.slice(DECRYPTED_FILE_URL_PREFIX.length), 10);
   if (isNaN(fileId)) {
-    throw new Response("Invalid file id", { status: 400 });
+    return new Response("Invalid file id", { status: 400 });
   }
 
   const downloadFilename = url.searchParams.get("download") ?? undefined;
-  const metadata = fileMetadataStore.get(fileId);
+  const metadata = await getFileMetadata(fileId, clientId);
   const range = parseRangeHeader(request.headers.get("Range"));
   const cache = await getFile(`/cache/${fileId}`);
   if (cache) {

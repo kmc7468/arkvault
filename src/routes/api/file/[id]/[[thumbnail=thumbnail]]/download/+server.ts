@@ -17,19 +17,19 @@ const downloadHandler = async (locals: App.Locals, params: RouteParams, request:
   const { id } = zodRes.data;
 
   const getStream = params.thumbnail ? getFileThumbnailStream : getFileStream;
-  const { encContentStream, range } = await getStream(
+  const { encContentStream, range, isRangeRequest } = await getStream(
     userId,
     id,
     parseRangeHeader(request.headers.get("Range")),
   );
   return {
     stream: encContentStream,
-    status: range ? 206 : 200,
+    status: isRangeRequest ? 206 : 200,
     headers: {
       "Accept-Ranges": "bytes",
       "Content-Length": String(range.end - range.start + 1),
       "Content-Type": "application/octet-stream",
-      ...getContentRangeHeader(range),
+      ...(isRangeRequest ? getContentRangeHeader(range) : {}),
     },
   };
 };

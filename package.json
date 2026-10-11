@@ -12,6 +12,8 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "format": "prettier --write .",
     "lint": "prettier --check . && eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "db:up": "docker compose -f docker-compose.dev.yaml -p arkvault-dev up -d",
     "db:down": "docker compose -f docker-compose.dev.yaml -p arkvault-dev down",
     "db:migrate": "kysely migrate"
@@ -27,6 +29,7 @@
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/svelte-virtual": "^3.13.40",
+    "@testcontainers/postgresql": "^12.2.0",
     "@trpc/client": "^11.19.0",
     "@types/file-saver": "^2.0.7",
     "@types/ms": "^2.1.0",
@@ -56,7 +59,8 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.1",
     "unplugin-icons": "^24.0.0",
-    "vite": "^8.3.4"
+    "vite": "^8.3.4",
+    "vitest": "^5.0.3"
   },
   "dependencies": {
     "@trpc/server": "^11.19.0",

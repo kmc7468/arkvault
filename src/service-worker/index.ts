@@ -24,7 +24,7 @@ self.addEventListener("message", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.pathname.startsWith(DECRYPTED_FILE_URL_PREFIX)) {
-    event.respondWith(decryptFile(event.request));
+    event.respondWith(decryptFile(event.request, event.clientId));
   }
 });
 

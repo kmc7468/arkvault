@@ -10,11 +10,11 @@ export const decodeString = (data: ArrayBuffer) => {
 };
 
 export const encodeToBase64 = (data: ArrayBuffer | Uint8Array) => {
-  return btoa(String.fromCharCode(...(data instanceof ArrayBuffer ? new Uint8Array(data) : data)));
+  return (data instanceof ArrayBuffer ? new Uint8Array(data) : data).toBase64();
 };
 
 export const decodeFromBase64 = (data: string) => {
-  return Uint8Array.from(atob(data), (c) => c.charCodeAt(0)).buffer;
+  return Uint8Array.fromBase64(data).buffer;
 };
 
 export const concatenateBuffers = (...buffers: ArrayBuffer[]) => {

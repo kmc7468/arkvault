@@ -89,8 +89,12 @@ const directoryRouter = router({
           encName: { ciphertext: input.name, iv: input.nameIv },
         });
       } catch (e) {
-        if (e instanceof IntegrityError && e.message === "Inactive MEK version") {
-          throw new TRPCError({ code: "BAD_REQUEST", message: e.message });
+        if (e instanceof IntegrityError) {
+          if (e.message === "Inactive MEK version") {
+            throw new TRPCError({ code: "BAD_REQUEST", message: e.message });
+          } else if (e.message === "Directory not found") {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Invalid parent directory id" });
+          }
         }
         throw e;
       }

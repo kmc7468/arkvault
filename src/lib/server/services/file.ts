@@ -4,7 +4,7 @@ import { stat } from "fs/promises";
 import { Readable } from "stream";
 import { FileRepo, MediaRepo } from "#lib/server/db/index.js";
 
-const createEncContentStream = async (
+export const createEncContentStream = async (
   path: string,
   iv?: Buffer,
   range?: { start?: number; end?: number },
@@ -36,6 +36,7 @@ const createEncContentStream = async (
       ),
     ),
     range: { start, end, total: totalSize },
+    isRangeRequest: !!range,
   };
 };
 

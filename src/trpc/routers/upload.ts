@@ -98,6 +98,8 @@ const uploadRouter = router({
             throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid MEK version" });
           } else if (e.message === "Inactive HSK version") {
             throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid HSK version" });
+          } else if (e.message === "Directory not found") {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Invalid parent directory id" });
           }
         }
         throw e;

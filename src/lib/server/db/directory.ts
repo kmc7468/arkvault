@@ -25,6 +25,26 @@ const toDirectory = (row: Selectable<DirectoryTable>): Directory => ({
   isFavorite: row.is_favorite,
 });
 
+export const ensureDirectoryExists = async (
+  trx: typeof db,
+  userId: number,
+  directoryId: DirectoryId,
+) => {
+  if (directoryId === "root") return;
+
+  const directory = await trx
+    .selectFrom("directory")
+    .select("id")
+    .where("id", "=", directoryId)
+    .where("user_id", "=", userId)
+    .limit(1)
+    .forShare()
+    .executeTakeFirst();
+  if (!directory) {
+    throw new IntegrityError("Directory not found");
+  }
+};
+
 export const registerDirectory = async (params: Omit<Directory, "id" | "isFavorite">) => {
   await db.transaction().execute(async (trx) => {
     const mek = await trx
@@ -38,6 +58,8 @@ export const registerDirectory = async (params: Omit<Directory, "id" | "isFavori
     if (mek?.version !== params.mekVersion) {
       throw new IntegrityError("Inactive MEK version");
     }
+
+    await ensureDirectoryExists(trx, params.userId, params.parentId);
 
     const { directoryId } = await trx
       .insertInto("directory")

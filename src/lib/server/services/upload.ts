@@ -7,7 +7,7 @@ import { safeUnlink } from "#lib/server/modules/filesystem.js";
 
 const chunkLocks = new Set<string>();
 
-const isChunkUploaded = (bitmap: Buffer, chunkIndex: number) => {
+export const isChunkUploaded = (bitmap: Buffer, chunkIndex: number) => {
   chunkIndex -= 1;
   const byte = bitmap[Math.floor(chunkIndex / 8)];
   return !!byte && (byte & (1 << (chunkIndex % 8))) !== 0; // Postgres sucks

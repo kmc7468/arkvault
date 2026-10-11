@@ -6,6 +6,7 @@ import {
   getHmacSecrets,
 } from "#lib/indexedDB/index.js";
 import { prepareFileCache } from "#lib/modules/file/index.js";
+import { listenForMetadataRequests } from "#lib/serviceWorker/index.js";
 import { clientKeyStore, masterKeyStore, hmacSecretStore } from "#lib/stores/index.js";
 
 const requestPersistentStorage = async () => {
@@ -44,6 +45,8 @@ const prepareHmacSecretStore = async () => {
 };
 
 export const init: ClientInit = async () => {
+  listenForMetadataRequests();
+
   await Promise.all([
     requestPersistentStorage(),
     prepareFileCache(),
