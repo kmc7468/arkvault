@@ -1,9 +1,11 @@
 import type { Selectable } from "kysely";
-import { IntegrityError } from "./error";
-import db from "./kysely";
-import type { Ciphertext, DirectoryTable } from "./schema";
+import { IntegrityError } from "../error";
+import db from "../kysely";
+import type { Ciphertext, DirectoryTable } from "../schema";
+import { enqueueFileDeletions } from "./fileDeletion";
+import { lockActiveMekVersion } from "./mek";
 
-interface Directory {
+export interface Directory {
   id: number;
   parentId: DirectoryId;
   userId: number;
@@ -47,17 +49,7 @@ export const ensureDirectoryExists = async (
 
 export const registerDirectory = async (params: Omit<Directory, "id" | "isFavorite">) => {
   await db.transaction().execute(async (trx) => {
-    const mek = await trx
-      .selectFrom("master_encryption_key")
-      .select("version")
-      .where("user_id", "=", params.userId)
-      .where("state", "=", "active")
-      .limit(1)
-      .forUpdate()
-      .executeTakeFirst();
-    if (mek?.version !== params.mekVersion) {
-      throw new IntegrityError("Inactive MEK version");
-    }
+    await lockActiveMekVersion(trx, params.userId, params.mekVersion);
 
     await ensureDirectoryExists(trx, params.userId, params.parentId);
 
@@ -251,50 +243,59 @@ export const setDirectoryFavorite = async (
 };
 
 export const unregisterDirectory = async (userId: number, directoryId: number) => {
-  return await db
-    .transaction()
-    .setIsolationLevel("repeatable read") // TODO: Sufficient?
-    .execute(async (trx) => {
-      const unregisterFiles = async (parentId: number) => {
-        const files = await trx
-          .selectFrom("file")
-          .leftJoin("thumbnail", "file.id", "thumbnail.file_id")
-          .select(["file.id", "file.path", "thumbnail.path as thumbnailPath"])
-          .where("file.parent_id", "=", parentId)
-          .where("file.user_id", "=", userId)
-          .forUpdate("file")
-          .execute();
-        await trx
-          .deleteFrom("file")
-          .where("parent_id", "=", parentId)
-          .where("user_id", "=", userId)
-          .execute();
-        return files;
-      };
-      const unregisterDirectoryRecursively = async (
-        directoryId: number,
-      ): Promise<{ id: number; path: string; thumbnailPath: string | null }[]> => {
-        const files = await unregisterFiles(directoryId);
-        const subDirectories = await trx
+  return await db.transaction().execute(async (trx) => {
+    const directories = await trx
+      .withRecursive("directory_tree", (db) =>
+        db
           .selectFrom("directory")
           .select("id")
-          .where("parent_id", "=", directoryId)
-          .where("user_id", "=", userId)
-          .execute();
-        const subDirectoryFilePaths = await Promise.all(
-          subDirectories.map(async ({ id }) => await unregisterDirectoryRecursively(id)),
-        );
-
-        const deleteRes = await trx
-          .deleteFrom("directory")
           .where("id", "=", directoryId)
           .where("user_id", "=", userId)
-          .executeTakeFirst();
-        if (deleteRes.numDeletedRows === 0n) {
-          throw new IntegrityError("Directory not found");
-        }
-        return files.concat(...subDirectoryFilePaths);
-      };
-      return await unregisterDirectoryRecursively(directoryId);
-    });
+          .unionAll(
+            db
+              .selectFrom("directory as d")
+              .innerJoin("directory_tree as dt", "d.parent_id", "dt.id")
+              .select("d.id"),
+          ),
+      )
+      .selectFrom("directory")
+      .select("id")
+      .where("id", "in", (eb) => eb.selectFrom("directory_tree").select("id"))
+      .forUpdate()
+      .execute();
+    if (directories.length === 0) {
+      throw new IntegrityError("Directory not found");
+    }
+
+    const directoryIds = directories.map(({ id }) => id);
+    const files = await trx
+      .selectFrom("file")
+      .leftJoin("thumbnail", "file.id", "thumbnail.file_id")
+      .select(["file.id", "file.path", "thumbnail.path as thumbnailPath"])
+      .where("file.parent_id", "in", directoryIds)
+      .forUpdate("file")
+      .execute();
+    const fileIds = files.map(({ id }) => id);
+
+    const uploadSessions = await trx
+      .deleteFrom("upload_session")
+      .where((eb) =>
+        eb.or([
+          eb("parent_id", "in", directoryIds),
+          ...(fileIds.length > 0 ? [eb("file_id", "in", fileIds)] : []),
+        ]),
+      )
+      .returning("path")
+      .execute();
+    if (fileIds.length > 0) {
+      await trx.deleteFrom("file").where("id", "in", fileIds).execute();
+    }
+    await trx.deleteFrom("directory").where("id", "in", directoryIds).execute();
+
+    await enqueueFileDeletions(trx, [
+      ...files.flatMap(({ path, thumbnailPath }) => [path, thumbnailPath]),
+      ...uploadSessions.map(({ path }) => path),
+    ]);
+    return { deletedFileIds: fileIds };
+  });
 };

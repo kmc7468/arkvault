@@ -82,3 +82,33 @@ export const newEntryParams = (userId: number, parentId: number | "root") => ({
   dekVersion: new Date(),
   encName: ciphertext(),
 });
+
+export const createFile = async (userId: number, parentId: DirectoryId, path: string) => {
+  const n = nextSequence();
+  const { id } = await db
+    .insertInto("file")
+    .values({
+      parent_id: parentId === "root" ? null : parentId,
+      user_id: userId,
+      path,
+      master_encryption_key_version: 1,
+      encrypted_data_encryption_key: `dek${n}`,
+      data_encryption_key_version: new Date(),
+      hmac_secret_key_version: null,
+      content_hmac: null,
+      content_type: "image/png",
+      encrypted_content_iv: null,
+      encrypted_content_hash: "hash",
+      encrypted_name: ciphertext(),
+      encrypted_created_at: null,
+      encrypted_last_modified_at: ciphertext(),
+    })
+    .returning("id")
+    .executeTakeFirstOrThrow();
+  return id;
+};
+
+export const getQueuedDeletions = async () => {
+  const rows = await db.selectFrom("file_deletion_queue").select("path").execute();
+  return rows.map(({ path }) => path).sort();
+};

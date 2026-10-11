@@ -1,75 +1,82 @@
-import { error } from "@sveltejs/kit";
-import { createReadStream } from "fs";
-import { stat } from "fs/promises";
-import { Readable } from "stream";
 import { FileRepo, MediaRepo } from "#lib/server/db/index.js";
+import type { Ciphertext } from "#lib/server/db/schema/index.js";
+import { AppError } from "#lib/server/errors.js";
+import { createEncContentStream } from "#lib/server/storage/index.js";
+import { schedulePendingFileDeletions } from "./fileDeletion";
 
-export const createEncContentStream = async (
-  path: string,
-  iv?: Buffer,
-  range?: { start?: number; end?: number },
-) => {
-  const { size: fileSize } = await stat(path);
-  const ivSize = iv?.byteLength ?? 0;
-  const totalSize = fileSize + ivSize;
+type Range = { start?: number; end?: number };
 
-  const start = range?.start ?? 0;
-  const end = range?.end ?? totalSize - 1;
-  if (start > end || start < 0 || end >= totalSize) {
-    error(416, "Invalid range");
-  }
-
-  return {
-    encContentStream: Readable.toWeb(
-      Readable.from(
-        (async function* () {
-          if (start < ivSize) {
-            yield iv!.subarray(start, Math.min(end + 1, ivSize));
-          }
-          if (end >= ivSize) {
-            yield* createReadStream(path, {
-              start: Math.max(0, start - ivSize),
-              end: end - ivSize,
-            });
-          }
-        })(),
-      ),
-    ),
-    range: { start, end, total: totalSize },
-    isRangeRequest: !!range,
-  };
-};
-
-export const getFileStream = async (
-  userId: number,
-  fileId: number,
-  range?: { start?: number; end?: number },
-) => {
+export const getFile = async (userId: number, fileId: number) => {
   const file = await FileRepo.getFile(userId, fileId);
   if (!file) {
-    error(404, "Invalid file id");
+    throw new AppError("NOT_FOUND", "File not found");
   }
 
-  return createEncContentStream(
-    file.path,
-    file.encContentIv ? Buffer.from(file.encContentIv, "base64") : undefined,
-    range,
-  );
+  const categories = await FileRepo.getAllFileCategories(fileId);
+  return { ...file, categories };
 };
 
-export const getFileThumbnailStream = async (
+export const getFiles = async (userId: number, fileIds: number[]) => {
+  return await FileRepo.getFilesWithCategories(userId, fileIds);
+};
+
+export const getAllFileIds = async (userId: number) => {
+  return await FileRepo.getAllFileIds(userId);
+};
+
+export const getFileIdsByContentHmac = async (
+  userId: number,
+  hskVersion: number,
+  contentHmac: string,
+) => {
+  return await FileRepo.getAllFileIdsByContentHmac(userId, hskVersion, contentHmac);
+};
+
+export const getFilesWithoutThumbnail = async (userId: number) => {
+  return await FileRepo.getFilesWithoutThumbnail(userId);
+};
+
+export const renameFile = async (
   userId: number,
   fileId: number,
-  range?: { start?: number; end?: number },
+  dekVersion: Date,
+  encName: Ciphertext,
 ) => {
+  await FileRepo.setFileEncName(userId, fileId, dekVersion, encName);
+};
+
+export const deleteFile = async (userId: number, fileId: number) => {
+  await FileRepo.unregisterFile(userId, fileId);
+  schedulePendingFileDeletions();
+};
+
+export const getFavoriteFiles = async (userId: number) => {
+  return await FileRepo.getAllFavoriteFiles(userId);
+};
+
+export const setFileFavorite = async (userId: number, fileId: number, isFavorite: boolean) => {
+  await FileRepo.setFileFavorite(userId, fileId, isFavorite);
+};
+
+export const getFileThumbnail = async (userId: number, fileId: number) => {
   const thumbnail = await MediaRepo.getFileThumbnail(userId, fileId);
   if (!thumbnail) {
-    error(404, "File or its thumbnail not found");
+    throw new AppError("NOT_FOUND", "File or its thumbnail not found");
   }
+  return thumbnail;
+};
 
-  return createEncContentStream(
-    thumbnail.path,
-    thumbnail.encContentIv ? Buffer.from(thumbnail.encContentIv, "base64") : undefined,
-    range,
-  );
+const decodeIv = (iv: string | null) => (iv ? Buffer.from(iv, "base64") : undefined);
+
+export const getFileStream = async (userId: number, fileId: number, range?: Range) => {
+  const file = await FileRepo.getFile(userId, fileId);
+  if (!file) {
+    throw new AppError("NOT_FOUND", "File not found");
+  }
+  return await createEncContentStream(file.path, decodeIv(file.encContentIv), range);
+};
+
+export const getFileThumbnailStream = async (userId: number, fileId: number, range?: Range) => {
+  const thumbnail = await getFileThumbnail(userId, fileId);
+  return await createEncContentStream(thumbnail.path, decodeIv(thumbnail.encContentIv), range);
 };

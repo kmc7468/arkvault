@@ -1,11 +1,12 @@
 import { error } from "@sveltejs/kit";
 import { z } from "zod";
 import { parseRangeHeader, getContentRangeHeader } from "#lib/modules/http.js";
-import { authorize } from "#lib/server/modules/auth.js";
-import { getFileStream, getFileThumbnailStream } from "#lib/server/services/file.js";
-import type { RequestHandler, RouteParams } from "./$types";
+import { authorize } from "#lib/server/auth.js";
+import { handleAppErrors } from "#lib/server/http.js";
+import { FileService } from "#lib/server/services/index.js";
+import type { RequestEvent, RequestHandler } from "./$types";
 
-const downloadHandler = async (locals: App.Locals, params: RouteParams, request: Request) => {
+const downloadHandler = async ({ locals, params, request }: RequestEvent) => {
   const { userId } = await authorize(locals, "activeClient");
 
   const zodRes = z
@@ -16,7 +17,9 @@ const downloadHandler = async (locals: App.Locals, params: RouteParams, request:
   if (!zodRes.success) error(400, "Invalid path parameters");
   const { id } = zodRes.data;
 
-  const getStream = params.thumbnail ? getFileThumbnailStream : getFileStream;
+  const getStream = params.thumbnail
+    ? FileService.getFileThumbnailStream
+    : FileService.getFileStream;
   const { encContentStream, range, isRangeRequest } = await getStream(
     userId,
     id,
@@ -34,11 +37,13 @@ const downloadHandler = async (locals: App.Locals, params: RouteParams, request:
   };
 };
 
-export const GET: RequestHandler = async ({ locals, params, request }) => {
-  const { stream, ...init } = await downloadHandler(locals, params, request);
+export const GET: RequestHandler = handleAppErrors(async (event) => {
+  const { stream, ...init } = await downloadHandler(event);
   return new Response(stream as ReadableStream, init);
-};
+});
 
-export const HEAD: RequestHandler = async ({ locals, params, request }) => {
-  return new Response(null, await downloadHandler(locals, params, request));
-};
+export const HEAD: RequestHandler = handleAppErrors(async (event) => {
+  const { stream, ...init } = await downloadHandler(event);
+  await stream.cancel();
+  return new Response(null, init);
+});

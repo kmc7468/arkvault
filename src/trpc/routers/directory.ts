@@ -1,9 +1,14 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { DirectoryIdSchema } from "#lib/schemas/index.js";
-import { DirectoryRepo, FileRepo, IntegrityError } from "#lib/server/db/index.js";
-import { safeUnlink } from "#lib/server/modules/filesystem.js";
-import { router, roleProcedure } from "../init.server";
+import { DirectoryService } from "#lib/server/services/index.js";
+import { toDirectoryDto, toFileDto } from "#trpc/dto.js";
+import { router, roleProcedure } from "#trpc/init.server.js";
+import {
+  Base64Schema,
+  DirectoryIdSchema,
+  EncryptedNameSchema,
+  IdSchema,
+  toCiphertext,
+} from "#trpc/schemas.js";
 
 const directoryRouter = router({
   get: roleProcedure["activeClient"]
@@ -13,51 +18,14 @@ const directoryRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const directory =
-        input.id !== "root"
-          ? await DirectoryRepo.getDirectory(ctx.session.userId, input.id)
-          : undefined;
-      if (directory === null) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Invalid directory id" });
-      }
-
-      const [directories, files] = await Promise.all([
-        DirectoryRepo.getAllDirectoriesByParent(ctx.session.userId, input.id),
-        FileRepo.getAllFilesByParent(ctx.session.userId, input.id),
-      ]);
+      const { directory, subDirectories, files } = await DirectoryService.getDirectory(
+        ctx.session.userId,
+        input.id,
+      );
       return {
-        metadata: directory && {
-          parent: directory.parentId,
-          mekVersion: directory.mekVersion,
-          dek: directory.encDek,
-          dekVersion: directory.dekVersion,
-          name: directory.encName.ciphertext,
-          nameIv: directory.encName.iv,
-          isFavorite: directory.isFavorite,
-        },
-        subDirectories: directories.map((directory) => ({
-          id: directory.id,
-          mekVersion: directory.mekVersion,
-          dek: directory.encDek,
-          dekVersion: directory.dekVersion,
-          name: directory.encName.ciphertext,
-          nameIv: directory.encName.iv,
-          isFavorite: directory.isFavorite,
-        })),
-        files: files.map((file) => ({
-          id: file.id,
-          mekVersion: file.mekVersion,
-          dek: file.encDek,
-          dekVersion: file.dekVersion,
-          contentType: file.contentType,
-          name: file.encName.ciphertext,
-          nameIv: file.encName.iv,
-          createdAt: file.encCreatedAt?.ciphertext,
-          createdAtIv: file.encCreatedAt?.iv,
-          lastModifiedAt: file.encLastModifiedAt.ciphertext,
-          lastModifiedAtIv: file.encLastModifiedAt.iv,
-          isFavorite: file.isFavorite,
-        })),
+        metadata: directory && toDirectoryDto(directory),
+        subDirectories: subDirectories.map(toDirectoryDto),
+        files: files.map(toFileDto),
       };
     }),
 
@@ -65,90 +33,52 @@ const directoryRouter = router({
     .input(
       z.object({
         parent: DirectoryIdSchema,
-        mekVersion: z.int().positive(),
-        dek: z.base64().nonempty(),
+        mekVersion: IdSchema,
+        dek: Base64Schema,
         dekVersion: z.date(),
-        name: z.base64().nonempty(),
-        nameIv: z.base64().nonempty(),
+        ...EncryptedNameSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
-      const oneMinuteLater = new Date(Date.now() + 60 * 1000);
-      if (input.dekVersion <= oneMinuteAgo || input.dekVersion >= oneMinuteLater) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid DEK version" });
-      }
-
-      try {
-        await DirectoryRepo.registerDirectory({
-          parentId: input.parent,
-          userId: ctx.session.userId,
-          mekVersion: input.mekVersion,
-          encDek: input.dek,
-          dekVersion: input.dekVersion,
-          encName: { ciphertext: input.name, iv: input.nameIv },
-        });
-      } catch (e) {
-        if (e instanceof IntegrityError) {
-          if (e.message === "Inactive MEK version") {
-            throw new TRPCError({ code: "BAD_REQUEST", message: e.message });
-          } else if (e.message === "Directory not found") {
-            throw new TRPCError({ code: "NOT_FOUND", message: "Invalid parent directory id" });
-          }
-        }
-        throw e;
-      }
+      await DirectoryService.createDirectory({
+        userId: ctx.session.userId,
+        parentId: input.parent,
+        mekVersion: input.mekVersion,
+        encDek: input.dek,
+        dekVersion: input.dekVersion,
+        encName: toCiphertext(input.name, input.nameIv),
+      });
     }),
 
   rename: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: z.int().positive(),
+        id: IdSchema,
         dekVersion: z.date(),
-        name: z.base64().nonempty(),
-        nameIv: z.base64().nonempty(),
+        ...EncryptedNameSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      try {
-        await DirectoryRepo.setDirectoryEncName(ctx.session.userId, input.id, input.dekVersion, {
-          ciphertext: input.name,
-          iv: input.nameIv,
-        });
-      } catch (e) {
-        if (e instanceof IntegrityError) {
-          if (e.message === "Directory not found") {
-            throw new TRPCError({ code: "NOT_FOUND", message: "Invalid directory id" });
-          } else if (e.message === "Invalid DEK version") {
-            throw new TRPCError({ code: "BAD_REQUEST", message: e.message });
-          }
-        }
-        throw e;
-      }
+      await DirectoryService.renameDirectory(
+        ctx.session.userId,
+        input.id,
+        input.dekVersion,
+        toCiphertext(input.name, input.nameIv),
+      );
     }),
 
   delete: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: z.int().positive(),
+        id: IdSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      try {
-        const files = await DirectoryRepo.unregisterDirectory(ctx.session.userId, input.id);
-        return {
-          deletedFiles: files.map((file) => {
-            safeUnlink(file.path); // Intended
-            safeUnlink(file.thumbnailPath); // Intended
-            return file.id;
-          }),
-        };
-      } catch (e) {
-        if (e instanceof IntegrityError && e.message === "Directory not found") {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Invalid directory id" });
-        }
-        throw e;
-      }
+      const { deletedFileIds } = await DirectoryService.deleteDirectory(
+        ctx.session.userId,
+        input.id,
+      );
+      return { deletedFiles: deletedFileIds };
     }),
 });
 

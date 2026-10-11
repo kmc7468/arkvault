@@ -1,4 +1,4 @@
-import db from "./kysely";
+import db from "../kysely";
 
 interface User {
   id: number;

@@ -1,0 +1,10 @@
+export * as AuthService from "./auth";
+export * as CategoryService from "./category";
+export * as ClientService from "./client";
+export * as DirectoryService from "./directory";
+export * as FileService from "./file";
+export * as FileDeletionService from "./fileDeletion";
+export * as KeyService from "./key";
+export * as SearchService from "./search";
+export * as UploadService from "./upload";
+export * as UserService from "./user";

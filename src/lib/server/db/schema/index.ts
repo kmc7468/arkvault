@@ -2,6 +2,7 @@ export * from "./category";
 export * from "./client";
 export * from "./directory";
 export * from "./file";
+export * from "./fileDeletion";
 export * from "./hsk";
 export * from "./media";
 export * from "./mek";

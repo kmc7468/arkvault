@@ -1,15 +1,10 @@
-import { TRPCError } from "@trpc/server";
-import { UserRepo } from "#lib/server/db/index.js";
-import { router, roleProcedure } from "../init.server";
+import { UserService } from "#lib/server/services/index.js";
+import { router, roleProcedure } from "#trpc/init.server.js";
 
 const userRouter = router({
   get: roleProcedure["any"].query(async ({ ctx }) => {
-    const user = await UserRepo.getUser(ctx.session.userId);
-    if (!user) {
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Invalid session id" });
-    }
-
-    return { email: user.email, nickname: user.nickname };
+    const { email, nickname } = await UserService.getUser(ctx.session.userId);
+    return { email, nickname };
   }),
 });
 

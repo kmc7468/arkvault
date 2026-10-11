@@ -1,8 +1,10 @@
-import { IntegrityError } from "./error";
-import db from "./kysely";
-import type { Ciphertext } from "./schema";
+import type { Selectable } from "kysely";
+import { IntegrityError } from "../error";
+import db from "../kysely";
+import type { CategoryTable, Ciphertext } from "../schema";
+import { lockActiveMekVersion } from "./mek";
 
-interface Category {
+export interface Category {
   id: number;
   parentId: CategoryId;
   userId: number;
@@ -13,6 +15,21 @@ interface Category {
 }
 
 export type NewCategory = Omit<Category, "id">;
+
+// Timestamps are serialized as strings when the row is selected as JSON
+type CategoryRow = Omit<Selectable<CategoryTable>, "data_encryption_key_version"> & {
+  data_encryption_key_version: Date | string;
+};
+
+export const toCategory = (row: CategoryRow): Category => ({
+  id: row.id,
+  parentId: row.parent_id ?? "root",
+  userId: row.user_id,
+  mekVersion: row.master_encryption_key_version,
+  encDek: row.encrypted_data_encryption_key,
+  dekVersion: new Date(row.data_encryption_key_version),
+  encName: row.encrypted_name,
+});
 
 export const ensureCategoryExists = async (
   trx: typeof db,
@@ -36,17 +53,7 @@ export const ensureCategoryExists = async (
 
 export const registerCategory = async (params: NewCategory) => {
   await db.transaction().execute(async (trx) => {
-    const mek = await trx
-      .selectFrom("master_encryption_key")
-      .select("version")
-      .where("user_id", "=", params.userId)
-      .where("state", "=", "active")
-      .limit(1)
-      .forUpdate()
-      .executeTakeFirst();
-    if (mek?.version !== params.mekVersion) {
-      throw new IntegrityError("Inactive MEK version");
-    }
+    await lockActiveMekVersion(trx, params.userId, params.mekVersion);
 
     await ensureCategoryExists(trx, params.userId, params.parentId);
 
@@ -81,18 +88,7 @@ export const getAllCategoriesByParent = async (userId: number, parentId: Categor
       ? query.where("parent_id", "is", null)
       : query.where("parent_id", "=", parentId);
   const categories = await query.execute();
-  return categories.map(
-    (category) =>
-      ({
-        id: category.id,
-        parentId: category.parent_id ?? "root",
-        userId: category.user_id,
-        mekVersion: category.master_encryption_key_version,
-        encDek: category.encrypted_data_encryption_key,
-        dekVersion: category.data_encryption_key_version,
-        encName: category.encrypted_name,
-      }) satisfies Category,
-  );
+  return categories.map(toCategory);
 };
 
 export const getCategory = async (userId: number, categoryId: number) => {
@@ -103,17 +99,7 @@ export const getCategory = async (userId: number, categoryId: number) => {
     .where("user_id", "=", userId)
     .limit(1)
     .executeTakeFirst();
-  return category
-    ? ({
-        id: category.id,
-        parentId: category.parent_id ?? "root",
-        userId: category.user_id,
-        mekVersion: category.master_encryption_key_version,
-        encDek: category.encrypted_data_encryption_key,
-        dekVersion: category.data_encryption_key_version,
-        encName: category.encrypted_name,
-      } satisfies Category)
-    : null;
+  return category ? toCategory(category) : null;
 };
 
 export const setCategoryEncName = async (

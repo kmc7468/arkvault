@@ -1,6 +1,7 @@
 import type { NotNull } from "kysely";
-import { IntegrityError } from "./error";
-import db from "./kysely";
+import { IntegrityError } from "../error";
+import db from "../kysely";
+import { enqueueFileDeletions } from "./fileDeletion";
 
 interface Thumbnail {
   id: number;
@@ -60,7 +61,7 @@ export const updateFileThumbnail = async (
       }),
     )
     .execute();
-  return thumbnail?.oldPath ?? null;
+  await enqueueFileDeletions(trx, [thumbnail?.oldPath]);
 };
 
 export const getFileThumbnail = async (userId: number, fileId: number) => {

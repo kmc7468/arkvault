@@ -1,7 +1,7 @@
 import pg from "pg";
-import { IntegrityError } from "./error";
-import db from "./kysely";
-import type { MekState } from "./schema";
+import { IntegrityError } from "../error";
+import db from "../kysely";
+import type { MekState } from "../schema";
 
 interface Mek {
   userId: number;
@@ -14,6 +14,20 @@ interface ClientMekWithDetails extends Mek {
   encMek: string;
   encMekSig: string;
 }
+
+export const lockActiveMekVersion = async (trx: typeof db, userId: number, version: number) => {
+  const mek = await trx
+    .selectFrom("master_encryption_key")
+    .select("version")
+    .where("user_id", "=", userId)
+    .where("state", "=", "active")
+    .limit(1)
+    .forUpdate()
+    .executeTakeFirst();
+  if (mek?.version !== version) {
+    throw new IntegrityError("Inactive MEK version");
+  }
+};
 
 export const registerInitialMek = async (
   userId: number,

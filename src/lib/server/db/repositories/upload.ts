@@ -1,8 +1,11 @@
-import { sql } from "kysely";
-import { IntegrityError } from "./error";
+import { sql, type Selectable } from "kysely";
+import { IntegrityError } from "../error";
+import db from "../kysely";
+import type { Ciphertext, UploadSessionTable } from "../schema";
 import { ensureDirectoryExists } from "./directory";
-import db from "./kysely";
-import type { Ciphertext } from "./schema";
+import { enqueueFileDeletions } from "./fileDeletion";
+import { lockActiveHskVersion } from "./hsk";
+import { lockActiveMekVersion } from "./mek";
 
 interface BaseUploadSession {
   id: string;
@@ -37,30 +40,10 @@ export const createFileUploadSession = async (
   params: Omit<FileUploadSession, "type" | "bitmap" | "uploadedChunks">,
 ) => {
   await db.transaction().execute(async (trx) => {
-    const mek = await trx
-      .selectFrom("master_encryption_key")
-      .select("version")
-      .where("user_id", "=", params.userId)
-      .where("state", "=", "active")
-      .limit(1)
-      .forUpdate()
-      .executeTakeFirst();
-    if (mek?.version !== params.mekVersion) {
-      throw new IntegrityError("Inactive MEK version");
-    }
+    await lockActiveMekVersion(trx, params.userId, params.mekVersion);
 
     if (params.hskVersion) {
-      const hsk = await trx
-        .selectFrom("hmac_secret_key")
-        .select("version")
-        .where("user_id", "=", params.userId)
-        .where("state", "=", "active")
-        .limit(1)
-        .forUpdate()
-        .executeTakeFirst();
-      if (hsk?.version !== params.hskVersion) {
-        throw new IntegrityError("Inactive HSK version");
-      }
+      await lockActiveHskVersion(trx, params.userId, params.hskVersion);
     }
 
     await ensureDirectoryExists(trx, params.userId, params.parentId);
@@ -124,18 +107,8 @@ export const createThumbnailUploadSession = async (
   });
 };
 
-export const getUploadSession = async (sessionId: string, userId: number) => {
-  const session = await db
-    .selectFrom("upload_session")
-    .selectAll()
-    .where("id", "=", sessionId)
-    .where("user_id", "=", userId)
-    .where("expires_at", ">", new Date())
-    .limit(1)
-    .executeTakeFirst();
-  if (!session) {
-    return null;
-  } else if (session.type === "file") {
+const toUploadSession = (session: Selectable<UploadSessionTable>) => {
+  if (session.type === "file") {
     return {
       type: "file",
       id: session.id,
@@ -171,6 +144,35 @@ export const getUploadSession = async (sessionId: string, userId: number) => {
   }
 };
 
+export const getUploadSession = async (sessionId: string, userId: number) => {
+  const session = await db
+    .selectFrom("upload_session")
+    .selectAll()
+    .where("id", "=", sessionId)
+    .where("user_id", "=", userId)
+    .where("expires_at", ">", new Date())
+    .limit(1)
+    .executeTakeFirst();
+  return session ? toUploadSession(session) : null;
+};
+
+// Locks the session until the transaction ends so that it can be completed only once
+export const lockUploadSession = async (trx: typeof db, sessionId: string, userId: number) => {
+  const session = await trx
+    .selectFrom("upload_session")
+    .selectAll()
+    .where("id", "=", sessionId)
+    .where("user_id", "=", userId)
+    .where("expires_at", ">", new Date())
+    .limit(1)
+    .forUpdate()
+    .executeTakeFirst();
+  if (!session) {
+    throw new IntegrityError("Upload session not found");
+  }
+  return toUploadSession(session);
+};
+
 export const markChunkAsUploaded = async (sessionId: string, chunkIndex: number) => {
   await db
     .updateTable("upload_session")
@@ -185,11 +187,30 @@ export const deleteUploadSession = async (trx: typeof db, sessionId: string) => 
   await trx.deleteFrom("upload_session").where("id", "=", sessionId).execute();
 };
 
+export const discardUploadSession = async (sessionId: string) => {
+  await db.transaction().execute(async (trx) => {
+    const sessions = await trx
+      .deleteFrom("upload_session")
+      .where("id", "=", sessionId)
+      .returning("path")
+      .execute();
+    await enqueueFileDeletions(
+      trx,
+      sessions.map(({ path }) => path),
+    );
+  });
+};
+
 export const cleanupExpiredUploadSessions = async () => {
-  const sessions = await db
-    .deleteFrom("upload_session")
-    .where("expires_at", "<=", new Date())
-    .returning("path")
-    .execute();
-  return sessions.map(({ path }) => path);
+  await db.transaction().execute(async (trx) => {
+    const sessions = await trx
+      .deleteFrom("upload_session")
+      .where("expires_at", "<=", new Date())
+      .returning("path")
+      .execute();
+    await enqueueFileDeletions(
+      trx,
+      sessions.map(({ path }) => path),
+    );
+  });
 };

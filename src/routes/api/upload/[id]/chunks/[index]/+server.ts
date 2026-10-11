@@ -2,11 +2,12 @@ import { error } from "@sveltejs/kit";
 import { Readable } from "stream";
 import type { ReadableStream } from "stream/web";
 import { z } from "zod";
-import { authorize } from "#lib/server/modules/auth.js";
-import { uploadChunk } from "#lib/server/services/upload.js";
+import { authorize } from "#lib/server/auth.js";
+import { handleAppErrors } from "#lib/server/http.js";
+import { UploadService } from "#lib/server/services/index.js";
 import type { RequestHandler } from "./$types";
 
-export const POST: RequestHandler = async ({ locals, params, request }) => {
+export const POST: RequestHandler = handleAppErrors(async ({ locals, params, request }) => {
   const { userId } = await authorize(locals, "activeClient");
 
   const zodRes = z
@@ -22,11 +23,11 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
     error(400, "Invalid request body");
   }
 
-  await uploadChunk(
+  await UploadService.uploadChunk(
     userId,
     sessionId,
     chunkIndex,
     Readable.fromWeb(request.body as ReadableStream),
   );
   return new Response("Chunk uploaded", { headers: { "Content-Type": "text/plain" } });
-};
+});

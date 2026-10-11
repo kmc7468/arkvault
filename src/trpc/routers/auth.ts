@@ -1,11 +1,8 @@
-import { TRPCError } from "@trpc/server";
-import argon2 from "argon2";
 import { z } from "zod";
-import { ClientRepo, SessionRepo, UserRepo, IntegrityError } from "#lib/server/db/index.js";
-import env from "#lib/server/loadenv.js";
-import { cookieOptions } from "#lib/server/modules/auth.js";
-import { generateChallenge, verifySignature, issueSessionId } from "#lib/server/modules/crypto.js";
-import { router, publicProcedure, roleProcedure } from "../init.server";
+import { cookieOptions } from "#lib/server/auth.js";
+import { AuthService } from "#lib/server/services/index.js";
+import { router, publicProcedure, roleProcedure } from "#trpc/init.server.js";
+import { Base64Schema, IdSchema } from "#trpc/schemas.js";
 
 const authRouter = router({
   login: publicProcedure
@@ -16,18 +13,17 @@ const authRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const user = await UserRepo.getUserByEmail(input.email);
-      if (!user || !(await argon2.verify(user.password, input.password))) {
-        throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
-      }
-
-      const { sessionId, sessionIdSigned } = await issueSessionId(32, env.session.secret);
-      await SessionRepo.createSession(user.id, sessionId, ctx.locals.ip, ctx.locals.userAgent);
+      const { sessionIdSigned } = await AuthService.login(
+        input.email,
+        input.password,
+        ctx.locals.ip,
+        ctx.locals.userAgent,
+      );
       ctx.cookies.set("sessionId", sessionIdSigned, cookieOptions);
     }),
 
   logout: roleProcedure["any"].mutation(async ({ ctx }) => {
-    await SessionRepo.deleteSession(ctx.session.sessionId);
+    await AuthService.logout(ctx.session.sessionId);
     ctx.cookies.delete("sessionId", cookieOptions);
   }),
 
@@ -39,103 +35,48 @@ const authRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (input.oldPassword === input.newPassword) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Same passwords" });
-      } else if (input.newPassword.length < 8) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Too short password" });
-      }
-
-      const user = await UserRepo.getUser(ctx.session.userId);
-      if (!user) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Invalid session id" });
-      } else if (!(await argon2.verify(user.password, input.oldPassword))) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Invalid password" });
-      }
-
-      await UserRepo.setUserPassword(ctx.session.userId, await argon2.hash(input.newPassword));
-      await SessionRepo.deleteAllOtherSessions(ctx.session.userId, ctx.session.sessionId);
+      await AuthService.changePassword(
+        ctx.session.userId,
+        ctx.session.sessionId,
+        input.oldPassword,
+        input.newPassword,
+      );
     }),
 
   upgrade: roleProcedure["notClient"]
     .input(
       z.object({
-        encPubKey: z.base64().nonempty(),
-        sigPubKey: z.base64().nonempty(),
+        encPubKey: Base64Schema,
+        sigPubKey: Base64Schema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const client = await ClientRepo.getClientByPubKeys(input.encPubKey, input.sigPubKey);
-      const userClient = client
-        ? await ClientRepo.getUserClient(ctx.session.userId, client.id)
-        : undefined;
-      if (!client) {
-        throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid public key(s)" });
-      } else if (!userClient || userClient.state === "challenging") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Unregistered client" });
-      }
-
-      const { answer, challenge } = await generateChallenge(32, input.encPubKey);
-      const { id } = await SessionRepo.registerSessionUpgradeChallenge(
+      return await AuthService.requestSessionUpgrade(
+        ctx.session.userId,
         ctx.session.sessionId,
-        client.id,
-        answer.toString("base64"),
         ctx.locals.ip,
-        new Date(Date.now() + env.challenge.sessionUpgradeExp),
+        input.encPubKey,
+        input.sigPubKey,
       );
-
-      return { id, challenge: challenge.toString("base64") };
     }),
 
   verifyUpgrade: roleProcedure["notClient"]
     .input(
       z.object({
-        id: z.int().positive(),
-        answerSig: z.base64().nonempty(),
+        id: IdSchema,
+        answerSig: Base64Schema,
         force: z.boolean().default(false),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const challenge = await SessionRepo.consumeSessionUpgradeChallenge(
-        input.id,
+      await AuthService.verifySessionUpgrade(
+        ctx.session.userId,
         ctx.session.sessionId,
         ctx.locals.ip,
+        input.id,
+        input.answerSig,
+        input.force,
       );
-      if (!challenge) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Invalid challenge answer" });
-      }
-
-      const client = await ClientRepo.getClient(challenge.clientId);
-      if (!client) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Invalid challenge answer" });
-      } else if (
-        !verifySignature(Buffer.from(challenge.answer, "base64"), input.answerSig, client.sigPubKey)
-      ) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Invalid challenge answer signature",
-        });
-      }
-
-      try {
-        await SessionRepo.upgradeSession(
-          ctx.session.userId,
-          ctx.session.sessionId,
-          client.id,
-          input.force,
-        );
-      } catch (e) {
-        if (e instanceof IntegrityError) {
-          if (e.message === "Session not found") {
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Invalid challenge answer",
-            });
-          } else if (!input.force && e.message === "Session already exists") {
-            throw new TRPCError({ code: "CONFLICT", message: "Already logged in" });
-          }
-        }
-        throw e;
-      }
     }),
 });
 

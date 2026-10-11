@@ -1,7 +1,7 @@
 import pg from "pg";
-import { IntegrityError } from "./error";
-import db from "./kysely";
-import type { HskState } from "./schema";
+import { IntegrityError } from "../error";
+import db from "../kysely";
+import type { HskState } from "../schema";
 
 interface Hsk {
   userId: number;
@@ -10,6 +10,20 @@ interface Hsk {
   mekVersion: number;
   encHsk: string;
 }
+
+export const lockActiveHskVersion = async (trx: typeof db, userId: number, version: number) => {
+  const hsk = await trx
+    .selectFrom("hmac_secret_key")
+    .select("version")
+    .where("user_id", "=", userId)
+    .where("state", "=", "active")
+    .limit(1)
+    .forUpdate()
+    .executeTakeFirst();
+  if (hsk?.version !== version) {
+    throw new IntegrityError("Inactive HSK version");
+  }
+};
 
 export const registerInitialHsk = async (
   userId: number,

@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { DirectoryIdSchema } from "#lib/schemas/index.js";
-import { DirectoryRepo, FileRepo } from "#lib/server/db/index.js";
-import { router, roleProcedure } from "../init.server";
+import { SearchService } from "#lib/server/services/index.js";
+import { toDirectoryDto, toFileDto } from "#trpc/dto.js";
+import { router, roleProcedure } from "#trpc/init.server.js";
+import { DirectoryIdSchema, IdSchema } from "#trpc/schemas.js";
 
 const searchRouter = router({
   search: roleProcedure["activeClient"]
@@ -9,51 +10,20 @@ const searchRouter = router({
       z.object({
         ancestor: DirectoryIdSchema.default("root"),
         inFavorites: z.boolean().default(false),
-        includeCategories: z.number().positive().array().default([]),
-        excludeCategories: z.number().positive().array().default([]),
+        includeCategories: IdSchema.array().default([]),
+        excludeCategories: IdSchema.array().default([]),
       }),
     )
     .query(async ({ ctx, input }) => {
-      const [directories, files] = await Promise.all([
-        input.includeCategories.length === 0 && input.excludeCategories.length === 0
-          ? DirectoryRepo.searchDirectories(ctx.session.userId, {
-              parentId: input.ancestor,
-              inFavorites: input.inFavorites,
-            })
-          : [],
-        FileRepo.searchFiles(ctx.session.userId, {
-          parentId: input.ancestor,
-          inFavorites: input.inFavorites,
-          includeCategoryIds: input.includeCategories,
-          excludeCategoryIds: input.excludeCategories,
-        }),
-      ]);
+      const { directories, files } = await SearchService.search(ctx.session.userId, {
+        ancestorId: input.ancestor,
+        inFavorites: input.inFavorites,
+        includeCategoryIds: input.includeCategories,
+        excludeCategoryIds: input.excludeCategories,
+      });
       return {
-        directories: directories.map((directory) => ({
-          id: directory.id,
-          parent: directory.parentId,
-          mekVersion: directory.mekVersion,
-          dek: directory.encDek,
-          dekVersion: directory.dekVersion,
-          name: directory.encName.ciphertext,
-          nameIv: directory.encName.iv,
-          isFavorite: directory.isFavorite,
-        })),
-        files: files.map((file) => ({
-          id: file.id,
-          parent: file.parentId,
-          mekVersion: file.mekVersion,
-          dek: file.encDek,
-          dekVersion: file.dekVersion,
-          contentType: file.contentType,
-          name: file.encName.ciphertext,
-          nameIv: file.encName.iv,
-          createdAt: file.encCreatedAt?.ciphertext,
-          createdAtIv: file.encCreatedAt?.iv,
-          lastModifiedAt: file.encLastModifiedAt.ciphertext,
-          lastModifiedAtIv: file.encLastModifiedAt.iv,
-          isFavorite: file.isFavorite,
-        })),
+        directories: directories.map(toDirectoryDto),
+        files: files.map(toFileDto),
       };
     }),
 });

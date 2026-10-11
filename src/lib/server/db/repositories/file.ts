@@ -1,11 +1,13 @@
 import { sql, type Selectable } from "kysely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import pg from "pg";
-import { IntegrityError } from "./error";
-import db from "./kysely";
-import type { Ciphertext, FileTable } from "./schema";
+import { IntegrityError } from "../error";
+import db from "../kysely";
+import type { Ciphertext, FileTable } from "../schema";
+import { toCategory } from "./category";
+import { enqueueFileDeletions } from "./fileDeletion";
 
-interface File {
+export interface File {
   id: number;
   parentId: DirectoryId;
   userId: number;
@@ -22,15 +24,6 @@ interface File {
   encCreatedAt: Ciphertext | null;
   encLastModifiedAt: Ciphertext;
   isFavorite: boolean;
-}
-
-interface FileCategory {
-  id: number;
-  parentId: CategoryId;
-  mekVersion: number;
-  encDek: string;
-  dekVersion: Date;
-  encName: Ciphertext;
 }
 
 const toFile = (row: Selectable<FileTable>): File => ({
@@ -209,17 +202,7 @@ export const getFilesWithCategories = async (userId: number, fileIds: number[]) 
     .execute();
   return files.map((file) => ({
     ...toFile(file),
-    categories: file.categories.map(
-      (category) =>
-        ({
-          id: category.id,
-          parentId: category.parent_id ?? "root",
-          mekVersion: category.master_encryption_key_version,
-          encDek: category.encrypted_data_encryption_key,
-          dekVersion: new Date(category.data_encryption_key_version),
-          encName: category.encrypted_name,
-        }) satisfies FileCategory,
-    ),
+    categories: file.categories.map(toCategory),
   }));
 };
 
@@ -387,7 +370,7 @@ export const setFileEncName = async (
 };
 
 export const unregisterFile = async (userId: number, fileId: number) => {
-  return await db.transaction().execute(async (trx) => {
+  await db.transaction().execute(async (trx) => {
     const file = await trx
       .selectFrom("file")
       .leftJoin("thumbnail", "file.id", "thumbnail.file_id")
@@ -400,8 +383,17 @@ export const unregisterFile = async (userId: number, fileId: number) => {
       throw new IntegrityError("File not found");
     }
 
+    const uploadSessions = await trx
+      .deleteFrom("upload_session")
+      .where("file_id", "=", fileId)
+      .returning("path")
+      .execute();
     await trx.deleteFrom("file").where("id", "=", fileId).execute();
-    return file;
+    await enqueueFileDeletions(trx, [
+      file.path,
+      file.thumbnailPath,
+      ...uploadSessions.map(({ path }) => path),
+    ]);
   });
 };
 
@@ -437,17 +429,7 @@ export const getAllFileCategories = async (fileId: number) => {
     .selectAll("category")
     .where("file_id", "=", fileId)
     .execute();
-  return categories.map(
-    (category) =>
-      ({
-        id: category.id,
-        parentId: category.parent_id ?? "root",
-        mekVersion: category.master_encryption_key_version,
-        encDek: category.encrypted_data_encryption_key,
-        dekVersion: category.data_encryption_key_version,
-        encName: category.encrypted_name,
-      }) satisfies FileCategory,
-  );
+  return categories.map(toCategory);
 };
 
 export const removeFileFromCategory = async (fileId: number, categoryId: number) => {

@@ -1,7 +1,7 @@
 import pg from "pg";
-import { IntegrityError } from "./error";
-import db from "./kysely";
-import type { UserClientState } from "./schema";
+import { IntegrityError } from "../error";
+import db from "../kysely";
+import type { UserClientState } from "../schema";
 
 interface Client {
   id: number;
