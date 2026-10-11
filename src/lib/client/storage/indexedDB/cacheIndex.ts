@@ -28,6 +28,14 @@ export const storeFileCacheIndex = async (fileCacheIndex: FileCacheIndex) => {
   });
 };
 
+export const getFileCacheIndexOf = async (fileId: number) => {
+  return await cacheIndex.fileCache.get(fileId);
+};
+
+export const updateFileCacheRetrievedAt = async (fileId: number, lastRetrievedAt: Date) => {
+  await cacheIndex.fileCache.update(fileId, { lastRetrievedAt });
+};
+
 export const deleteFileCacheIndex = async (fileId: number) => {
   await cacheIndex.fileCache.delete(fileId);
 };

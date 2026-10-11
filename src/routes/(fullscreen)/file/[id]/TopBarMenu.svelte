@@ -1,5 +1,4 @@
 <script lang="ts">
-  import FileSaver from "file-saver";
   import type { Component } from "svelte";
   import type { SvelteHTMLElements } from "svelte/elements";
   import { fly } from "svelte/transition";
@@ -12,39 +11,24 @@
 
   interface Props {
     directoryId?: "root" | number;
-    downloadUrl?: string;
-    fileBlob?: Blob;
-    filename?: string;
     isFavorite?: boolean;
     isOpen: boolean;
+    onDownloadClick?: () => void;
     onToggleFavorite?: () => void;
   }
 
   let {
     directoryId,
-    downloadUrl,
-    fileBlob,
-    filename,
     isFavorite,
     isOpen = $bindable(),
+    onDownloadClick,
     onToggleFavorite,
   }: Props = $props();
-
-  const handleDownload = () => {
-    if (fileBlob && filename) {
-      FileSaver.saveAs(fileBlob, filename);
-    } else if (downloadUrl && filename) {
-      // Use streaming download via Content-Disposition header
-      const url = new URL(downloadUrl, window.location.origin);
-      url.searchParams.set("download", filename);
-      window.open(url.toString(), "_blank");
-    }
-  };
 </script>
 
 <svelte:window onclick={() => (isOpen = false)} />
 
-{#if isOpen && (directoryId || downloadUrl || fileBlob)}
+{#if isOpen && (directoryId || onDownloadClick || isFavorite !== undefined)}
   <div
     class="absolute top-full right-2 z-20 min-w-44 space-y-1 rounded-lg bg-white px-1 py-2 shadow-2xl"
     transition:fly={{ y: -8, duration: 200 }}
@@ -80,8 +64,8 @@
           ),
         )}
       {/if}
-      {#if fileBlob || downloadUrl}
-        {@render menuButton(IconCloudDownload, "다운로드", handleDownload)}
+      {#if onDownloadClick}
+        {@render menuButton(IconCloudDownload, "다운로드", onDownloadClick)}
       {/if}
     </div>
   </div>

@@ -21,7 +21,6 @@
 
   const statusTexts = {
     queued: "대기 중",
-    "generation-pending": "준비 중",
     generating: "생성하는 중",
     uploading: "업로드하는 중",
     error: "실패",

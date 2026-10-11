@@ -25,3 +25,23 @@ export const extractExifDateTime = (fileBuffer: ArrayBuffer) => {
   const offsetMs = offsetSign * ((offsetHour ?? 0) * 60 + (offsetMinute ?? 0)) * 60 * 1000;
   return new Date(utcDate - offsetMs);
 };
+
+const EXIF_SEARCH_SIZE = 1024 * 1024; // 1 MiB
+const MAX_FULL_READ_SIZE = 64 * 1024 * 1024; // 64 MiB
+
+const tryExtractExifDateTime = (buffer: ArrayBuffer) => {
+  try {
+    return extractExifDateTime(buffer);
+  } catch {
+    return undefined;
+  }
+};
+
+// EXIF is usually at the beginning of the file, so the whole file is read only if not found
+export const readExifDateTime = async (file: Blob) => {
+  const dateTime = tryExtractExifDateTime(await file.slice(0, EXIF_SEARCH_SIZE).arrayBuffer());
+  if (dateTime || file.size <= EXIF_SEARCH_SIZE || file.size > MAX_FULL_READ_SIZE) {
+    return dateTime;
+  }
+  return tryExtractExifDateTime(await file.arrayBuffer());
+};

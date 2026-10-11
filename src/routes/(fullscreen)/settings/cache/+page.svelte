@@ -26,7 +26,7 @@
   };
 
   onMount(async () => {
-    const indexes = getFileCacheIndex();
+    const indexes = await getFileCacheIndex();
     const infos = await bulkGetFileInfo(indexes.map(({ fileId }) => fileId));
     fileCache = indexes
       .map((index) => ({ index, info: infos.get(index.fileId)! }))

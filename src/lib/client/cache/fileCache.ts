@@ -1,50 +1,50 @@
 import {
-  getFileCacheIndex as getFileCacheIndexFromIndexedDB,
-  storeFileCacheIndex,
   deleteFileCacheIndex,
-  type FileCacheIndex,
-} from "#lib/client/storage/indexedDB/index.js";
-import { readFile, writeFile, deleteFile } from "#lib/client/storage/opfs.js";
+  getFileCacheIndex as getAllFileCacheIndexes,
+  getFileCacheIndexOf,
+  storeFileCacheIndex,
+  updateFileCacheRetrievedAt,
+} from "#lib/client/storage/indexedDB/cacheIndex.js";
+import { createWritable, deleteFile, getFile } from "#lib/client/storage/opfs.js";
 
-const fileCacheIndex = new Map<number, FileCacheIndex>();
+// Used by both the pages and the service worker, so the index is always read from IndexedDB
 
-export const prepareFileCache = async () => {
-  for (const cache of await getFileCacheIndexFromIndexedDB()) {
-    fileCacheIndex.set(cache.fileId, cache);
-  }
+const getPath = (fileId: number) => `/cache/${fileId}`;
+
+export const getFileCacheIndex = async () => {
+  return await getAllFileCacheIndexes();
 };
 
-export const getFileCacheIndex = () => {
-  return Array.from(fileCacheIndex.values());
-};
-
+// The index is written only after the whole content is written
 export const getFileCache = async (fileId: number) => {
-  const cacheIndex = fileCacheIndex.get(fileId);
-  if (!cacheIndex) return null;
+  if (!(await getFileCacheIndexOf(fileId))) return null;
 
-  cacheIndex.lastRetrievedAt = new Date();
-  storeFileCacheIndex(cacheIndex); // Intended
-  return await readFile(`/cache/${fileId}`);
+  const file = await getFile(getPath(fileId));
+  if (file) {
+    void updateFileCacheRetrievedAt(fileId, new Date());
+  }
+  return file;
 };
 
-export const storeFileCache = async (fileId: number, fileBuffer: ArrayBuffer) => {
-  const now = new Date();
-  await writeFile(`/cache/${fileId}`, fileBuffer);
+export const storeFileCache = async (fileId: number, stream: ReadableStream<Uint8Array>) => {
+  const path = getPath(fileId);
+  try {
+    await stream.pipeTo(await createWritable(path));
+  } catch (e) {
+    await deleteFile(path).catch(() => {});
+    throw e;
+  }
 
-  const cacheIndex: FileCacheIndex = {
+  const now = new Date();
+  await storeFileCacheIndex({
     fileId,
     cachedAt: now,
     lastRetrievedAt: now,
-    size: fileBuffer.byteLength,
-  };
-  fileCacheIndex.set(fileId, cacheIndex);
-  await storeFileCacheIndex(cacheIndex);
+    size: (await getFile(path))?.size ?? 0,
+  });
 };
 
 export const deleteFileCache = async (fileId: number) => {
-  if (!fileCacheIndex.has(fileId)) return;
-
-  fileCacheIndex.delete(fileId);
-  await deleteFile(`/cache/${fileId}`);
   await deleteFileCacheIndex(fileId);
+  await deleteFile(getPath(fileId));
 };

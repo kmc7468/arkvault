@@ -3,3 +3,4 @@ export * from "./format";
 export * from "./gotoStateful";
 export * from "./search";
 export * from "./sort";
+export * from "./speedMeter";

@@ -23,5 +23,15 @@ export interface DecryptionMetadataRequestMessage {
   fileId: number;
 }
 
+// Progress of the whole content of a file being streamed from the server
+export interface DownloadProgressMessage {
+  type: "download-progress";
+  fileId: number;
+  status: "downloading" | "completed" | "canceled" | "error";
+  loaded: number;
+  total: number;
+}
+
 export type ServiceWorkerMessage = DecryptionPrepareMessage;
-export type ServiceWorkerResponse = DecryptionReadyMessage | DecryptionMetadataRequestMessage;
+export type ServiceWorkerResponse =
+  DecryptionReadyMessage | DecryptionMetadataRequestMessage | DownloadProgressMessage;

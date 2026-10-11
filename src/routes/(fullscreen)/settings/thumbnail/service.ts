@@ -1,19 +1,16 @@
 import { limitFunction } from "p-limit";
 import { SvelteMap } from "svelte/reactivity";
-import { generateThumbnail } from "#lib/client/media/thumbnail.js";
+import { generateThumbnailFromUrl } from "#lib/client/media/thumbnail.js";
 import {
-  getFileContent,
   getFileInfo,
+  getFileStreamUrl,
   uploadFileThumbnail,
   type FileInfo,
 } from "#lib/features/filesystem/index.js";
-import { Scheduler } from "#lib/utils/index.js";
 import type { RouterOutputs } from "#trpc/router.server.js";
 
-export type GenerationStatus =
-  "queued" | "generation-pending" | "generating" | "uploading" | "uploaded" | "error";
+export type GenerationStatus = "queued" | "generating" | "uploading" | "uploaded" | "error";
 
-const scheduler = new Scheduler();
 const statuses = new SvelteMap<number, GenerationStatus>();
 
 export const getThumbnailGenerationStatus = (fileId: number) => {
@@ -37,13 +34,13 @@ export const requestMissingThumbnailFiles = async (
   return files;
 };
 
+// The content is streamed by the service worker, so only the decoded media occupy the memory
 const generateAndUploadThumbnail = limitFunction(
-  async (fileInfo: FileInfo, fileBuffer: ArrayBuffer) => {
+  async (fileInfo: FileInfo) => {
     statuses.set(fileInfo.id, "generating");
 
-    const thumbnail = await generateThumbnail(
-      new Blob([fileBuffer], { type: fileInfo.contentType }),
-    );
+    const url = await getFileStreamUrl(fileInfo);
+    const thumbnail = await generateThumbnailFromUrl(url, fileInfo.contentType);
     if (!thumbnail) {
       throw new Error("Failed to generate thumbnail");
     }
@@ -57,23 +54,11 @@ const generateAndUploadThumbnail = limitFunction(
 
 export const requestThumbnailGeneration = async (fileInfo: FileInfo) => {
   const status = statuses.get(fileInfo.id);
-  if (status) {
-    if (status !== "error") return;
-  } else {
-    statuses.set(fileInfo.id, "queued");
-  }
+  if (status && status !== "error") return;
 
+  statuses.set(fileInfo.id, "queued");
   try {
-    let file: ArrayBuffer | undefined;
-
-    await scheduler.schedule(
-      async () => {
-        statuses.set(fileInfo.id, "generation-pending");
-        file = await getFileContent(fileInfo.id, fileInfo.dataKey!.key, !!fileInfo.isLegacy);
-        return file.byteLength;
-      },
-      () => generateAndUploadThumbnail(fileInfo, file!),
-    );
+    await generateAndUploadThumbnail(fileInfo);
   } catch (e) {
     console.error(e);
     statuses.set(fileInfo.id, "error");

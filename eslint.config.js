@@ -60,7 +60,8 @@ export default defineConfig(
     // Domain-agnostic components
     "src/lib/ui/**": "^(#lib/(server|client|features)/|#trpc/)",
     "src/lib/features/**": "^#lib/server/",
-    "src/service-worker/**": "^(#lib/(?!shared/|client/storage/opfs\\.js$)|#trpc/|#workers/)",
+    "src/service-worker/**":
+      "^(#lib/(?!shared/|client/storage/|client/cache/fileCache\\.js$)|#trpc/|#workers/)",
   }),
   {
     files: ["**/*.svelte", "**/*.svelte.ts", "**/*.svelte.js"],

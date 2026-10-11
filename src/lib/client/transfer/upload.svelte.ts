@@ -6,7 +6,7 @@ import {
   type HmacSecret,
   type MasterKey,
 } from "#lib/client/keys/index.js";
-import { extractExifDateTime } from "#lib/client/media/exif.js";
+import { readExifDateTime } from "#lib/client/media/exif.js";
 import { generateThumbnail } from "#lib/client/media/thumbnail.js";
 import { uploadBlob } from "#lib/client/transfer/chunkedUpload.js";
 import {
@@ -41,9 +41,7 @@ export type LiveFileUploadState = FileUploadState & {
   status: "queued" | "encryption-pending" | "encrypting" | "upload-pending" | "uploading";
 };
 
-const scheduler = new Scheduler<
-  { fileId: number; fileBuffer?: ArrayBuffer; thumbnailBuffer?: ArrayBuffer } | undefined
->();
+const scheduler = new Scheduler<{ fileId: number; thumbnailBuffer?: ArrayBuffer } | undefined>();
 let uploadingFiles: FileUploadState[] = $state([]);
 
 const isFileUploading = (status: FileUploadState["status"]) =>
@@ -213,7 +211,6 @@ export const uploadFile = async (
         return;
       }
 
-      let fileBuffer;
       const fileType = getFileType(file);
       const fileMetadata: FileMetadata = {
         parentId,
@@ -222,8 +219,7 @@ export const uploadFile = async (
       };
 
       if (fileType.startsWith("image/")) {
-        fileBuffer = await file.arrayBuffer();
-        fileMetadata.createdAt = extractExifDateTime(fileBuffer);
+        fileMetadata.createdAt = await readExifDateTime(file);
       }
 
       const blob = new Blob([file], { type: fileType });
@@ -241,7 +237,7 @@ export const uploadFile = async (
         dataKeyVersion,
       );
 
-      return { fileId, fileBuffer, thumbnailBuffer };
+      return { fileId, thumbnailBuffer };
     } catch (e) {
       state.status = "error";
       throw e;

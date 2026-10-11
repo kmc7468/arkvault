@@ -1,15 +1,14 @@
 <script lang="ts">
-  import FileSaver from "file-saver";
   import { untrack } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import { captureVideoThumbnail } from "#lib/client/media/thumbnail.js";
+  import { saveDecryptedFile } from "#lib/client/serviceWorker.js";
   import { getFileDownloadState } from "#lib/client/transfer/index.js";
   import { showErrorToast, tryAction } from "#lib/features/errors.js";
   import { Categories } from "#lib/features/filesystem/components/index.js";
   import {
     addFileToCategory,
-    getFileContent,
     getFileStreamUrl,
     removeFileFromCategory,
     setFileFavorite,
@@ -37,29 +36,31 @@
   let isMenuOpen = $state(false);
   let isAddToCategoryBottomSheetOpen = $state(false);
 
-  let isDownloadRequested = $state(false);
+  let isLoadRequested = $state(false);
   let viewerType: "image" | "video" | undefined = $state();
-  let fileBlob: Blob | undefined = $state();
-  let fileBlobUrl: string | undefined = $state();
-  let videoStreamUrl: string | undefined = $state();
+  let fileUrl: string | undefined = $state();
+  let convertedImageUrl: string | undefined = $state();
   let videoElement: HTMLVideoElement | undefined = $state();
 
-  const updateViewer = async (buffer: ArrayBuffer, contentType: string) => {
-    fileBlob = new Blob([buffer], { type: contentType });
-    fileBlobUrl = URL.createObjectURL(fileBlob);
-    return fileBlob;
+  // Chromium can't display HEIC images
+  const convertHeicToJpeg = async () => {
+    if (info?.contentType !== "image/heic" || !fileUrl || convertedImageUrl) return;
+
+    try {
+      const blob = await (await fetch(fileUrl)).blob();
+      const { default: heic2any } = await import("heic2any");
+      convertedImageUrl = URL.createObjectURL(
+        (await heic2any({ blob, toType: "image/jpeg" })) as Blob,
+      );
+    } catch (e) {
+      showErrorToast(e, "이미지를 표시하지 못했어요.");
+    }
   };
 
-  const convertHeicToJpeg = async () => {
-    if (fileBlob?.type !== "image/heic") return;
-
-    URL.revokeObjectURL(fileBlobUrl!);
-    fileBlobUrl = undefined;
-
-    const { default: heic2any } = await import("heic2any");
-    fileBlobUrl = URL.createObjectURL(
-      (await heic2any({ blob: fileBlob, toType: "image/jpeg" })) as Blob,
-    );
+  const saveFile = () => {
+    if (info?.exists) {
+      saveDecryptedFile(info.id, info.name);
+    }
   };
 
   const updateThumbnail = (dataKey: DataKey) =>
@@ -91,16 +92,12 @@
       "즐겨찾기를 변경하지 못했어요.",
     );
 
-  const loadContent = (dataKey: CryptoKey, isLegacy: boolean) =>
-    getFileContent(data.id, dataKey, isLegacy).catch((e) => {
-      showErrorToast(e, "파일을 불러오지 못했어요.");
-      throw e;
-    });
-
   $effect.pre(() => {
     void data.id; // Reset the viewer when navigating to another file
-    isDownloadRequested = false;
+    isLoadRequested = false;
     viewerType = undefined;
+    fileUrl = undefined;
+    convertedImageUrl = undefined;
   });
 
   $effect(() => {
@@ -113,42 +110,26 @@
       }
 
       untrack(() => {
-        if (!downloadState && !isDownloadRequested) {
-          isDownloadRequested = true;
+        if (isLoadRequested) return;
+        isLoadRequested = true;
 
-          const { key } = info!.dataKey!;
-          const isLegacy = !!info!.isLegacy;
-          if (viewerType === "video" && !isLegacy) {
-            getFileStreamUrl(data.id, key, contentType)
-              .then((streamUrl) => {
-                videoStreamUrl = streamUrl;
-              })
-              .catch(async () => {
-                // Fall back to downloading the whole file
-                await updateViewer(await loadContent(key, isLegacy), contentType);
-              });
-          } else {
-            void loadContent(key, isLegacy).then(async (buffer) => {
-              const blob = await updateViewer(buffer, contentType);
-              if (!viewerType) {
-                FileSaver.saveAs(blob, info!.name);
-              }
-            });
-          }
-        }
+        const isAlreadyDownloading = !!downloadState;
+        getFileStreamUrl(info as FileInfo)
+          .then((url) => {
+            fileUrl = url;
+            if (!viewerType && !isAlreadyDownloading) {
+              saveFile();
+            }
+          })
+          .catch((e) => showErrorToast(e, "파일을 불러오지 못했어요."));
       });
     }
   });
 
   $effect(() => {
-    if (info?.exists && downloadState?.status === "decrypted") {
-      untrack(
-        () => !isDownloadRequested && updateViewer(downloadState.result!, info!.contentType!),
-      );
-    }
+    const url = convertedImageUrl;
+    return () => url && URL.revokeObjectURL(url);
   });
-
-  $effect(() => () => fileBlobUrl && URL.revokeObjectURL(fileBlobUrl));
 </script>
 
 <svelte:head>
@@ -172,9 +153,7 @@
       )
         ? info?.parentId
         : undefined}
-      {fileBlob}
-      downloadUrl={videoStreamUrl}
-      filename={info?.name}
+      onDownloadClick={fileUrl ? saveFile : undefined}
       isFavorite={info?.isFavorite}
       onToggleFavorite={toggleFavorite}
     />
@@ -192,16 +171,15 @@
         {/snippet}
 
         {#if viewerType === "image"}
-          {#if fileBlobUrl}
-            <img src={fileBlobUrl} alt={info.name} onerror={convertHeicToJpeg} />
+          {#if fileUrl}
+            <img src={convertedImageUrl ?? fileUrl} alt={info.name} onerror={convertHeicToJpeg} />
           {:else}
             {@render viewerLoading("이미지를 불러오고 있어요.")}
           {/if}
         {:else if viewerType === "video"}
-          {#if videoStreamUrl || fileBlobUrl}
+          {#if fileUrl}
             <div class="flex flex-col space-y-2">
-              <video bind:this={videoElement} src={videoStreamUrl ?? fileBlobUrl} controls muted
-              ></video>
+              <video bind:this={videoElement} src={fileUrl} controls muted></video>
               <IconEntryButton
                 icon={IconCamera}
                 onclick={() => updateThumbnail(info!.dataKey!)}

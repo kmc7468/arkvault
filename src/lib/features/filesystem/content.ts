@@ -1,41 +1,57 @@
 import {
   deleteFileCache,
   deleteFileThumbnailCache,
-  getFileCache,
-  storeFileCache,
   storeFileThumbnailCache,
 } from "#lib/client/cache/index.js";
-import { getDecryptedFileUrl, prepareFileDecryption } from "#lib/client/serviceWorker.js";
+import {
+  getDecryptedFileUrl,
+  prepareFileDecryption,
+  saveDecryptedFile,
+} from "#lib/client/serviceWorker.js";
 import { getAllFileInfos } from "#lib/client/storage/indexedDB/index.js";
 import { uploadBlob } from "#lib/client/transfer/chunkedUpload.js";
-import { downloadFile } from "#lib/client/transfer/index.js";
 import { trpc } from "#trpc/client.js";
 import type { DataKey } from "./types";
 
-// Returns the decrypted content of the file, from the cache if available
-export const getFileContent = async (fileId: number, dataKey: CryptoKey, isLegacy: boolean) => {
-  const cache = await getFileCache(fileId);
-  if (cache) return cache;
+interface StreamableFile {
+  id: number;
+  isLegacy?: boolean;
+  dataKey?: DataKey;
+  contentType: string;
+}
 
-  const fileBuffer = await downloadFile(fileId, dataKey, isLegacy);
-  void storeFileCache(fileId, fileBuffer);
-  return fileBuffer;
-};
+// Returns a URL from which the service worker streams the decrypted content of the file
+export const getFileStreamUrl = async ({ id, isLegacy, dataKey, contentType }: StreamableFile) => {
+  if (!dataKey) {
+    throw new Error("Data key not loaded");
+  }
 
-// Returns a URL from which the service worker streams the decrypted file
-export const getFileStreamUrl = async (fileId: number, dataKey: CryptoKey, contentType: string) => {
-  const res = await fetch(`/api/file/${fileId}/download`, { method: "HEAD" });
+  const res = await fetch(`/api/file/${id}/download`, { method: "HEAD" });
   if (!res.ok) {
     throw new Error("Failed to get the file size");
   }
 
   const encContentSize = parseInt(res.headers.get("Content-Length") ?? "0", 10);
-  if (encContentSize <= 0) {
-    throw new Error("Invalid file size");
-  }
+  await prepareFileDecryption(id, {
+    isLegacy: !!isLegacy,
+    dataKey: dataKey.key,
+    encContentSize,
+    contentType,
+  });
+  return getDecryptedFileUrl(id);
+};
 
-  await prepareFileDecryption(fileId, { isLegacy: false, dataKey, encContentSize, contentType });
-  return getDecryptedFileUrl(fileId);
+export const getFileBlob = async (file: StreamableFile) => {
+  const res = await fetch(await getFileStreamUrl(file));
+  if (!res.ok) {
+    throw new Error("Failed to download the file");
+  }
+  return await res.blob();
+};
+
+export const saveFile = async (file: StreamableFile & { name: string }) => {
+  await getFileStreamUrl(file);
+  saveDecryptedFile(file.id, file.name);
 };
 
 export const uploadFileThumbnail = async (fileId: number, thumbnail: Blob, dataKey: DataKey) => {

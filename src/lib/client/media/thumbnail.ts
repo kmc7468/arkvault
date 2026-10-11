@@ -82,35 +82,42 @@ const generateVideoThumbnail = (videoUrl: string, time = 0) => {
   });
 };
 
-export const generateThumbnail = async (blob: Blob) => {
-  let url;
+const convertHeicToPng = async (blob: Blob) => {
+  const { default: heic2any } = await import("heic2any");
+  return (await heic2any({ blob, toType: "image/png" })) as Blob;
+};
+
+// Generates a thumbnail of the image or video at the URL. Returns `null` if not supported.
+export const generateThumbnailFromUrl = async (url: string, contentType: string) => {
   try {
-    if (blob.type.startsWith("image/")) {
-      url = URL.createObjectURL(blob);
+    if (contentType.startsWith("image/")) {
       try {
         return await generateImageThumbnail(url);
       } catch {
-        URL.revokeObjectURL(url);
-        url = undefined;
+        if (contentType !== "image/heic") return null;
 
-        if (blob.type === "image/heic") {
-          const { default: heic2any } = await import("heic2any");
-          url = URL.createObjectURL((await heic2any({ blob, toType: "image/png" })) as Blob);
-          return await generateImageThumbnail(url);
-        } else {
-          return null;
+        // Chromium can't decode HEIC images
+        const png = URL.createObjectURL(await convertHeicToPng(await (await fetch(url)).blob()));
+        try {
+          return await generateImageThumbnail(png);
+        } finally {
+          URL.revokeObjectURL(png);
         }
       }
-    } else if (blob.type.startsWith("video/")) {
-      url = URL.createObjectURL(blob);
+    } else if (contentType.startsWith("video/")) {
       return await generateVideoThumbnail(url);
     }
     return null;
   } catch {
     return null;
+  }
+};
+
+export const generateThumbnail = async (blob: Blob) => {
+  const url = URL.createObjectURL(blob);
+  try {
+    return await generateThumbnailFromUrl(url, blob.type);
   } finally {
-    if (url) {
-      URL.revokeObjectURL(url);
-    }
+    URL.revokeObjectURL(url);
   }
 };

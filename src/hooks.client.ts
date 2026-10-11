@@ -1,7 +1,6 @@
 import type { ClientInit } from "@sveltejs/kit/hooks";
-import { prepareFileCache } from "#lib/client/cache/index.js";
 import { keyring } from "#lib/client/keys/index.js";
-import { listenForMetadataRequests } from "#lib/client/serviceWorker.js";
+import { listenForServiceWorkerMessages } from "#lib/client/serviceWorker.js";
 import { cleanupDanglingInfos } from "#lib/client/storage/indexedDB/index.js";
 
 const requestPersistentStorage = async () => {
@@ -14,9 +13,9 @@ const requestPersistentStorage = async () => {
 };
 
 export const init: ClientInit = async () => {
-  listenForMetadataRequests();
+  listenForServiceWorkerMessages();
 
-  await Promise.all([requestPersistentStorage(), prepareFileCache(), keyring.load()]);
+  await Promise.all([requestPersistentStorage(), keyring.load()]);
 
   cleanupDanglingInfos(); // Intended
 };

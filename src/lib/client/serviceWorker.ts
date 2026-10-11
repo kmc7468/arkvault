@@ -1,8 +1,9 @@
-import { DECRYPTED_FILE_URL_PREFIX } from "#lib/shared/serviceWorker.js";
-import type {
-  FileMetadata,
-  ServiceWorkerMessage,
-  ServiceWorkerResponse,
+import { handleDownloadProgress } from "#lib/client/transfer/download.svelte.js";
+import {
+  DECRYPTED_FILE_URL_PREFIX,
+  type FileMetadata,
+  type ServiceWorkerMessage,
+  type ServiceWorkerResponse,
 } from "#lib/shared/serviceWorker.js";
 
 const PREPARE_TIMEOUT_MS = 5000;
@@ -10,17 +11,22 @@ const PREPARE_TIMEOUT_MS = 5000;
 // The service worker may be terminated at any time, losing its in-memory metadata.
 // Keep a copy here so that it can be re-requested on demand.
 const preparedFiles = new Map<number, FileMetadata>();
-let isListeningForMetadataRequests = false;
+let isListening = false;
 
-export const listenForMetadataRequests = () => {
-  if (isListeningForMetadataRequests) return;
-  isListeningForMetadataRequests = true;
+export const listenForServiceWorkerMessages = () => {
+  if (isListening) return;
+  isListening = true;
 
   navigator.serviceWorker.addEventListener(
     "message",
     (event: MessageEvent<ServiceWorkerResponse>) => {
-      if (event.data.type === "decryption-metadata-request") {
-        event.ports[0]?.postMessage(preparedFiles.get(event.data.fileId) ?? null);
+      switch (event.data.type) {
+        case "decryption-metadata-request":
+          event.ports[0]?.postMessage(preparedFiles.get(event.data.fileId) ?? null);
+          break;
+        case "download-progress":
+          handleDownloadProgress(event.data);
+          break;
       }
     },
   );
@@ -37,7 +43,7 @@ const getServiceWorker = async () => {
 
 export const prepareFileDecryption = async (id: number, metadata: FileMetadata) => {
   preparedFiles.set(id, metadata);
-  listenForMetadataRequests();
+  listenForServiceWorkerMessages();
 
   const sw = await getServiceWorker();
   return new Promise<void>((resolve, reject) => {
@@ -63,3 +69,10 @@ export const prepareFileDecryption = async (id: number, metadata: FileMetadata) 
 };
 
 export const getDecryptedFileUrl = (id: number) => `${DECRYPTED_FILE_URL_PREFIX}${id}`;
+
+// Lets the service worker download, decrypt, and save the file
+export const saveDecryptedFile = (id: number, filename: string) => {
+  const link = document.createElement("a");
+  link.href = `${getDecryptedFileUrl(id)}?download=${encodeURIComponent(filename)}`;
+  link.click();
+};

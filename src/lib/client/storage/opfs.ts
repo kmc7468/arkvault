@@ -48,6 +48,12 @@ export const writeFile = async (path: string, data: ArrayBuffer) => {
   }
 };
 
+// Changes are applied atomically when the stream is closed, and discarded if it is aborted
+export const createWritable = async (path: string) => {
+  const { fileHandle } = await getFileHandle(path);
+  return await fileHandle!.createWritable();
+};
+
 export const deleteFile = async (path: string) => {
   const { parentHandle, filename } = await getFileHandle(path, false);
   if (!parentHandle) return;

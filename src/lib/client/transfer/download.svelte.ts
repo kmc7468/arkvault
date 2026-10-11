@@ -1,34 +1,21 @@
-import axios from "axios";
-import { limitFunction } from "p-limit";
-import { decryptChunk, concatenateBuffers } from "#lib/shared/crypto/index.js";
-import { ENCRYPTED_CHUNK_SIZE } from "#lib/shared/format/index.js";
+import type { DownloadProgressMessage } from "#lib/shared/serviceWorker.js";
+import { createSpeedMeter } from "#lib/utils/speedMeter.js";
+
+// Files are downloaded and decrypted by the service worker, which reports the progress
 
 export interface FileDownloadState {
   id: number;
-  status:
-    | "download-pending"
-    | "downloading"
-    | "decryption-pending"
-    | "decrypting"
-    | "decrypted"
-    | "canceled"
-    | "error";
+  status: "downloading" | "completed" | "error";
   progress?: number;
   rate?: number;
-  estimated?: number;
-  result?: ArrayBuffer;
 }
 
-type LiveFileDownloadState = FileDownloadState & {
-  status: "download-pending" | "downloading" | "decryption-pending" | "decrypting";
-};
-
 let downloadingFiles: FileDownloadState[] = $state([]);
+const speedMeters = new WeakMap<FileDownloadState, ReturnType<typeof createSpeedMeter>>();
 
-export const isFileDownloading = (
-  status: FileDownloadState["status"],
-): status is LiveFileDownloadState["status"] =>
-  ["download-pending", "downloading", "decryption-pending", "decrypting"].includes(status);
+export const isFileDownloading = (status: FileDownloadState["status"]) => {
+  return status === "downloading";
+};
 
 export const getFileDownloadState = (fileId: number) => {
   return downloadingFiles.find((file) => file.id === fileId && isFileDownloading(file.status));
@@ -42,69 +29,27 @@ export const clearDownloadedFiles = () => {
   downloadingFiles = downloadingFiles.filter((file) => isFileDownloading(file.status));
 };
 
-const requestFileDownload = limitFunction(
-  async (state: FileDownloadState, id: number) => {
-    state.status = "downloading";
+export const handleDownloadProgress = ({
+  fileId,
+  status,
+  loaded,
+  total,
+}: DownloadProgressMessage) => {
+  let state = getFileDownloadState(fileId);
+  if (!state) {
+    if (status !== "downloading") return;
 
-    const res = await axios.get(`/api/file/${id}/download`, {
-      responseType: "arraybuffer",
-      onDownloadProgress: ({ progress, rate, estimated }) => {
-        state.progress = progress;
-        state.rate = rate;
-        state.estimated = estimated;
-      },
-    });
-    const fileEncrypted: ArrayBuffer = res.data;
-
-    state.status = "decryption-pending";
-    return fileEncrypted;
-  },
-  { concurrency: 1 },
-);
-
-const decryptFile = limitFunction(
-  async (
-    state: FileDownloadState,
-    fileEncrypted: ArrayBuffer,
-    encryptedChunkSize: number,
-    dataKey: CryptoKey,
-  ) => {
-    state.status = "decrypting";
-
-    const chunks: ArrayBuffer[] = [];
-    let offset = 0;
-
-    while (offset < fileEncrypted.byteLength) {
-      const nextOffset = Math.min(offset + encryptedChunkSize, fileEncrypted.byteLength);
-      chunks.push(await decryptChunk(fileEncrypted.slice(offset, nextOffset), dataKey));
-      offset = nextOffset;
-    }
-
-    const fileBuffer = concatenateBuffers(...chunks).buffer;
-    state.status = "decrypted";
-    state.result = fileBuffer;
-    return fileBuffer;
-  },
-  { concurrency: 4 },
-);
-
-export const downloadFile = async (id: number, dataKey: CryptoKey, isLegacy: boolean) => {
-  downloadingFiles.push({
-    id,
-    status: "download-pending",
-  });
-  const state = downloadingFiles.at(-1)!;
-
-  try {
-    const fileEncrypted = await requestFileDownload(state, id);
-    return await decryptFile(
-      state,
-      fileEncrypted,
-      isLegacy ? fileEncrypted.byteLength : ENCRYPTED_CHUNK_SIZE,
-      dataKey,
-    );
-  } catch (e) {
-    state.status = "error";
-    throw e;
+    downloadingFiles.push({ id: fileId, status });
+    state = downloadingFiles.at(-1)!;
+    speedMeters.set(state, createSpeedMeter());
   }
+
+  if (status === "canceled") {
+    downloadingFiles = downloadingFiles.filter((file) => file !== state);
+    return;
+  }
+
+  state.status = status;
+  state.progress = total > 0 ? loaded / total : 1;
+  state.rate = speedMeters.get(state)?.(loaded);
 };
