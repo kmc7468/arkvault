@@ -53,7 +53,9 @@ export const ensureCategoryExists = async (
 
 export const registerCategory = async (params: NewCategory) => {
   await db.transaction().execute(async (trx) => {
-    await lockActiveMekVersion(trx, params.userId, params.mekVersion);
+    if ((await lockActiveMekVersion(trx, params.userId)) !== params.mekVersion) {
+      throw new IntegrityError("Inactive MEK version");
+    }
 
     await ensureCategoryExists(trx, params.userId, params.parentId);
 

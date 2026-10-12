@@ -1,4 +1,4 @@
-import { ClientRepo, SessionRepo } from "#lib/server/db/index.ts";
+import { ClientRepo, SessionRepo, db } from "#lib/server/db/index.ts";
 import env from "#lib/server/config.ts";
 import { verifySessionId } from "#lib/server/crypto.ts";
 import { AppError, invalidSessionError } from "#lib/server/errors.ts";
@@ -39,7 +39,7 @@ export const authenticate = async (sessionIdSigned: string, ip: string, userAgen
     throw new AuthenticationError(400, "Invalid session id");
   }
 
-  const session = await SessionRepo.refreshSession(sessionId, ip, userAgent);
+  const session = await SessionRepo.refreshSession(db, sessionId, ip, userAgent);
   if (!session) {
     throw new AuthenticationError(401, "Invalid session id");
   }
@@ -59,7 +59,7 @@ const ensureUserClientState = async (
     throw new AppError("FORBIDDEN", "Forbidden");
   }
 
-  const userClient = await ClientRepo.getUserClient(userId, clientId);
+  const userClient = await ClientRepo.getUserClient(db, userId, clientId);
   if (!userClient) {
     throw invalidSessionError();
   } else if (userClient.state !== state) {

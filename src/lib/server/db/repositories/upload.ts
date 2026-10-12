@@ -40,10 +40,14 @@ export const createFileUploadSession = async (
   params: Omit<FileUploadSession, "type" | "bitmap" | "uploadedChunks">,
 ) => {
   await db.transaction().execute(async (trx) => {
-    await lockActiveMekVersion(trx, params.userId, params.mekVersion);
+    if ((await lockActiveMekVersion(trx, params.userId)) !== params.mekVersion) {
+      throw new IntegrityError("Inactive MEK version");
+    }
 
     if (params.hskVersion) {
-      await lockActiveHskVersion(trx, params.userId, params.hskVersion);
+      if ((await lockActiveHskVersion(trx, params.userId)) !== params.hskVersion) {
+        throw new IntegrityError("Inactive HSK version");
+      }
     }
 
     await ensureDirectoryExists(trx, params.userId, params.parentId);

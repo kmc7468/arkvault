@@ -1,16 +1,15 @@
-import pg from "pg";
 import env from "#lib/server/config.ts";
-import { IntegrityError } from "../error.ts";
-import db from "../kysely.ts";
+import type { Executor } from "../executor.ts";
 
 export const createSession = async (
+  executor: Executor,
   userId: number,
   sessionId: string,
   ip: string | null,
   agent: string | null,
 ) => {
   const now = new Date();
-  await db
+  await executor
     .insertInto("session")
     .values({
       id: sessionId,
@@ -23,13 +22,15 @@ export const createSession = async (
     .execute();
 };
 
+// Returns `null` if the session doesn't exist or has expired
 export const refreshSession = async (
+  executor: Executor,
   sessionId: string,
   ip: string | null,
   agent: string | null,
 ) => {
   const now = new Date();
-  const session = await db
+  const session = await executor
     .updateTable("session")
     .set({
       last_used_at: now,
@@ -43,93 +44,74 @@ export const refreshSession = async (
   return session ? { userId: session.user_id, clientId: session.client_id } : null;
 };
 
-export const upgradeSession = async (
+// Returns whether the session has been upgraded, which fails if it was already upgraded. Violates
+// `session_ak01` if the client has another session.
+export const setSessionClient = async (executor: Executor, sessionId: string, clientId: number) => {
+  const { numUpdatedRows } = await executor
+    .updateTable("session")
+    .set({ client_id: clientId })
+    .where("id", "=", sessionId)
+    .where("client_id", "is", null)
+    .executeTakeFirst();
+  return numUpdatedRows > 0n;
+};
+
+export const deleteSession = async (executor: Executor, sessionId: string) => {
+  await executor.deleteFrom("session").where("id", "=", sessionId).execute();
+};
+
+// Deletes the other sessions of the user, or only those of the client if given
+export const deleteOtherSessions = async (
+  executor: Executor,
   userId: number,
   sessionId: string,
-  clientId: number,
-  force: boolean,
+  clientId?: number,
 ) => {
-  try {
-    await db.transaction().execute(async (trx) => {
-      if (force) {
-        await trx
-          .deleteFrom("session")
-          .where("id", "!=", sessionId)
-          .where("user_id", "=", userId)
-          .where("client_id", "=", clientId)
-          .execute();
-      }
-      const res = await trx
-        .updateTable("session")
-        .set({ client_id: clientId })
-        .where("id", "=", sessionId)
-        .where("client_id", "is", null)
-        .executeTakeFirst();
-      if (res.numUpdatedRows === 0n) {
-        throw new IntegrityError("Session not found");
-      }
-    });
-  } catch (e) {
-    if (e instanceof pg.DatabaseError && e.code === "23505") {
-      throw new IntegrityError("Already logged in");
-    }
-    throw e;
-  }
-};
-
-export const deleteSession = async (sessionId: string) => {
-  await db.deleteFrom("session").where("id", "=", sessionId).execute();
-};
-
-export const deleteAllOtherSessions = async (userId: number, sessionId: string) => {
-  await db
+  await executor
     .deleteFrom("session")
     .where("id", "!=", sessionId)
     .where("user_id", "=", userId)
+    .$if(clientId !== undefined, (qb) => qb.where("client_id", "=", clientId!))
     .execute();
 };
 
-export const cleanupExpiredSessions = async () => {
-  await db
+export const deleteExpiredSessions = async (executor: Executor) => {
+  await executor
     .deleteFrom("session")
     .where("last_used_at", "<=", new Date(Date.now() - env.session.exp))
     .execute();
 };
 
-export const registerSessionUpgradeChallenge = async (
+// Violates a unique constraint if the session already has a challenge
+export const createSessionUpgradeChallenge = async (
+  executor: Executor,
   sessionId: string,
   clientId: number,
   answer: string,
   allowedIp: string,
   expiresAt: Date,
 ) => {
-  try {
-    const { id } = await db
-      .insertInto("session_upgrade_challenge")
-      .values({
-        session_id: sessionId,
-        client_id: clientId,
-        answer,
-        allowed_ip: allowedIp,
-        expires_at: expiresAt,
-      })
-      .returning("id")
-      .executeTakeFirstOrThrow();
-    return { id };
-  } catch (e) {
-    if (e instanceof pg.DatabaseError && e.code === "23505") {
-      throw new IntegrityError("Challenge already registered");
-    }
-    throw e;
-  }
+  const { id } = await executor
+    .insertInto("session_upgrade_challenge")
+    .values({
+      session_id: sessionId,
+      client_id: clientId,
+      answer,
+      allowed_ip: allowedIp,
+      expires_at: expiresAt,
+    })
+    .returning("id")
+    .executeTakeFirstOrThrow();
+  return { id };
 };
 
 export const consumeSessionUpgradeChallenge = async (
+  executor: Executor,
   challengeId: number,
   sessionId: string,
   ip: string,
 ) => {
-  const challenge = await db
+  const challenge = await executor
     .deleteFrom("session_upgrade_challenge")
     .where("id", "=", challengeId)
     .where("session_id", "=", sessionId)
@@ -140,6 +122,9 @@ export const consumeSessionUpgradeChallenge = async (
   return challenge ? { clientId: challenge.client_id, answer: challenge.answer } : null;
 };
 
-export const cleanupExpiredSessionUpgradeChallenges = async () => {
-  await db.deleteFrom("session_upgrade_challenge").where("expires_at", "<=", new Date()).execute();
+export const deleteExpiredSessionUpgradeChallenges = async (executor: Executor) => {
+  await executor
+    .deleteFrom("session_upgrade_challenge")
+    .where("expires_at", "<=", new Date())
+    .execute();
 };

@@ -49,7 +49,9 @@ export const ensureDirectoryExists = async (
 
 export const registerDirectory = async (params: Omit<Directory, "id" | "isFavorite">) => {
   await db.transaction().execute(async (trx) => {
-    await lockActiveMekVersion(trx, params.userId, params.mekVersion);
+    if ((await lockActiveMekVersion(trx, params.userId)) !== params.mekVersion) {
+      throw new IntegrityError("Inactive MEK version");
+    }
 
     await ensureDirectoryExists(trx, params.userId, params.parentId);
 

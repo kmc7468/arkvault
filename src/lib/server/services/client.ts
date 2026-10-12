@@ -1,4 +1,4 @@
-import { ClientRepo } from "#lib/server/db/index.ts";
+import { ClientRepo, db, isUniqueViolation, transaction } from "#lib/server/db/index.ts";
 import env from "#lib/server/config.ts";
 import { generateChallenge, verifyPubKey, verifySignature } from "#lib/server/crypto.ts";
 import { AppError } from "#lib/server/errors.ts";
@@ -22,7 +22,7 @@ export const verifyChallengeAnswer = async (
     throw new AppError("FORBIDDEN", "Invalid challenge answer");
   }
 
-  const client = await ClientRepo.getClient(challenge.clientId);
+  const client = await ClientRepo.getClient(db, challenge.clientId);
   if (!client) {
     throw new AppError("INTERNAL_SERVER_ERROR", "Invalid challenge answer");
   } else if (
@@ -33,28 +33,66 @@ export const verifyChallengeAnswer = async (
   return client;
 };
 
+const addExistingClient = async (userId: number, clientId: number) => {
+  try {
+    await ClientRepo.createUserClient(db, userId, clientId);
+  } catch (e) {
+    if (isUniqueViolation(e)) {
+      throw new AppError("CONFLICT", "User client already exists");
+    }
+    throw e;
+  }
+};
+
+const addNewClient = async (userId: number, encPubKey: string, sigPubKey: string) => {
+  if (encPubKey === sigPubKey) {
+    throw new AppError("BAD_REQUEST", "Same public keys");
+  } else if (!verifyPubKey(encPubKey) || !verifyPubKey(sigPubKey)) {
+    throw new AppError("BAD_REQUEST", "Invalid public key(s)");
+  }
+
+  const publicKeysRegistered = () => new AppError("CONFLICT", "Public key(s) already registered");
+  try {
+    // Serializable, as a key must not be used as either key of another client, which can't be
+    // ensured by unique constraints
+    return await transaction(
+      async (trx) => {
+        if (await ClientRepo.isAnyPublicKeyRegistered(trx, encPubKey, sigPubKey)) {
+          throw publicKeysRegistered();
+        }
+
+        const { id } = await ClientRepo.createClient(trx, encPubKey, sigPubKey);
+        await ClientRepo.createUserClient(trx, userId, id);
+        return id;
+      },
+      { isolationLevel: "serializable" },
+    );
+  } catch (e) {
+    if (isUniqueViolation(e)) {
+      throw publicKeysRegistered();
+    }
+    throw e;
+  }
+};
+
 export const registerClient = async (
   userId: number,
   ip: string,
   encPubKey: string,
   sigPubKey: string,
 ) => {
-  const getClientId = async () => {
-    const client = await ClientRepo.getClientByPubKeys(encPubKey, sigPubKey);
-    if (client) {
-      await ClientRepo.createUserClient(userId, client.id);
-      return client.id;
-    } else if (encPubKey === sigPubKey) {
-      throw new AppError("BAD_REQUEST", "Same public keys");
-    } else if (!verifyPubKey(encPubKey) || !verifyPubKey(sigPubKey)) {
-      throw new AppError("BAD_REQUEST", "Invalid public key(s)");
-    }
-    return (await ClientRepo.createClient(encPubKey, sigPubKey, userId)).id;
-  };
+  const client = await ClientRepo.getClientByPubKeys(db, encPubKey, sigPubKey);
+  let clientId;
+  if (client) {
+    await addExistingClient(userId, client.id);
+    clientId = client.id;
+  } else {
+    clientId = await addNewClient(userId, encPubKey, sigPubKey);
+  }
 
-  const clientId = await getClientId();
   return await createChallenge(encPubKey, (answer) =>
-    ClientRepo.registerUserClientChallenge(
+    ClientRepo.createUserClientChallenge(
+      db,
       userId,
       clientId,
       answer,
@@ -70,11 +108,14 @@ export const verifyClient = async (
   challengeId: number,
   answerSig: string,
 ) => {
-  const challenge = await ClientRepo.consumeUserClientChallenge(challengeId, userId, ip);
+  const challenge = await ClientRepo.consumeUserClientChallenge(db, challengeId, userId, ip);
   const client = await verifyChallengeAnswer(challenge, answerSig);
-  await ClientRepo.setUserClientStateToPending(userId, client.id);
+  await ClientRepo.transitionUserClientState(db, userId, client.id, {
+    from: "challenging",
+    to: "pending",
+  });
 };
 
 export const cleanupExpiredChallenges = async () => {
-  await ClientRepo.cleanupExpiredUserClientChallenges();
+  await ClientRepo.deleteExpiredUserClientChallenges(db);
 };

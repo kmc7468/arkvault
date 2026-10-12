@@ -1,17 +1,7 @@
-import pg from "pg";
-import { IntegrityError } from "../error.ts";
-import db from "../kysely.ts";
-import type { HskState } from "../schema/index.ts";
+import type { Executor, Tx } from "../executor.ts";
 
-interface Hsk {
-  userId: number;
-  version: number;
-  state: HskState;
-  mekVersion: number;
-  encHsk: string;
-}
-
-export const lockActiveHskVersion = async (trx: typeof db, userId: number, version: number) => {
+// Locks the active version until the transaction ends, so that it isn't retired in the meantime
+export const lockActiveHskVersion = async (trx: Tx, userId: number) => {
   const hsk = await trx
     .selectFrom("hmac_secret_key")
     .select("version")
@@ -20,63 +10,40 @@ export const lockActiveHskVersion = async (trx: typeof db, userId: number, versi
     .limit(1)
     .forUpdate()
     .executeTakeFirst();
-  if (hsk?.version !== version) {
-    throw new IntegrityError("Inactive HSK version");
-  }
+  return hsk?.version ?? null;
 };
 
-export const registerInitialHsk = async (
+// Violates a unique constraint if the user already has an HMAC secret key
+export const createInitialHsk = async (
+  executor: Executor,
   userId: number,
-  createdBy: number,
   mekVersion: number,
   encHsk: string,
 ) => {
-  await db.transaction().execute(async (trx) => {
-    try {
-      await trx
-        .insertInto("hmac_secret_key")
-        .values({
-          user_id: userId,
-          version: 1,
-          state: "active",
-          master_encryption_key_version: mekVersion,
-          encrypted_key: encHsk,
-        })
-        .execute();
-      await trx
-        .insertInto("hmac_secret_key_log")
-        .values({
-          user_id: userId,
-          hmac_secret_key_version: 1,
-          timestamp: new Date(),
-          action: "create",
-          action_by: createdBy,
-        })
-        .execute();
-    } catch (e) {
-      if (e instanceof pg.DatabaseError && e.code === "23505") {
-        throw new IntegrityError("HSK already registered");
-      }
-      throw e;
-    }
-  });
+  await executor
+    .insertInto("hmac_secret_key")
+    .values({
+      user_id: userId,
+      version: 1,
+      state: "active",
+      master_encryption_key_version: mekVersion,
+      encrypted_key: encHsk,
+    })
+    .execute();
+  return { version: 1 };
 };
 
-export const getAllValidHsks = async (userId: number) => {
-  const hsks = await db
+export const getAllValidHsks = async (executor: Executor, userId: number) => {
+  const hsks = await executor
     .selectFrom("hmac_secret_key")
-    .selectAll()
+    .select(["version", "state", "master_encryption_key_version", "encrypted_key"])
     .where("user_id", "=", userId)
     .where("state", "=", "active")
     .execute();
-  return hsks.map(
-    ({ user_id, version, state, master_encryption_key_version, encrypted_key }) =>
-      ({
-        userId: user_id,
-        version,
-        state: state as "active",
-        mekVersion: master_encryption_key_version,
-        encHsk: encrypted_key,
-      }) satisfies Hsk,
-  );
+  return hsks.map(({ version, state, master_encryption_key_version, encrypted_key }) => ({
+    version,
+    state,
+    mekVersion: master_encryption_key_version,
+    encHsk: encrypted_key,
+  }));
 };

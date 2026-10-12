@@ -1,3 +1,4 @@
+import { HskRepo, MekRepo, type Tx } from "#lib/server/db/index.ts";
 import { AppError } from "#lib/server/errors.ts";
 
 const DEK_VERSION_TOLERANCE = 60 * 1000; // 1 minute
@@ -6,5 +7,19 @@ const DEK_VERSION_TOLERANCE = 60 * 1000; // 1 minute
 export const ensureFreshDekVersion = (dekVersion: Date) => {
   if (Math.abs(dekVersion.getTime() - Date.now()) >= DEK_VERSION_TOLERANCE) {
     throw new AppError("BAD_REQUEST", "Invalid DEK version");
+  }
+};
+
+// New data must be encrypted with the active keys, which are locked until the transaction ends
+
+export const ensureActiveMekVersion = async (trx: Tx, userId: number, mekVersion: number) => {
+  if ((await MekRepo.lockActiveMekVersion(trx, userId)) !== mekVersion) {
+    throw new AppError("BAD_REQUEST", "Inactive MEK version");
+  }
+};
+
+export const ensureActiveHskVersion = async (trx: Tx, userId: number, hskVersion: number) => {
+  if ((await HskRepo.lockActiveHskVersion(trx, userId)) !== hskVersion) {
+    throw new AppError("BAD_REQUEST", "Inactive HSK version");
   }
 };
