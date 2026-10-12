@@ -1,9 +1,36 @@
+import { randomUUID } from "crypto";
+import { createReadStream } from "fs";
 import { open } from "fs/promises";
+import { tmpdir } from "os";
+import { join } from "path";
 import type { Readable } from "stream";
 import { AppError } from "#lib/server/errors.ts";
 import { ENCRYPTION_OVERHEAD, ENCRYPTED_CHUNK_SIZE } from "#lib/shared/format/index.ts";
+import { deleteFile } from "./files.ts";
 
 const invalidChunkSize = () => new AppError("BAD_REQUEST", "Invalid chunk size");
+
+// Receives and validates a chunk before it is copied into the upload's file. Temporary chunks
+// aren't placed in the persistent storage, and are removed even if receiving or applying fails.
+export const withTemporaryChunk = async <T>(
+  encChunkStream: Readable,
+  isLastChunk: boolean,
+  callback: (readChunk: () => Readable) => Promise<T>,
+) => {
+  const path = join(tmpdir(), `arkvault-chunk-${randomUUID()}`);
+  // Created exclusively with restricted permissions, as `writeChunkAtOffset` writes into existing
+  // files only
+  const file = await open(path, "wx", 0o600);
+  try {
+    await file.close();
+    await writeChunkAtOffset(path, encChunkStream, 1, isLastChunk);
+    // A new stream is created for each call, as the chunk may be read several times (e.g. when
+    // retrying a transaction)
+    return await callback(() => createReadStream(path));
+  } finally {
+    await deleteFile(path).catch(console.error);
+  }
+};
 
 export const writeChunkAtOffset = async (
   path: string,

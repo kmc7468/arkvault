@@ -15,6 +15,7 @@ import {
   deleteFile,
   hashFile,
   reserveFile,
+  withTemporaryChunk,
   writeChunkAtOffset,
 } from "#lib/server/storage/index.ts";
 import {
@@ -126,11 +127,22 @@ export const uploadChunk = async (
     throw new AppError("CONFLICT", "Chunk already uploaded");
   }
 
-  // Concurrent uploads of the same chunk may corrupt the file, which will be detected by the
-  // hash verification on completion
   const isLastChunk = chunkIndex === session.totalChunks;
-  await writeChunkAtOffset(session.path, encChunkStream, chunkIndex, isLastChunk);
-  await UploadRepo.markChunkAsUploaded(db, sessionId, chunkIndex);
+  await withTemporaryChunk(encChunkStream, isLastChunk, (readChunk) =>
+    transaction(async (trx) => {
+      // The chunk is received before locking the session, which is checked again so that late
+      // requests can't overwrite completed chunks or files even if they passed the checks above
+      const lockedSession = await UploadRepo.lockUploadSession(trx, sessionId, userId);
+      if (!lockedSession) {
+        throw new AppError("NOT_FOUND", "Invalid upload id");
+      } else if (isChunkUploaded(lockedSession.bitmap, chunkIndex)) {
+        throw new AppError("CONFLICT", "Chunk already uploaded");
+      }
+
+      await writeChunkAtOffset(lockedSession.path, readChunk(), chunkIndex, isLastChunk);
+      await UploadRepo.markChunkAsUploaded(trx, sessionId, chunkIndex);
+    }),
+  );
 };
 
 const getCompletedUploadSession = async <T extends "file" | "thumbnail">(
@@ -212,7 +224,8 @@ export const completeFileThumbnailUpload = async (userId: number, uploadId: stri
       throw new AppError("NOT_FOUND", "Invalid upload id");
     }
 
-    await ensureFileDekVersion(trx, userId, session.fileId, session.dekVersion);
+    // Locks the file exclusively, as there may be no thumbnail row to lock yet
+    await ensureFileDekVersion(trx, userId, session.fileId, session.dekVersion, "update");
     const oldPath = await MediaRepo.lockFileThumbnailPath(trx, session.fileId);
     await MediaRepo.upsertFileThumbnail(trx, session.fileId, session.path, null);
     await UploadRepo.deleteUploadSession(trx, uploadId);

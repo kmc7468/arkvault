@@ -30,6 +30,92 @@ const createCache = (options?: {
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("FilesystemCache", () => {
+  it("revalidates again after invalidation during a pending request, coalescing repeated calls", async () => {
+    const pending = Promise.withResolvers<Entry>();
+    const fetchFromServer = vi
+      .fn<(id: number) => Promise<Entry>>()
+      .mockImplementationOnce(() => pending.promise)
+      .mockResolvedValue({ id: 1, name: "new" });
+    const cache = new FilesystemCache<number, Entry>({
+      fetchFromIndexedDB: async () => undefined,
+      fetchFromServer,
+    });
+    const loading = cache.get(1);
+    await vi.waitFor(() => expect(fetchFromServer).toHaveBeenCalledTimes(1));
+
+    cache.invalidate(1);
+    cache.invalidate(1);
+    cache.invalidate(1);
+    pending.resolve({ id: 1, name: "old" });
+    const entry = await loading;
+    await vi.waitFor(() => expect(entry.name).toBe("new"));
+    expect(fetchFromServer).toHaveBeenCalledTimes(2);
+  });
+
+  it("revalidates only invalidated entries after a pending bulk request", async () => {
+    const pending = Promise.withResolvers<Map<number, Entry>>();
+    const fetchFromServer = vi.fn(async (id: number) => ({ id, name: "new" }));
+    const bulkFetchFromServer = vi.fn(() => pending.promise);
+    const cache = new FilesystemCache<number, Entry>({
+      fetchFromIndexedDB: async () => undefined,
+      fetchFromServer,
+      bulkFetchFromIndexedDB: async () => new Map(),
+      bulkFetchFromServer,
+    });
+    const loading = cache.bulkGet(new Set([1, 2]));
+    await vi.waitFor(() => expect(bulkFetchFromServer).toHaveBeenCalledTimes(1));
+    cache.invalidate(1);
+    pending.resolve(new Map([1, 2].map((id) => [id, { id, name: "old" }])));
+
+    const entries = await loading;
+    await vi.waitFor(() => expect(entries.get(1)?.name).toBe("new"));
+    expect(entries.get(2)?.name).toBe("old");
+    expect(fetchFromServer).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves invalidation when a pending request fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const pending = Promise.withResolvers<Entry>();
+    const fetchFromServer = vi
+      .fn<() => Promise<Entry>>()
+      .mockImplementationOnce(() => pending.promise)
+      .mockResolvedValue({ id: 1, name: "new" });
+    const cache = new FilesystemCache<number, Entry>({
+      fetchFromIndexedDB: async () => ({ id: 1, name: "local" }),
+      fetchFromServer,
+    });
+    const entry = await cache.get(1);
+    await vi.waitFor(() => expect(fetchFromServer).toHaveBeenCalledTimes(1));
+    cache.invalidate(1);
+    pending.reject(new Error("Failed"));
+
+    await vi.waitFor(() => expect(entry.name).toBe("new"));
+    expect(fetchFromServer).toHaveBeenCalledTimes(2);
+  });
+
+  it("doesn't revalidate evicted entries after a pending bulk request", async () => {
+    const pending = Promise.withResolvers<Map<number, Entry>>();
+    const fetchFromServer = vi.fn(async (id: number) => ({ id, name: "new" }));
+    const bulkFetchFromServer = vi.fn(() => pending.promise);
+    const cache = new FilesystemCache<number, Entry>({
+      fetchFromIndexedDB: async () => undefined,
+      fetchFromServer,
+      bulkFetchFromIndexedDB: async () => new Map(),
+      bulkFetchFromServer,
+    });
+    const loading = cache.bulkGet(new Set([1]));
+    await vi.waitFor(() => expect(bulkFetchFromServer).toHaveBeenCalledTimes(1));
+    cache.invalidate(1);
+    cache.evict(1);
+    const replacement = await cache.get(1);
+    pending.resolve(new Map([[1, { id: 1, name: "old" }]]));
+    await loading;
+    await flush();
+
+    expect(replacement.name).toBe("new");
+    expect(fetchFromServer).toHaveBeenCalledTimes(1);
+  });
+
   it("resolves with the local value first and updates it in place", async () => {
     const { cache } = createCache({ local: { 1: "local" }, server: { 1: "server" } });
 

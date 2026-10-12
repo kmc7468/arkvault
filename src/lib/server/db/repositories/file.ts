@@ -99,17 +99,21 @@ export const lockFile = async (trx: Tx, userId: number, fileId: number) => {
   return !!file;
 };
 
-// Locks the file in share mode so that its DEK isn't changed until the transaction ends. Returns
-// its DEK version if it exists.
-export const lockFileDekVersion = async (trx: Tx, userId: number, fileId: number) => {
-  const file = await trx
+// Locks the file in the given mode so that its DEK isn't changed until the transaction ends.
+// Returns its DEK version if it exists.
+export const lockFileDekVersion = async (
+  trx: Tx,
+  userId: number,
+  fileId: number,
+  mode: "share" | "update" = "share",
+) => {
+  const query = trx
     .selectFrom("file")
     .select("data_encryption_key_version")
     .where("id", "=", fileId)
     .where("user_id", "=", userId)
-    .limit(1)
-    .forShare()
-    .executeTakeFirst();
+    .limit(1);
+  const file = await (mode === "update" ? query.forUpdate() : query.forShare()).executeTakeFirst();
   return file?.data_encryption_key_version ?? null;
 };
 

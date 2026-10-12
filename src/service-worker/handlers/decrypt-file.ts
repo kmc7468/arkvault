@@ -168,10 +168,10 @@ async function* fetchSegment(
       chunkCount: segment.lastChunkIndex - segment.firstChunkIndex + 1,
       dataKey: metadata.dataKey,
       isLegacy: metadata.isLegacy,
-      // Chunks are written atomically, so the worker being terminated doesn't corrupt the cache
-      onChunk: (chunkIndex, chunk) => {
-        storeCachedChunk(request.fileId, chunkIndex, chunk, layout).catch(console.error);
-      },
+      // The atomic write is awaited so that slow storage doesn't queue up the whole plaintext,
+      // and its failure doesn't fail the download
+      onChunk: (chunkIndex, chunk) =>
+        storeCachedChunk(request.fileId, chunkIndex, chunk, layout).catch(console.error),
     }),
   );
 }

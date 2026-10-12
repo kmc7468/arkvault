@@ -11,6 +11,7 @@ interface FilesystemCacheOptions<K, V> {
 interface Entry<V> {
   value?: V;
   promise?: Promise<V>;
+  isInvalidated: boolean;
 }
 
 // Caches filesystem entries as reactive objects which are updated in place, so that every view
@@ -24,7 +25,7 @@ export class FilesystemCache<K, V extends object> {
   private getOrCreateEntry(key: K) {
     let entry = this.map.get(key);
     if (!entry) {
-      const newEntry: Entry<V> = $state({});
+      const newEntry: Entry<V> = $state({ isInvalidated: false });
       entry = newEntry;
       this.map.set(key, entry);
     }
@@ -40,6 +41,15 @@ export class FilesystemCache<K, V extends object> {
     return entry.value!;
   }
 
+  private finish(key: K, entry: Entry<V>) {
+    entry.promise = undefined;
+    // Mutations may invalidate the entry while it is being revalidated, in which case it is queried
+    // again unless it was evicted or replaced in the meantime
+    if (entry.isInvalidated && this.map.get(key) === entry) {
+      void Promise.resolve(this.get(key)).catch(() => {});
+    }
+  }
+
   // Returns the cached value synchronously if available, and revalidates it in the background
   get(key: K, options?: { fetchFromServer?: (cachedValue: V | undefined) => Promise<V> }) {
     return untrack(() => {
@@ -49,6 +59,7 @@ export class FilesystemCache<K, V extends object> {
       const { promise, resolve, reject } = Promise.withResolvers<V>();
       promise.catch(() => {}); // Rejections are handled by callers waiting for the promise
       entry.promise = promise;
+      entry.isInvalidated = false;
 
       (async () => {
         let cachedValue = entry.value && ($state.snapshot(entry.value) as V);
@@ -67,9 +78,7 @@ export class FilesystemCache<K, V extends object> {
           console.error(e);
           reject(e);
         })
-        .finally(() => {
-          entry.promise = undefined;
-        });
+        .finally(() => this.finish(key, entry));
 
       return entry.value ?? promise;
     });
@@ -77,20 +86,23 @@ export class FilesystemCache<K, V extends object> {
 
   bulkGet(keys: Set<K>) {
     return untrack(() => {
+      const entries = new Map<K, Entry<V>>();
       const pending = new Map<K, PromiseWithResolvers<V>>();
       for (const key of keys) {
         const entry = this.getOrCreateEntry(key);
+        entries.set(key, entry);
         if (entry.promise) continue;
 
         const resolvers = Promise.withResolvers<V>();
         resolvers.promise.catch(() => {});
         entry.promise = resolvers.promise;
+        entry.isInvalidated = false;
         pending.set(key, resolvers);
       }
 
       const settleAll = (values: Map<K, V>) => {
         values.forEach((value, key) => {
-          pending.get(key)?.resolve(this.settle(this.map.get(key)!, value));
+          pending.get(key)?.resolve(this.settle(entries.get(key)!, value));
         });
       };
 
@@ -98,12 +110,12 @@ export class FilesystemCache<K, V extends object> {
         const pendingKeys = [...pending.keys()];
         settleAll(
           await this.options.bulkFetchFromIndexedDB!(
-            new Set(pendingKeys.filter((key) => !this.map.get(key)!.value)),
+            new Set(pendingKeys.filter((key) => !entries.get(key)!.value)),
           ),
         );
         settleAll(
           await this.options.bulkFetchFromServer!(
-            new Map(pendingKeys.map((key) => [key, { cachedValue: this.map.get(key)!.value }])),
+            new Map(pendingKeys.map((key) => [key, { cachedValue: entries.get(key)!.value }])),
           ),
         );
       })()
@@ -112,14 +124,11 @@ export class FilesystemCache<K, V extends object> {
           pending.forEach(({ reject }) => reject(e));
         })
         .finally(() => {
-          pending.forEach((_, key) => {
-            this.map.get(key)!.promise = undefined;
-          });
+          pending.forEach((_, key) => this.finish(key, entries.get(key)!));
         });
 
-      const makeResult = () => new Map([...keys].map((key) => [key, this.map.get(key)!.value!]));
-      const waiting = [...keys]
-        .map((key) => this.map.get(key)!)
+      const makeResult = () => new Map([...entries].map(([key, entry]) => [key, entry.value!]));
+      const waiting = [...entries.values()]
         .filter((entry) => !entry.value)
         .map((entry) => entry.promise!);
       return waiting.length > 0 ? Promise.all(waiting).then(makeResult) : makeResult();
@@ -128,7 +137,9 @@ export class FilesystemCache<K, V extends object> {
 
   // Revalidates the entry if it has been loaded
   invalidate(key: K) {
-    if (this.map.has(key)) {
+    const entry = this.map.get(key);
+    if (entry) {
+      entry.isInvalidated = true;
       void Promise.resolve(this.get(key)).catch(() => {});
     }
   }

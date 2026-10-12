@@ -26,8 +26,9 @@ export const ensureFileDekVersion = async (
   userId: number,
   fileId: number,
   dekVersion: Date,
+  mode: "share" | "update" = "share",
 ) => {
-  const currentDekVersion = await FileRepo.lockFileDekVersion(trx, userId, fileId);
+  const currentDekVersion = await FileRepo.lockFileDekVersion(trx, userId, fileId, mode);
   if (!currentDekVersion) {
     throw new AppError("NOT_FOUND", "File not found");
   } else if (currentDekVersion.getTime() !== dekVersion.getTime()) {
