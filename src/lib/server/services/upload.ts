@@ -1,5 +1,14 @@
 import type { Readable } from "stream";
-import { db, FileRepo, MediaRepo, UploadRepo } from "#lib/server/db/index.ts";
+import {
+  DirectoryRepo,
+  FileDeletionRepo,
+  FileRepo,
+  LogRepo,
+  MediaRepo,
+  UploadRepo,
+  db,
+  transaction,
+} from "#lib/server/db/index.ts";
 import type { Ciphertext } from "#lib/server/db/schema/index.ts";
 import { AppError } from "#lib/server/errors.ts";
 import {
@@ -8,7 +17,12 @@ import {
   reserveFile,
   writeChunkAtOffset,
 } from "#lib/server/storage/index.ts";
-import { ensureFreshDekVersion } from "./common.ts";
+import {
+  ensureActiveHskVersion,
+  ensureActiveMekVersion,
+  ensureFileDekVersion,
+  ensureFreshDekVersion,
+} from "./common.ts";
 import { schedulePendingFileDeletions } from "./file-deletion.ts";
 
 const UPLOAD_EXPIRES = 24 * 3600 * 1000; // 24 hours
@@ -51,11 +65,24 @@ export const startFileUpload = async (params: {
 
   return await withReservedFile("library", params.userId, async (path) => {
     const id = crypto.randomUUID();
-    await UploadRepo.createFileUploadSession({
-      ...params,
-      id,
-      path,
-      expiresAt: new Date(Date.now() + UPLOAD_EXPIRES),
+    await transaction(async (trx) => {
+      await ensureActiveMekVersion(trx, params.userId, params.mekVersion);
+      if (params.hskVersion) {
+        await ensureActiveHskVersion(trx, params.userId, params.hskVersion);
+      }
+      if (
+        params.parentId !== "root" &&
+        !(await DirectoryRepo.lockDirectory(trx, params.userId, params.parentId))
+      ) {
+        throw new AppError("NOT_FOUND", "Directory not found");
+      }
+
+      await UploadRepo.createFileUploadSession(trx, {
+        ...params,
+        id,
+        path,
+        expiresAt: new Date(Date.now() + UPLOAD_EXPIRES),
+      });
     });
     return { uploadId: id };
   });
@@ -68,15 +95,17 @@ export const startFileThumbnailUpload = async (
 ) => {
   return await withReservedFile("thumbnails", userId, async (path) => {
     const id = crypto.randomUUID();
-    await UploadRepo.createThumbnailUploadSession({
-      id,
-      type: "thumbnail",
-      userId,
-      path,
-      totalChunks: THUMBNAIL_CHUNKS,
-      expiresAt: new Date(Date.now() + UPLOAD_EXPIRES),
-      fileId,
-      dekVersion,
+    await transaction(async (trx) => {
+      await ensureFileDekVersion(trx, userId, fileId, dekVersion);
+      await UploadRepo.createThumbnailUploadSession(trx, {
+        id,
+        userId,
+        path,
+        totalChunks: THUMBNAIL_CHUNKS,
+        expiresAt: new Date(Date.now() + UPLOAD_EXPIRES),
+        fileId,
+        dekVersion,
+      });
     });
     return { uploadId: id };
   });
@@ -88,7 +117,7 @@ export const uploadChunk = async (
   chunkIndex: number,
   encChunkStream: Readable,
 ) => {
-  const session = await UploadRepo.getUploadSession(sessionId, userId);
+  const session = await UploadRepo.getUploadSession(db, sessionId, userId);
   if (!session) {
     throw new AppError("NOT_FOUND", "Invalid upload id");
   } else if (chunkIndex > session.totalChunks) {
@@ -101,7 +130,7 @@ export const uploadChunk = async (
   // hash verification on completion
   const isLastChunk = chunkIndex === session.totalChunks;
   await writeChunkAtOffset(session.path, encChunkStream, chunkIndex, isLastChunk);
-  await UploadRepo.markChunkAsUploaded(sessionId, chunkIndex);
+  await UploadRepo.markChunkAsUploaded(db, sessionId, chunkIndex);
 };
 
 const getCompletedUploadSession = async <T extends "file" | "thumbnail">(
@@ -109,7 +138,7 @@ const getCompletedUploadSession = async <T extends "file" | "thumbnail">(
   uploadId: string,
   type: T,
 ) => {
-  const session = await UploadRepo.getUploadSession(uploadId, userId);
+  const session = await UploadRepo.getUploadSession(db, uploadId, userId);
   if (session?.type !== type) {
     throw new AppError("NOT_FOUND", "Invalid upload id");
   } else if (session.uploadedChunks < session.totalChunks) {
@@ -131,19 +160,24 @@ export const completeFileUpload = async (
 
   const hash = await hashFile(session.path);
   if (hash !== encContentHash) {
-    await UploadRepo.discardUploadSession(uploadId);
+    await transaction(async (trx) => {
+      await FileDeletionRepo.enqueueFileDeletions(
+        trx,
+        await UploadRepo.deleteUploadSession(trx, uploadId),
+      );
+    });
     schedulePendingFileDeletions();
     throw new AppError("CONFLICT", "Uploaded file corrupted");
   }
 
-  return await db.transaction().execute(async (trx) => {
+  return await transaction(async (trx) => {
     // Locking the session ensures that it is completed only once
     const lockedSession = await UploadRepo.lockUploadSession(trx, uploadId, userId);
-    if (lockedSession.type !== "file") {
+    if (lockedSession?.type !== "file") {
       throw new AppError("NOT_FOUND", "Invalid upload id");
     }
 
-    const { id: fileId } = await FileRepo.registerFile(trx, {
+    const { id: fileId } = await FileRepo.createFile(trx, {
       parentId: lockedSession.parentId,
       userId,
       path: lockedSession.path,
@@ -159,6 +193,11 @@ export const completeFileUpload = async (
       encCreatedAt: lockedSession.encCreatedAt,
       encLastModifiedAt: lockedSession.encLastModifiedAt,
     });
+    await LogRepo.appendFileLog(trx, {
+      file_id: fileId,
+      action: "create",
+      new_name: lockedSession.encName,
+    });
     await UploadRepo.deleteUploadSession(trx, uploadId);
     return { fileId };
   });
@@ -167,26 +206,27 @@ export const completeFileUpload = async (
 export const completeFileThumbnailUpload = async (userId: number, uploadId: string) => {
   await getCompletedUploadSession(userId, uploadId, "thumbnail");
 
-  await db.transaction().execute(async (trx) => {
+  await transaction(async (trx) => {
     const session = await UploadRepo.lockUploadSession(trx, uploadId, userId);
-    if (session.type !== "thumbnail") {
+    if (session?.type !== "thumbnail") {
       throw new AppError("NOT_FOUND", "Invalid upload id");
     }
 
-    await MediaRepo.updateFileThumbnail(
-      trx,
-      userId,
-      session.fileId,
-      session.dekVersion,
-      session.path,
-      null,
-    );
+    await ensureFileDekVersion(trx, userId, session.fileId, session.dekVersion);
+    const oldPath = await MediaRepo.lockFileThumbnailPath(trx, session.fileId);
+    await MediaRepo.upsertFileThumbnail(trx, session.fileId, session.path, null);
     await UploadRepo.deleteUploadSession(trx, uploadId);
+    await FileDeletionRepo.enqueueFileDeletions(trx, [oldPath]);
   });
   schedulePendingFileDeletions();
 };
 
 export const cleanupExpiredUploadSessions = async () => {
-  await UploadRepo.cleanupExpiredUploadSessions();
+  await transaction(async (trx) => {
+    await FileDeletionRepo.enqueueFileDeletions(
+      trx,
+      await UploadRepo.deleteExpiredUploadSessions(trx),
+    );
+  });
   schedulePendingFileDeletions();
 };

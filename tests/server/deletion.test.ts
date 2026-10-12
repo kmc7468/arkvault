@@ -1,6 +1,6 @@
 import { access } from "fs/promises";
 import { beforeEach, describe, expect, it } from "vitest";
-import { UploadRepo } from "#lib/server/db/index.ts";
+import { UploadRepo, db } from "#lib/server/db/index.ts";
 import { processPendingFileDeletions } from "#lib/server/services/file-deletion.ts";
 import { DirectoryService, FileService } from "#lib/server/services/index.ts";
 import {
@@ -58,7 +58,7 @@ describe("file deletion", () => {
       await createFile(userId, grandchildId, paths[1]!),
     ];
     const otherFileId = await createFile(userId, otherId, paths[2]!);
-    await UploadRepo.createFileUploadSession({
+    await UploadRepo.createFileUploadSession(db, {
       ...newEntryParams(userId, childId),
       id: crypto.randomUUID(),
       path: paths[3]!,

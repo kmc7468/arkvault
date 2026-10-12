@@ -1,4 +1,4 @@
-import { DirectoryRepo, FileRepo } from "#lib/server/db/index.ts";
+import { DirectoryRepo, FileRepo, db } from "#lib/server/db/index.ts";
 
 export const search = async (
   userId: number,
@@ -15,17 +15,12 @@ export const search = async (
 
   const [directories, files] = await Promise.all([
     !hasCategoryFilter
-      ? DirectoryRepo.searchDirectories(userId, {
-          parentId: filters.ancestorId,
+      ? DirectoryRepo.searchDirectories(db, userId, {
+          ancestorId: filters.ancestorId,
           inFavorites: filters.inFavorites,
         })
       : [],
-    FileRepo.searchFiles(userId, {
-      parentId: filters.ancestorId,
-      inFavorites: filters.inFavorites,
-      includeCategoryIds: filters.includeCategoryIds,
-      excludeCategoryIds: filters.excludeCategoryIds,
-    }),
+    FileRepo.searchFiles(db, userId, filters),
   ]);
   return { directories, files };
 };

@@ -1,11 +1,14 @@
 import { sql, type Selectable } from "kysely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import pg from "pg";
-import { IntegrityError } from "../error.ts";
-import db from "../kysely.ts";
+import type { Executor, Tx } from "../executor.ts";
+import {
+  decodeParentId,
+  encodeParentId,
+  parentIdOperator,
+  withDirectoryTrees,
+} from "../queries.ts";
 import type { Ciphertext, FileTable } from "../schema/index.ts";
 import { toCategory } from "./category.ts";
-import { enqueueFileDeletions } from "./file-deletion.ts";
 
 export interface File {
   id: number;
@@ -26,9 +29,11 @@ export interface File {
   isFavorite: boolean;
 }
 
+export type NewFile = Omit<File, "id" | "isFavorite">;
+
 const toFile = (row: Selectable<FileTable>): File => ({
   id: row.id,
-  parentId: row.parent_id ?? "root",
+  parentId: decodeParentId(row.parent_id),
   userId: row.user_id,
   path: row.path,
   mekVersion: row.master_encryption_key_version,
@@ -45,15 +50,11 @@ const toFile = (row: Selectable<FileTable>): File => ({
   isFavorite: row.is_favorite,
 });
 
-export const registerFile = async (trx: typeof db, params: Omit<File, "id" | "isFavorite">) => {
-  if ((params.hskVersion && !params.contentHmac) || (!params.hskVersion && params.contentHmac)) {
-    throw new Error("Invalid arguments");
-  }
-
-  const { fileId } = await trx
+export const createFile = async (executor: Executor, params: NewFile) => {
+  const { id } = await executor
     .insertInto("file")
     .values({
-      parent_id: params.parentId !== "root" ? params.parentId : null,
+      parent_id: encodeParentId(params.parentId),
       user_id: params.userId,
       path: params.path,
       master_encryption_key_version: params.mekVersion,
@@ -68,46 +69,101 @@ export const registerFile = async (trx: typeof db, params: Omit<File, "id" | "is
       encrypted_created_at: params.encCreatedAt,
       encrypted_last_modified_at: params.encLastModifiedAt,
     })
-    .returning("id as fileId")
+    .returning("id")
     .executeTakeFirstOrThrow();
-  await trx
-    .insertInto("file_log")
-    .values({
-      file_id: fileId,
-      timestamp: new Date(),
-      action: "create",
-      new_name: params.encName,
-    })
-    .execute();
-  return { id: fileId };
+  return { id };
 };
 
-export const getAllFilesByParent = async (userId: number, parentId: DirectoryId) => {
-  const files = await db
+export const getFile = async (executor: Executor, userId: number, fileId: number) => {
+  const file = await executor
+    .selectFrom("file")
+    .selectAll()
+    .where("id", "=", fileId)
+    .where("user_id", "=", userId)
+    .limit(1)
+    .executeTakeFirst();
+  return file ? toFile(file) : null;
+};
+
+// Locks the file in share mode so that it isn't deleted until the transaction ends. Returns
+// whether it exists.
+export const lockFile = async (trx: Tx, userId: number, fileId: number) => {
+  const file = await trx
+    .selectFrom("file")
+    .select("id")
+    .where("id", "=", fileId)
+    .where("user_id", "=", userId)
+    .limit(1)
+    .forShare()
+    .executeTakeFirst();
+  return !!file;
+};
+
+// Locks the file in share mode so that its DEK isn't changed until the transaction ends. Returns
+// its DEK version if it exists.
+export const lockFileDekVersion = async (trx: Tx, userId: number, fileId: number) => {
+  const file = await trx
+    .selectFrom("file")
+    .select("data_encryption_key_version")
+    .where("id", "=", fileId)
+    .where("user_id", "=", userId)
+    .limit(1)
+    .forShare()
+    .executeTakeFirst();
+  return file?.data_encryption_key_version ?? null;
+};
+
+// Locks the files to delete them, and selects the paths of their contents and thumbnails
+const selectFilesForDeletion = (trx: Tx) =>
+  trx
+    .selectFrom("file")
+    .leftJoin("thumbnail", "file.id", "thumbnail.file_id")
+    .select(["file.id", "file.path", "thumbnail.path as thumbnailPath"])
+    .forUpdate("file");
+
+export const lockFileForDeletion = async (trx: Tx, userId: number, fileId: number) => {
+  return await selectFilesForDeletion(trx)
+    .where("file.id", "=", fileId)
+    .where("file.user_id", "=", userId)
+    .executeTakeFirst();
+};
+
+export const lockFilesInDirectoriesForDeletion = async (trx: Tx, directoryIds: number[]) => {
+  if (directoryIds.length === 0) return [];
+  return await selectFilesForDeletion(trx).where("file.parent_id", "in", directoryIds).execute();
+};
+
+export const getAllFilesByParent = async (
+  executor: Executor,
+  userId: number,
+  parentId: DirectoryId,
+) => {
+  const files = await executor
     .selectFrom("file")
     .selectAll()
     .where("user_id", "=", userId)
-    .$if(parentId === "root", (qb) => qb.where("parent_id", "is", null))
-    .$if(parentId !== "root", (qb) => qb.where("parent_id", "=", parentId as number))
+    .where("parent_id", parentIdOperator(parentId), encodeParentId(parentId))
     .execute();
   return files.map(toFile);
 };
 
+// Files of subcategories are included if `recurse`, which are marked as recursive
 export const getAllFilesByCategory = async (
+  executor: Executor,
   userId: number,
   categoryId: number,
   recurse: boolean,
 ) => {
-  const files = await db
-    .withRecursive("category_tree", (db) =>
-      db
+  const files = await executor
+    .withRecursive("category_tree", (qc) =>
+      qc
         .selectFrom("category")
         .select(["id", sql<number>`0`.as("depth")])
         .where("id", "=", categoryId)
         .where("user_id", "=", userId)
         .$if(recurse, (qb) =>
-          qb.unionAll((db) =>
-            db
+          qb.unionAll((qc) =>
+            qc
               .selectFrom("category")
               .innerJoin("category_tree", "category.parent_id", "category_tree.id")
               .select(["category.id", sql<number>`depth + 1`.as("depth")]),
@@ -129,13 +185,17 @@ export const getAllFilesByCategory = async (
   }));
 };
 
-export const getAllFileIds = async (userId: number) => {
-  const files = await db.selectFrom("file").select("id").where("user_id", "=", userId).execute();
+export const getAllFileIds = async (executor: Executor, userId: number) => {
+  const files = await executor
+    .selectFrom("file")
+    .select("id")
+    .where("user_id", "=", userId)
+    .execute();
   return files.map(({ id }) => id);
 };
 
-export const getFilesWithoutThumbnail = async (userId: number, limit: number = 100) => {
-  const files = await db
+export const getFilesWithoutThumbnail = async (executor: Executor, userId: number, limit = 100) => {
+  const files = await executor
     .selectFrom("file")
     .selectAll()
     .where("user_id", "=", userId)
@@ -159,11 +219,12 @@ export const getFilesWithoutThumbnail = async (userId: number, limit: number = 1
 };
 
 export const getAllFileIdsByContentHmac = async (
+  executor: Executor,
   userId: number,
   hskVersion: number,
   contentHmac: string,
 ) => {
-  const files = await db
+  const files = await executor
     .selectFrom("file")
     .select("id")
     .where("user_id", "=", userId)
@@ -173,19 +234,12 @@ export const getAllFileIdsByContentHmac = async (
   return files.map(({ id }) => id);
 };
 
-export const getFile = async (userId: number, fileId: number) => {
-  const file = await db
-    .selectFrom("file")
-    .selectAll()
-    .where("id", "=", fileId)
-    .where("user_id", "=", userId)
-    .limit(1)
-    .executeTakeFirst();
-  return file ? toFile(file) : null;
-};
-
-export const getFilesWithCategories = async (userId: number, fileIds: number[]) => {
-  const files = await db
+export const getFilesWithCategories = async (
+  executor: Executor,
+  userId: number,
+  fileIds: number[],
+) => {
+  const files = await executor
     .selectFrom("file")
     .selectAll()
     .select((eb) =>
@@ -206,8 +260,8 @@ export const getFilesWithCategories = async (userId: number, fileIds: number[]) 
   }));
 };
 
-export const getAllFavoriteFiles = async (userId: number) => {
-  const files = await db
+export const getAllFavoriteFiles = async (executor: Executor, userId: number) => {
+  const files = await executor
     .selectFrom("file")
     .selectAll()
     .where("user_id", "=", userId)
@@ -217,64 +271,40 @@ export const getAllFavoriteFiles = async (userId: number) => {
 };
 
 export const searchFiles = async (
+  executor: Executor,
   userId: number,
   filters: {
-    parentId: DirectoryId;
+    ancestorId: DirectoryId;
     inFavorites: boolean;
     includeCategoryIds: number[];
     excludeCategoryIds: number[];
   },
 ) => {
-  const baseQuery = db
-    .withRecursive("directory_tree", (db) =>
-      db
-        .selectFrom("directory")
-        .select("id")
-        .where("user_id", "=", userId)
-        .$if(filters.parentId === "root", (qb) => qb.where((eb) => eb.lit(false))) // directory_tree will be empty if parentId is "root"
-        .$if(filters.parentId !== "root", (qb) => qb.where("id", "=", filters.parentId as number))
-        .unionAll(
-          db
-            .selectFrom("directory as d")
-            .innerJoin("directory_tree as dt", "d.parent_id", "dt.id")
-            .select("d.id"),
-        ),
-    )
-    .withRecursive("favorite_directory_tree", (db) =>
-      db
-        .selectFrom("directory")
-        .select("id")
-        .where("user_id", "=", userId)
-        .$if(!filters.inFavorites, (qb) => qb.where((eb) => eb.lit(false))) // favorite_directory_tree will be empty if inFavorites is false
-        .$if(filters.inFavorites, (qb) => qb.where("is_favorite", "=", true))
-        .unionAll((db) =>
-          db
-            .selectFrom("directory as d")
-            .innerJoin("favorite_directory_tree as dt", "d.parent_id", "dt.id")
-            .select("d.id"),
-        ),
-    )
-    .withRecursive("include_category_tree", (db) =>
-      db
+  const baseQuery = withDirectoryTrees(executor, userId, {
+    rootId: filters.ancestorId,
+    inFavorites: filters.inFavorites,
+  })
+    .withRecursive("include_category_tree", (qc) =>
+      qc
         .selectFrom("category")
         .select(["id", "id as root_id"])
         .where("id", "=", (eb) => eb.fn.any(eb.val(filters.includeCategoryIds)))
         .where("user_id", "=", userId)
-        .unionAll(
-          db
+        .unionAll((qc) =>
+          qc
             .selectFrom("category as c")
             .innerJoin("include_category_tree as ct", "c.parent_id", "ct.id")
             .select(["c.id", "ct.root_id"]),
         ),
     )
-    .withRecursive("exclude_category_tree", (db) =>
-      db
+    .withRecursive("exclude_category_tree", (qc) =>
+      qc
         .selectFrom("category")
         .select("id")
         .where("id", "=", (eb) => eb.fn.any(eb.val(filters.excludeCategoryIds)))
         .where("user_id", "=", userId)
-        .unionAll((db) =>
-          db
+        .unionAll((qc) =>
+          qc
             .selectFrom("category as c")
             .innerJoin("exclude_category_tree as ct", "c.parent_id", "ct.id")
             .select("c.id"),
@@ -283,7 +313,7 @@ export const searchFiles = async (
     .selectFrom("file")
     .selectAll("file")
     .where("user_id", "=", userId)
-    .$if(filters.parentId !== "root", (qb) =>
+    .$if(filters.ancestorId !== "root", (qb) =>
       qb.where((eb) =>
         eb.exists(eb.selectFrom("directory_tree as dt").whereRef("dt.id", "=", "file.parent_id")),
       ),
@@ -310,6 +340,7 @@ export const searchFiles = async (
         ),
       ),
     );
+  // Files must belong to all the included categories (or their subcategories)
   const files =
     filters.includeCategoryIds.length > 0
       ? await baseQuery
@@ -330,160 +361,77 @@ export const searchFiles = async (
   return files.map(toFile);
 };
 
+// Returns whether the name has been changed, which fails if the file doesn't exist or its DEK
+// version differs
 export const setFileEncName = async (
+  executor: Executor,
   userId: number,
   fileId: number,
   dekVersion: Date,
   encName: Ciphertext,
 ) => {
-  await db.transaction().execute(async (trx) => {
-    const file = await trx
-      .selectFrom("file")
-      .select("data_encryption_key_version")
-      .where("id", "=", fileId)
-      .where("user_id", "=", userId)
-      .limit(1)
-      .forUpdate()
-      .executeTakeFirst();
-    if (!file) {
-      throw new IntegrityError("File not found");
-    } else if (file.data_encryption_key_version.getTime() !== dekVersion.getTime()) {
-      throw new IntegrityError("Invalid DEK version");
-    }
-
-    await trx
-      .updateTable("file")
-      .set({ encrypted_name: encName })
-      .where("id", "=", fileId)
-      .where("user_id", "=", userId)
-      .execute();
-    await trx
-      .insertInto("file_log")
-      .values({
-        file_id: fileId,
-        timestamp: new Date(),
-        action: "rename",
-        new_name: encName,
-      })
-      .execute();
-  });
+  const { numUpdatedRows } = await executor
+    .updateTable("file")
+    .set({ encrypted_name: encName })
+    .where("id", "=", fileId)
+    .where("user_id", "=", userId)
+    .where("data_encryption_key_version", "=", dekVersion)
+    .executeTakeFirst();
+  return numUpdatedRows > 0n;
 };
 
-export const unregisterFile = async (userId: number, fileId: number) => {
-  await db.transaction().execute(async (trx) => {
-    const file = await trx
-      .selectFrom("file")
-      .leftJoin("thumbnail", "file.id", "thumbnail.file_id")
-      .select(["file.path", "thumbnail.path as thumbnailPath"])
-      .where("file.id", "=", fileId)
-      .where("file.user_id", "=", userId)
-      .forUpdate("file")
-      .executeTakeFirst();
-    if (!file) {
-      throw new IntegrityError("File not found");
-    }
-
-    const uploadSessions = await trx
-      .deleteFrom("upload_session")
-      .where("file_id", "=", fileId)
-      .returning("path")
-      .execute();
-    await trx.deleteFrom("file").where("id", "=", fileId).execute();
-    await enqueueFileDeletions(trx, [
-      file.path,
-      file.thumbnailPath,
-      ...uploadSessions.map(({ path }) => path),
-    ]);
-  });
+// Returns whether the state has been changed, which fails if the file doesn't exist or is already
+// in the state
+export const setFileFavorite = async (
+  executor: Executor,
+  userId: number,
+  fileId: number,
+  isFavorite: boolean,
+) => {
+  const { numUpdatedRows } = await executor
+    .updateTable("file")
+    .set({ is_favorite: isFavorite })
+    .where("id", "=", fileId)
+    .where("user_id", "=", userId)
+    .where("is_favorite", "!=", isFavorite)
+    .executeTakeFirst();
+  return numUpdatedRows > 0n;
 };
 
-export const addFileToCategory = async (fileId: number, categoryId: number) => {
-  await db.transaction().execute(async (trx) => {
-    try {
-      await trx
-        .insertInto("file_category")
-        .values({ file_id: fileId, category_id: categoryId })
-        .execute();
-      await trx
-        .insertInto("file_log")
-        .values({
-          file_id: fileId,
-          timestamp: new Date(),
-          action: "add-to-category",
-          category_id: categoryId,
-        })
-        .execute();
-    } catch (e) {
-      if (e instanceof pg.DatabaseError && e.code === "23505") {
-        throw new IntegrityError("File already added to category");
-      }
-      throw e;
-    }
-  });
+export const deleteFiles = async (executor: Executor, fileIds: number[]) => {
+  if (fileIds.length > 0) {
+    await executor.deleteFrom("file").where("id", "in", fileIds).execute();
+  }
 };
 
-export const getAllFileCategories = async (fileId: number) => {
-  const categories = await db
+// Violates `file_category_pk` if the file is already in the category
+export const addFileToCategory = async (executor: Executor, fileId: number, categoryId: number) => {
+  await executor
+    .insertInto("file_category")
+    .values({ file_id: fileId, category_id: categoryId })
+    .execute();
+};
+
+// Returns whether the file has been removed, which fails if it isn't in the category
+export const removeFileFromCategory = async (
+  executor: Executor,
+  fileId: number,
+  categoryId: number,
+) => {
+  const { numDeletedRows } = await executor
+    .deleteFrom("file_category")
+    .where("file_id", "=", fileId)
+    .where("category_id", "=", categoryId)
+    .executeTakeFirst();
+  return numDeletedRows > 0n;
+};
+
+export const getAllFileCategories = async (executor: Executor, fileId: number) => {
+  const categories = await executor
     .selectFrom("file_category")
     .innerJoin("category", "file_category.category_id", "category.id")
     .selectAll("category")
     .where("file_id", "=", fileId)
     .execute();
   return categories.map(toCategory);
-};
-
-export const removeFileFromCategory = async (fileId: number, categoryId: number) => {
-  await db.transaction().execute(async (trx) => {
-    const res = await trx
-      .deleteFrom("file_category")
-      .where("file_id", "=", fileId)
-      .where("category_id", "=", categoryId)
-      .executeTakeFirst();
-    if (res.numDeletedRows === 0n) {
-      throw new IntegrityError("File not found in category");
-    }
-
-    await trx
-      .insertInto("file_log")
-      .values({
-        file_id: fileId,
-        timestamp: new Date(),
-        action: "remove-from-category",
-        category_id: categoryId,
-      })
-      .execute();
-  });
-};
-
-export const setFileFavorite = async (userId: number, fileId: number, isFavorite: boolean) => {
-  await db.transaction().execute(async (trx) => {
-    const file = await trx
-      .selectFrom("file")
-      .select("is_favorite")
-      .where("id", "=", fileId)
-      .where("user_id", "=", userId)
-      .limit(1)
-      .forUpdate()
-      .executeTakeFirst();
-    if (!file) {
-      throw new IntegrityError("File not found");
-    } else if (file.is_favorite === isFavorite) {
-      throw new IntegrityError(isFavorite ? "File already favorited" : "File not favorited");
-    }
-
-    await trx
-      .updateTable("file")
-      .set({ is_favorite: isFavorite })
-      .where("id", "=", fileId)
-      .where("user_id", "=", userId)
-      .execute();
-    await trx
-      .insertInto("file_log")
-      .values({
-        file_id: fileId,
-        timestamp: new Date(),
-        action: isFavorite ? "add-to-favorites" : "remove-from-favorites",
-      })
-      .execute();
-  });
 };

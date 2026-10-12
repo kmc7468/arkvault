@@ -1,11 +1,7 @@
 import { sql, type Selectable } from "kysely";
-import { IntegrityError } from "../error.ts";
-import db from "../kysely.ts";
+import type { Executor, Tx } from "../executor.ts";
+import { decodeParentId, encodeParentId } from "../queries.ts";
 import type { Ciphertext, UploadSessionTable } from "../schema/index.ts";
-import { ensureDirectoryExists } from "./directory.ts";
-import { enqueueFileDeletions } from "./file-deletion.ts";
-import { lockActiveHskVersion } from "./hsk.ts";
-import { lockActiveMekVersion } from "./mek.ts";
 
 interface BaseUploadSession {
   id: string;
@@ -36,93 +32,72 @@ interface ThumbnailUploadSession extends BaseUploadSession {
   dekVersion: Date;
 }
 
+const createBitmap = (totalChunks: number) => Buffer.alloc(Math.ceil(totalChunks / 8));
+
 export const createFileUploadSession = async (
+  executor: Executor,
   params: Omit<FileUploadSession, "type" | "bitmap" | "uploadedChunks">,
 ) => {
-  await db.transaction().execute(async (trx) => {
-    if ((await lockActiveMekVersion(trx, params.userId)) !== params.mekVersion) {
-      throw new IntegrityError("Inactive MEK version");
-    }
-
-    if (params.hskVersion) {
-      if ((await lockActiveHskVersion(trx, params.userId)) !== params.hskVersion) {
-        throw new IntegrityError("Inactive HSK version");
-      }
-    }
-
-    await ensureDirectoryExists(trx, params.userId, params.parentId);
-
-    await trx
-      .insertInto("upload_session")
-      .values({
-        id: params.id,
-        type: "file",
-        user_id: params.userId,
-        path: params.path,
-        bitmap: Buffer.alloc(Math.ceil(params.totalChunks / 8)),
-        total_chunks: params.totalChunks,
-        expires_at: params.expiresAt,
-        parent_id: params.parentId !== "root" ? params.parentId : null,
-        master_encryption_key_version: params.mekVersion,
-        encrypted_data_encryption_key: params.encDek,
-        data_encryption_key_version: params.dekVersion,
-        hmac_secret_key_version: params.hskVersion,
-        content_type: params.contentType,
-        encrypted_name: params.encName,
-        encrypted_created_at: params.encCreatedAt,
-        encrypted_last_modified_at: params.encLastModifiedAt,
-      })
-      .execute();
-  });
+  await executor
+    .insertInto("upload_session")
+    .values({
+      id: params.id,
+      type: "file",
+      user_id: params.userId,
+      path: params.path,
+      bitmap: createBitmap(params.totalChunks),
+      total_chunks: params.totalChunks,
+      expires_at: params.expiresAt,
+      parent_id: encodeParentId(params.parentId),
+      master_encryption_key_version: params.mekVersion,
+      encrypted_data_encryption_key: params.encDek,
+      data_encryption_key_version: params.dekVersion,
+      hmac_secret_key_version: params.hskVersion,
+      content_type: params.contentType,
+      encrypted_name: params.encName,
+      encrypted_created_at: params.encCreatedAt,
+      encrypted_last_modified_at: params.encLastModifiedAt,
+    })
+    .execute();
 };
 
 export const createThumbnailUploadSession = async (
-  params: Omit<ThumbnailUploadSession, "bitmap" | "uploadedChunks">,
+  executor: Executor,
+  params: Omit<ThumbnailUploadSession, "type" | "bitmap" | "uploadedChunks">,
 ) => {
-  await db.transaction().execute(async (trx) => {
-    const file = await trx
-      .selectFrom("file")
-      .select("data_encryption_key_version")
-      .where("id", "=", params.fileId)
-      .where("user_id", "=", params.userId)
-      .limit(1)
-      .forUpdate()
-      .executeTakeFirst();
-    if (!file) {
-      throw new IntegrityError("File not found");
-    } else if (file.data_encryption_key_version.getTime() !== params.dekVersion.getTime()) {
-      throw new IntegrityError("Invalid DEK version");
-    }
-
-    await trx
-      .insertInto("upload_session")
-      .values({
-        id: params.id,
-        type: params.type,
-        user_id: params.userId,
-        path: params.path,
-        bitmap: Buffer.alloc(Math.ceil(params.totalChunks / 8)),
-        total_chunks: params.totalChunks,
-        expires_at: params.expiresAt,
-        file_id: params.fileId,
-        data_encryption_key_version: params.dekVersion,
-      })
-      .execute();
-  });
+  await executor
+    .insertInto("upload_session")
+    .values({
+      id: params.id,
+      type: "thumbnail",
+      user_id: params.userId,
+      path: params.path,
+      bitmap: createBitmap(params.totalChunks),
+      total_chunks: params.totalChunks,
+      expires_at: params.expiresAt,
+      file_id: params.fileId,
+      data_encryption_key_version: params.dekVersion,
+    })
+    .execute();
 };
 
-const toUploadSession = (session: Selectable<UploadSessionTable>) => {
+const toUploadSession = (
+  session: Selectable<UploadSessionTable>,
+): FileUploadSession | ThumbnailUploadSession => {
+  const base = {
+    id: session.id,
+    userId: session.user_id,
+    path: session.path,
+    bitmap: session.bitmap,
+    totalChunks: session.total_chunks,
+    uploadedChunks: session.uploaded_chunks,
+    expiresAt: session.expires_at,
+  };
   if (session.type === "file") {
     return {
+      ...base,
       type: "file",
-      id: session.id,
-      userId: session.user_id,
-      path: session.path,
-      bitmap: session.bitmap,
-      totalChunks: session.total_chunks,
-      uploadedChunks: session.uploaded_chunks,
-      expiresAt: session.expires_at,
-      parentId: session.parent_id ?? "root",
+      parentId: decodeParentId(session.parent_id),
       mekVersion: session.master_encryption_key_version!,
       encDek: session.encrypted_data_encryption_key!,
       dekVersion: session.data_encryption_key_version!,
@@ -131,54 +106,45 @@ const toUploadSession = (session: Selectable<UploadSessionTable>) => {
       encName: session.encrypted_name!,
       encCreatedAt: session.encrypted_created_at,
       encLastModifiedAt: session.encrypted_last_modified_at!,
-    } satisfies FileUploadSession;
+    };
   } else {
     return {
-      type: session.type,
-      id: session.id,
-      userId: session.user_id,
-      path: session.path,
-      bitmap: session.bitmap,
-      totalChunks: session.total_chunks,
-      uploadedChunks: session.uploaded_chunks,
-      expiresAt: session.expires_at,
+      ...base,
+      type: "thumbnail",
       fileId: session.file_id!,
       dekVersion: session.data_encryption_key_version!,
-    } satisfies ThumbnailUploadSession;
+    };
   }
 };
 
-export const getUploadSession = async (sessionId: string, userId: number) => {
-  const session = await db
+const selectActiveUploadSession = (executor: Executor, sessionId: string, userId: number) =>
+  executor
     .selectFrom("upload_session")
     .selectAll()
     .where("id", "=", sessionId)
     .where("user_id", "=", userId)
     .where("expires_at", ">", new Date())
-    .limit(1)
-    .executeTakeFirst();
+    .limit(1);
+
+export const getUploadSession = async (executor: Executor, sessionId: string, userId: number) => {
+  const session = await selectActiveUploadSession(executor, sessionId, userId).executeTakeFirst();
   return session ? toUploadSession(session) : null;
 };
 
 // Locks the session until the transaction ends so that it can be completed only once
-export const lockUploadSession = async (trx: typeof db, sessionId: string, userId: number) => {
-  const session = await trx
-    .selectFrom("upload_session")
-    .selectAll()
-    .where("id", "=", sessionId)
-    .where("user_id", "=", userId)
-    .where("expires_at", ">", new Date())
-    .limit(1)
+export const lockUploadSession = async (trx: Tx, sessionId: string, userId: number) => {
+  const session = await selectActiveUploadSession(trx, sessionId, userId)
     .forUpdate()
     .executeTakeFirst();
-  if (!session) {
-    throw new IntegrityError("Upload session not found");
-  }
-  return toUploadSession(session);
+  return session ? toUploadSession(session) : null;
 };
 
-export const markChunkAsUploaded = async (sessionId: string, chunkIndex: number) => {
-  await db
+export const markChunkAsUploaded = async (
+  executor: Executor,
+  sessionId: string,
+  chunkIndex: number,
+) => {
+  await executor
     .updateTable("upload_session")
     .set({
       bitmap: sql`set_bit(${sql.ref("bitmap")}, ${chunkIndex - 1}, 1)`,
@@ -187,34 +153,42 @@ export const markChunkAsUploaded = async (sessionId: string, chunkIndex: number)
     .execute();
 };
 
-export const deleteUploadSession = async (trx: typeof db, sessionId: string) => {
-  await trx.deleteFrom("upload_session").where("id", "=", sessionId).execute();
+// The following functions return the paths of the files uploaded by the deleted sessions
+
+export const deleteUploadSession = async (executor: Executor, sessionId: string) => {
+  const sessions = await executor
+    .deleteFrom("upload_session")
+    .where("id", "=", sessionId)
+    .returning("path")
+    .execute();
+  return sessions.map(({ path }) => path);
 };
 
-export const discardUploadSession = async (sessionId: string) => {
-  await db.transaction().execute(async (trx) => {
-    const sessions = await trx
-      .deleteFrom("upload_session")
-      .where("id", "=", sessionId)
-      .returning("path")
-      .execute();
-    await enqueueFileDeletions(
-      trx,
-      sessions.map(({ path }) => path),
-    );
-  });
+// Deletes the sessions uploading files into the directories or thumbnails of the files
+export const deleteUploadSessionsOf = async (
+  executor: Executor,
+  { directoryIds = [], fileIds = [] }: { directoryIds?: number[]; fileIds?: number[] },
+) => {
+  if (directoryIds.length === 0 && fileIds.length === 0) return [];
+
+  const sessions = await executor
+    .deleteFrom("upload_session")
+    .where((eb) =>
+      eb.or([
+        ...(directoryIds.length > 0 ? [eb("parent_id", "in", directoryIds)] : []),
+        ...(fileIds.length > 0 ? [eb("file_id", "in", fileIds)] : []),
+      ]),
+    )
+    .returning("path")
+    .execute();
+  return sessions.map(({ path }) => path);
 };
 
-export const cleanupExpiredUploadSessions = async () => {
-  await db.transaction().execute(async (trx) => {
-    const sessions = await trx
-      .deleteFrom("upload_session")
-      .where("expires_at", "<=", new Date())
-      .returning("path")
-      .execute();
-    await enqueueFileDeletions(
-      trx,
-      sessions.map(({ path }) => path),
-    );
-  });
+export const deleteExpiredUploadSessions = async (executor: Executor) => {
+  const sessions = await executor
+    .deleteFrom("upload_session")
+    .where("expires_at", "<=", new Date())
+    .returning("path")
+    .execute();
+  return sessions.map(({ path }) => path);
 };

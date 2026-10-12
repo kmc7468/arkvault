@@ -1,19 +1,21 @@
-import db from "../kysely.ts";
+import type { Executor } from "../executor.ts";
 
+// Paths are enqueued in the transaction which deletes the files from the database, and the files
+// are deleted from the storage after it is committed
 export const enqueueFileDeletions = async (
-  trx: typeof db,
+  executor: Executor,
   paths: (string | null | undefined)[],
 ) => {
   const values = paths
     .filter((path) => !!path)
     .map((path) => ({ path: path!, enqueued_at: new Date() }));
   if (values.length > 0) {
-    await trx.insertInto("file_deletion_queue").values(values).execute();
+    await executor.insertInto("file_deletion_queue").values(values).execute();
   }
 };
 
-export const getPendingFileDeletions = async (limit: number) => {
-  return await db
+export const getPendingFileDeletions = async (executor: Executor, limit: number) => {
+  return await executor
     .selectFrom("file_deletion_queue")
     .select(["id", "path"])
     .orderBy("id")
@@ -21,8 +23,8 @@ export const getPendingFileDeletions = async (limit: number) => {
     .execute();
 };
 
-export const completeFileDeletions = async (ids: number[]) => {
+export const completeFileDeletions = async (executor: Executor, ids: number[]) => {
   if (ids.length > 0) {
-    await db.deleteFrom("file_deletion_queue").where("id", "in", ids).execute();
+    await executor.deleteFrom("file_deletion_queue").where("id", "in", ids).execute();
   }
 };

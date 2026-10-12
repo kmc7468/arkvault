@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { CategoryRepo, DirectoryRepo, UploadRepo, IntegrityError } from "#lib/server/db/index.ts";
+import { CategoryService, DirectoryService, UploadService } from "#lib/server/services/index.ts";
 import {
   createCategory,
   createDirectory,
@@ -16,10 +16,10 @@ describe("parent ownership", () => {
     const { userId } = await createUser();
     const parentId = await createDirectory(userId);
 
-    await DirectoryRepo.registerDirectory(newEntryParams(userId, parentId));
+    await DirectoryService.createDirectory(newEntryParams(userId, parentId));
 
-    const directories = await DirectoryRepo.getAllDirectoriesByParent(userId, parentId);
-    expect(directories).toHaveLength(1);
+    const { subDirectories } = await DirectoryService.getDirectory(userId, parentId);
+    expect(subDirectories).toHaveLength(1);
   });
 
   it("rejects creating a directory under another user's directory", async () => {
@@ -28,8 +28,8 @@ describe("parent ownership", () => {
     const victimDirectoryId = await createDirectory(victimId);
 
     await expect(
-      DirectoryRepo.registerDirectory(newEntryParams(attackerId, victimDirectoryId)),
-    ).rejects.toThrow(new IntegrityError("Directory not found"));
+      DirectoryService.createDirectory(newEntryParams(attackerId, victimDirectoryId)),
+    ).rejects.toMatchObject({ code: "NOT_FOUND", message: "Directory not found" });
   });
 
   it("rejects creating a category under another user's category", async () => {
@@ -38,8 +38,8 @@ describe("parent ownership", () => {
     const victimCategoryId = await createCategory(victimId);
 
     await expect(
-      CategoryRepo.registerCategory(newEntryParams(attackerId, victimCategoryId)),
-    ).rejects.toThrow(new IntegrityError("Category not found"));
+      CategoryService.createCategory(newEntryParams(attackerId, victimCategoryId)),
+    ).rejects.toMatchObject({ code: "NOT_FOUND", message: "Category not found" });
   });
 
   it("rejects uploading a file into another user's directory", async () => {
@@ -48,17 +48,14 @@ describe("parent ownership", () => {
     const victimDirectoryId = await createDirectory(victimId);
 
     await expect(
-      UploadRepo.createFileUploadSession({
+      UploadService.startFileUpload({
         ...newEntryParams(attackerId, victimDirectoryId),
-        id: crypto.randomUUID(),
-        path: "unused",
         totalChunks: 1,
-        expiresAt: new Date(Date.now() + 60_000),
         hskVersion: null,
         contentType: "image/png",
         encCreatedAt: null,
         encLastModifiedAt: ciphertext(),
       }),
-    ).rejects.toThrow(new IntegrityError("Directory not found"));
+    ).rejects.toMatchObject({ code: "NOT_FOUND", message: "Directory not found" });
   });
 });

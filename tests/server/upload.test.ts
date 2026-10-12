@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import { Readable } from "stream";
 import { beforeEach, describe, expect, it } from "vitest";
-import { UploadRepo } from "#lib/server/db/index.ts";
+import { UploadRepo, db } from "#lib/server/db/index.ts";
 import { FileService, UploadService } from "#lib/server/services/index.ts";
 import { isChunkUploaded } from "#lib/server/services/upload.ts";
 import { ciphertext, createUser, newEntryParams, resetDatabase } from "../helpers/database.ts";
@@ -12,7 +12,7 @@ describe("upload session bitmap", () => {
   it("matches the bit order of PostgreSQL's set_bit", async () => {
     const { userId } = await createUser();
     const id = crypto.randomUUID();
-    await UploadRepo.createFileUploadSession({
+    await UploadRepo.createFileUploadSession(db, {
       ...newEntryParams(userId, "root"),
       id,
       path: "unused",
@@ -26,10 +26,10 @@ describe("upload session bitmap", () => {
 
     const uploaded = [1, 8, 9, 20];
     for (const chunkIndex of uploaded) {
-      await UploadRepo.markChunkAsUploaded(id, chunkIndex);
+      await UploadRepo.markChunkAsUploaded(db, id, chunkIndex);
     }
 
-    const session = await UploadRepo.getUploadSession(id, userId);
+    const session = await UploadRepo.getUploadSession(db, id, userId);
     expect(session?.uploadedChunks).toBe(uploaded.length);
     for (let chunkIndex = 1; chunkIndex <= 20; chunkIndex++) {
       expect(isChunkUploaded(session!.bitmap, chunkIndex)).toBe(uploaded.includes(chunkIndex));
@@ -80,7 +80,7 @@ describe("upload completion", () => {
     await expect(
       UploadService.completeFileUpload(userId, uploadId, null, "invalid"),
     ).rejects.toMatchObject({ code: "CONFLICT" });
-    expect(await UploadRepo.getUploadSession(uploadId, userId)).toBeNull();
+    expect(await UploadRepo.getUploadSession(db, uploadId, userId)).toBeNull();
   });
 
   it("rejects chunks of invalid sizes", async () => {

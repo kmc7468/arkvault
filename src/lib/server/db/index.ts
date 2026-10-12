@@ -11,6 +11,5 @@ export * as SessionRepo from "./repositories/session.ts";
 export * as UploadRepo from "./repositories/upload.ts";
 export * as UserRepo from "./repositories/user.ts";
 
-export * from "./error.ts";
 export * from "./executor.ts";
 export { default as db } from "./kysely.ts";

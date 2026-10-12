@@ -1,4 +1,4 @@
-import { FileDeletionRepo } from "#lib/server/db/index.ts";
+import { FileDeletionRepo, db } from "#lib/server/db/index.ts";
 import { deleteFile } from "#lib/server/storage/index.ts";
 
 const BATCH_SIZE = 100;
@@ -6,7 +6,7 @@ const BATCH_SIZE = 100;
 // Deletes files enqueued by committed transactions. Failed deletions are retried later.
 export const processPendingFileDeletions = async () => {
   while (true) {
-    const deletions = await FileDeletionRepo.getPendingFileDeletions(BATCH_SIZE);
+    const deletions = await FileDeletionRepo.getPendingFileDeletions(db, BATCH_SIZE);
     if (deletions.length === 0) return;
 
     const results = await Promise.allSettled(deletions.map(({ path }) => deleteFile(path)));
@@ -17,7 +17,7 @@ export const processPendingFileDeletions = async () => {
       if (result.status === "rejected") console.error(result.reason);
     });
 
-    await FileDeletionRepo.completeFileDeletions(deletedIds);
+    await FileDeletionRepo.completeFileDeletions(db, deletedIds);
     if (deletedIds.length < deletions.length) return; // Retry later
   }
 };

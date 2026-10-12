@@ -1,4 +1,4 @@
-import { HskRepo, MekRepo, type Tx } from "#lib/server/db/index.ts";
+import { FileRepo, HskRepo, MekRepo, type Tx } from "#lib/server/db/index.ts";
 import { AppError } from "#lib/server/errors.ts";
 
 const DEK_VERSION_TOLERANCE = 60 * 1000; // 1 minute
@@ -7,6 +7,31 @@ const DEK_VERSION_TOLERANCE = 60 * 1000; // 1 minute
 export const ensureFreshDekVersion = (dekVersion: Date) => {
   if (Math.abs(dekVersion.getTime() - Date.now()) >= DEK_VERSION_TOLERANCE) {
     throw new AppError("BAD_REQUEST", "Invalid DEK version");
+  }
+};
+
+const invalidDekVersionError = () => new AppError("CONFLICT", "Invalid DEK version");
+
+// Updates conditioned on the DEK version fail if the entry doesn't exist or its DEK has changed
+export const dekVersionMismatchOrNotFound = async (
+  entry: Promise<unknown>,
+  notFoundMessage: string,
+) => {
+  return (await entry) ? invalidDekVersionError() : new AppError("NOT_FOUND", notFoundMessage);
+};
+
+// Locks the file so that its DEK isn't changed until the transaction ends
+export const ensureFileDekVersion = async (
+  trx: Tx,
+  userId: number,
+  fileId: number,
+  dekVersion: Date,
+) => {
+  const currentDekVersion = await FileRepo.lockFileDekVersion(trx, userId, fileId);
+  if (!currentDekVersion) {
+    throw new AppError("NOT_FOUND", "File not found");
+  } else if (currentDekVersion.getTime() !== dekVersion.getTime()) {
+    throw invalidDekVersionError();
   }
 };
 
