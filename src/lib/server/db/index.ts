@@ -1,12 +1,15 @@
-export * as CategoryRepo from "./category";
-export * as ClientRepo from "./client";
-export * as DirectoryRepo from "./directory";
-export * as FileRepo from "./file";
-export * as HskRepo from "./hsk";
-export * as MediaRepo from "./media";
-export * as MekRepo from "./mek";
-export * as SessionRepo from "./session";
-export * as UploadRepo from "./upload";
-export * as UserRepo from "./user";
+export * as CategoryRepo from "./repositories/category.ts";
+export * as ClientRepo from "./repositories/client.ts";
+export * as DirectoryRepo from "./repositories/directory.ts";
+export * as FileRepo from "./repositories/file.ts";
+export * as FileDeletionRepo from "./repositories/file-deletion.ts";
+export * as HskRepo from "./repositories/hsk.ts";
+export * as LogRepo from "./repositories/log.ts";
+export * as MediaRepo from "./repositories/media.ts";
+export * as MekRepo from "./repositories/mek.ts";
+export * as SessionRepo from "./repositories/session.ts";
+export * as UploadRepo from "./repositories/upload.ts";
+export * as UserRepo from "./repositories/user.ts";
 
-export * from "./error";
+export * from "./executor.ts";
+export { default as db } from "./kysely.ts";

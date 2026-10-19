@@ -1,12 +1,9 @@
 <script lang="ts">
-  import type { FileDownloadState } from "$lib/modules/file";
-  import type { SummarizedFileInfo } from "$lib/modules/filesystem";
-  import { formatNetworkSpeed } from "$lib/utils";
+  import type { FileDownloadState } from "#lib/client/transfer/index.ts";
+  import type { SummarizedFileInfo } from "#lib/features/filesystem/index.ts";
+  import { TransferProgress } from "#lib/features/transfer/components/index.ts";
 
-  import IconCloud from "~icons/material-symbols/cloud";
   import IconCloudDownload from "~icons/material-symbols/cloud-download";
-  import IconLock from "~icons/material-symbols/lock";
-  import IconLockClock from "~icons/material-symbols/lock-clock";
   import IconCheckCircle from "~icons/material-symbols/check-circle";
   import IconError from "~icons/material-symbols/error";
 
@@ -19,37 +16,23 @@
 </script>
 
 <div class="flex h-14 items-center gap-x-4 p-2">
-  <div class="flex-shrink-0 text-lg text-gray-600">
-    {#if state.status === "download-pending"}
-      <IconCloud />
-    {:else if state.status === "downloading"}
+  <div class="shrink-0 text-lg text-gray-600">
+    {#if state.status === "downloading"}
       <IconCloudDownload />
-    {:else if state.status === "decryption-pending"}
-      <IconLock />
-    {:else if state.status === "decrypting"}
-      <IconLockClock />
-    {:else if state.status === "decrypted"}
+    {:else if state.status === "completed"}
       <IconCheckCircle class="text-green-500" />
     {:else if state.status === "error"}
       <IconError class="text-red-500" />
     {/if}
   </div>
-  <div class="flex-grow overflow-hidden">
+  <div class="grow overflow-hidden">
     <p title={info.name} class="truncate font-medium">
       {info.name}
     </p>
     <p class="text-xs text-gray-800">
-      {#if state.status === "download-pending"}
-        다운로드를 기다리는 중
-      {:else if state.status === "downloading"}
-        전송됨
-        {Math.floor((state.progress ?? 0) * 100)}% ·
-        {formatNetworkSpeed((state.rate ?? 0) * 8)}
-      {:else if state.status === "decryption-pending"}
-        복호화를 기다리는 중
-      {:else if state.status === "decrypting"}
-        복호화하는 중
-      {:else if state.status === "decrypted"}
+      {#if state.status === "downloading"}
+        <TransferProgress progress={state.progress} rate={state.rate} />
+      {:else if state.status === "completed"}
         다운로드 완료
       {:else if state.status === "error"}
         다운로드 실패

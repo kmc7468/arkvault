@@ -1,14 +1,17 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { EntryButton, FileThumbnailButton } from "$lib/components/atoms";
-  import { type SummarizedFileInfo } from "$lib/modules/filesystem";
-  import { requestFreshMediaFilesRetrieval } from "./service";
+  import { FileThumbnailButton } from "#lib/features/filesystem/components/index.ts";
+  import {
+    getRecentMediaFileInfos,
+    type SummarizedFileInfo,
+  } from "#lib/features/filesystem/index.ts";
+  import { EntryButton } from "#lib/ui/index.ts";
 
   let mediaFiles: SummarizedFileInfo[] = $state([]);
 
   onMount(async () => {
-    mediaFiles = await requestFreshMediaFilesRetrieval();
+    mediaFiles = await getRecentMediaFileInfos(8);
   });
 </script>
 
@@ -16,7 +19,7 @@
   <title>홈</title>
 </svelte:head>
 
-<div class="min-h-full space-y-4 bg-gray-100 px-4 pb-[5.5em] pt-4">
+<div class="min-h-full space-y-4 bg-gray-100 px-4 pt-4 pb-[5.5em]">
   <p class="px-2 text-2xl font-bold text-gray-800">ArkVault</p>
   <div class="rounded-xl bg-white p-2">
     <EntryButton onclick={() => goto("/gallery")} class="w-full">

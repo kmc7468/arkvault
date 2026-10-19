@@ -1,3 +1,2 @@
-export * from "./BoundedQueue";
-export * from "./HybridPromise";
-export * from "./Scheduler";
+export * from "./bounded-queue.ts";
+export * from "./scheduler.ts";

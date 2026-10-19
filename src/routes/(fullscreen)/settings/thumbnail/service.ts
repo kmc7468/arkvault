@@ -1,16 +1,16 @@
 import { limitFunction } from "p-limit";
 import { SvelteMap } from "svelte/reactivity";
-import { storeFileThumbnailCache } from "$lib/modules/file";
-import { getFileInfo, type FileInfo } from "$lib/modules/filesystem";
-import { generateThumbnail } from "$lib/modules/thumbnail";
-import { requestFileDownload, requestFileThumbnailUpload } from "$lib/services/file";
-import { HybridPromise, Scheduler } from "$lib/utils";
-import type { RouterOutputs } from "$trpc/router.server";
+import { generateThumbnailFromUrl } from "#lib/client/media/thumbnail.ts";
+import {
+  getFileInfo,
+  getFileStreamUrl,
+  uploadFileThumbnail,
+  type FileInfo,
+} from "#lib/features/filesystem/index.ts";
+import type { RouterOutputs } from "#trpc/router.server.ts";
 
-export type GenerationStatus =
-  "queued" | "generation-pending" | "generating" | "uploading" | "uploaded" | "error";
+export type GenerationStatus = "queued" | "generating" | "uploading" | "uploaded" | "error";
 
-const scheduler = new Scheduler();
 const statuses = new SvelteMap<number, GenerationStatus>();
 
 export const getThumbnailGenerationStatus = (fileId: number) => {
@@ -27,65 +27,40 @@ export const clearThumbnailGenerationStatuses = () => {
 
 export const requestMissingThumbnailFiles = async (
   filesRaw: RouterOutputs["file"]["listWithoutThumbnail"],
-  masterKey: CryptoKey,
 ) => {
-  const files = await HybridPromise.all(
-    filesRaw.map((file) => getFileInfo(file.id, masterKey, { serverResponse: file })),
+  const files = await Promise.all(
+    filesRaw.map((file) => getFileInfo(file.id, { serverResponse: file })),
   );
   return files;
 };
 
-const requestThumbnailUpload = limitFunction(
-  async (fileInfo: FileInfo, fileBuffer: ArrayBuffer) => {
+// The content is streamed by the service worker, so only the decoded media occupy the memory
+const generateAndUploadThumbnail = limitFunction(
+  async (fileInfo: FileInfo) => {
     statuses.set(fileInfo.id, "generating");
 
-    const thumbnail = await generateThumbnail(
-      new Blob([fileBuffer], { type: fileInfo.contentType }),
-    );
-    if (!thumbnail) return false;
+    const url = await getFileStreamUrl(fileInfo);
+    const thumbnail = await generateThumbnailFromUrl(url, fileInfo.contentType);
+    if (!thumbnail) {
+      throw new Error("Failed to generate thumbnail");
+    }
 
     statuses.set(fileInfo.id, "uploading");
-
-    const res = await requestFileThumbnailUpload(
-      fileInfo.id,
-      thumbnail,
-      fileInfo.dataKey?.key!,
-      fileInfo.dataKey?.version!,
-    );
-    if (!res) return false;
-
+    await uploadFileThumbnail(fileInfo.id, thumbnail, fileInfo.dataKey!);
     statuses.set(fileInfo.id, "uploaded");
-    void thumbnail.arrayBuffer().then((buffer) => storeFileThumbnailCache(fileInfo.id, buffer));
-    return true;
   },
   { concurrency: 4 },
 );
 
 export const requestThumbnailGeneration = async (fileInfo: FileInfo) => {
   const status = statuses.get(fileInfo.id);
-  if (status) {
-    if (status !== "error") return;
-  } else {
-    statuses.set(fileInfo.id, "queued");
-  }
+  if (status && status !== "error") return;
 
+  statuses.set(fileInfo.id, "queued");
   try {
-    let file: ArrayBuffer | undefined;
-
-    await scheduler.schedule(
-      async () => {
-        statuses.set(fileInfo.id, "generation-pending");
-        file = await requestFileDownload(fileInfo.id, fileInfo.dataKey?.key!, fileInfo.isLegacy!);
-        return file.byteLength;
-      },
-      async () => {
-        if (!(await requestThumbnailUpload(fileInfo, file!))) {
-          statuses.set(fileInfo.id, "error");
-        }
-      },
-    );
+    await generateAndUploadThumbnail(fileInfo);
   } catch (e) {
+    console.error(e);
     statuses.set(fileInfo.id, "error");
-    throw e;
   }
 };

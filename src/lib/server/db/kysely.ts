@@ -1,21 +1,11 @@
-import { Kysely, PostgresDialect } from "kysely";
+import { Kysely } from "kysely";
 import { Migrator } from "kysely/migration";
-import pg from "pg";
-import env from "$lib/server/loadenv";
-import migrations from "./migrations";
-import type { Database } from "./schema";
+import env from "#lib/server/config.ts";
+import { createDialect } from "./dialect.ts";
+import migrations from "./migrations/index.ts";
+import type { Database } from "./schema/index.ts";
 
-const dialect = new PostgresDialect({
-  pool: new pg.Pool({
-    host: env.database.host,
-    port: env.database.port,
-    user: env.database.user,
-    password: env.database.password,
-    database: env.database.name,
-  }),
-});
-
-const db = new Kysely<Database>({ dialect });
+const db = new Kysely<Database>({ dialect: createDialect(env.database) });
 
 export const migrateDB = async () => {
   if (env.nodeEnv !== "production") return;

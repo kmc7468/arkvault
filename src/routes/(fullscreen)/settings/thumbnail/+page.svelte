@@ -1,24 +1,30 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { BottomDiv, Button, FullscreenDiv } from "$lib/components/atoms";
-  import { IconEntryButton, TopBar } from "$lib/components/molecules";
-  import { deleteAllFileThumbnailCaches } from "$lib/modules/file";
-  import type { MaybeFileInfo } from "$lib/modules/filesystem";
-  import { masterKeyStore } from "$lib/stores";
-  import { sortEntries } from "$lib/utils";
-  import File from "./File.svelte";
+  import { deleteAllFileThumbnailCaches } from "#lib/client/cache/index.ts";
+  import { FileEntry } from "#lib/features/filesystem/components/index.ts";
+  import type { MaybeFileInfo } from "#lib/features/filesystem/index.ts";
+  import { BottomDiv, Button, FullscreenDiv, IconEntryButton, TopBar } from "#lib/ui/index.ts";
+  import { sortEntries } from "#lib/utils/index.ts";
   import {
     getThumbnailGenerationStatus,
     clearThumbnailGenerationStatuses,
     requestMissingThumbnailFiles,
     requestThumbnailGeneration,
     type GenerationStatus,
-  } from "./service";
+  } from "./service.ts";
 
+  import IconCamera from "~icons/material-symbols/camera";
   import IconDelete from "~icons/material-symbols/delete";
 
   let { data } = $props();
+
+  const statusTexts = {
+    queued: "대기 중",
+    generating: "생성하는 중",
+    uploading: "업로드하는 중",
+    error: "실패",
+  } as const;
 
   let fileInfos: MaybeFileInfo[] = $state([]);
   let files = $derived(
@@ -42,9 +48,7 @@
   };
 
   onMount(async () => {
-    fileInfos = sortEntries(
-      await requestMissingThumbnailFiles(data.files, $masterKeyStore?.get(1)?.key!),
-    );
+    fileInfos = sortEntries(await requestMissingThumbnailFiles(data.files));
   });
 
   $effect(() => clearThumbnailGenerationStatuses);
@@ -55,15 +59,15 @@
 </svelte:head>
 
 <TopBar title="썸네일" />
-<FullscreenDiv class="bg-gray-100 !px-0">
-  <div class="flex flex-grow flex-col space-y-4">
-    <div class="bg-white p-4 !pt-0">
+<FullscreenDiv class="bg-gray-100 px-0!">
+  <div class="flex grow flex-col space-y-4">
+    <div class="bg-white p-4 pt-0!">
       <IconEntryButton icon={IconDelete} onclick={deleteAllFileThumbnailCaches} class="w-full">
         저장된 썸네일 모두 삭제하기
       </IconEntryButton>
     </div>
     {#if files.length > 0}
-      <div class="flex-grow space-y-2 bg-white p-4">
+      <div class="grow space-y-2 bg-white p-4">
         <p class="text-lg font-bold text-gray-800">썸네일이 누락된 파일</p>
         <div class="space-y-4">
           <p class="break-keep text-gray-800">
@@ -72,11 +76,18 @@
           <div class="space-y-2">
             {#each files as { info, status } (info.id)}
               {#if info.exists}
-                <File
+                <FileEntry
                   {info}
-                  {status}
-                  onclick={({ id }) => goto(`/file/${id}`)}
-                  onGenerateThumbnailClick={requestThumbnailGeneration}
+                  showThumbnail={false}
+                  subtext={status && statusTexts[status]}
+                  onclick={() => goto(`/file/${info.id}`)}
+                  action={!status || status === "error"
+                    ? {
+                        icon: IconCamera,
+                        onclick: () => requestThumbnailGeneration(info),
+                        class: "text-gray-800",
+                      }
+                    : undefined}
                 />
               {/if}
             {/each}

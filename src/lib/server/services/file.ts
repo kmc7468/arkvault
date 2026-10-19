@@ -1,74 +1,132 @@
-import { error } from "@sveltejs/kit";
-import { createReadStream } from "fs";
-import { stat } from "fs/promises";
-import { Readable } from "stream";
-import { FileRepo, MediaRepo } from "$lib/server/db";
+import {
+  FileDeletionRepo,
+  FileRepo,
+  LogRepo,
+  MediaRepo,
+  UploadRepo,
+  db,
+  transaction,
+} from "#lib/server/db/index.ts";
+import type { Ciphertext } from "#lib/server/db/schema/index.ts";
+import { AppError } from "#lib/server/errors.ts";
+import { createEncContentStream } from "#lib/server/storage/index.ts";
+import type { RangeRequest } from "#lib/shared/http.ts";
+import { dekVersionMismatchOrNotFound } from "./common.ts";
+import { schedulePendingFileDeletions } from "./file-deletion.ts";
 
-const createEncContentStream = async (
-  path: string,
-  iv?: Buffer,
-  range?: { start?: number; end?: number },
-) => {
-  const { size: fileSize } = await stat(path);
-  const ivSize = iv?.byteLength ?? 0;
-  const totalSize = fileSize + ivSize;
+const fileNotFoundError = () => new AppError("NOT_FOUND", "File not found");
 
-  const start = range?.start ?? 0;
-  const end = range?.end ?? totalSize - 1;
-  if (start > end || start < 0 || end >= totalSize) {
-    error(416, "Invalid range");
+export const getFile = async (userId: number, fileId: number) => {
+  const file = await FileRepo.getFile(db, userId, fileId);
+  if (!file) {
+    throw fileNotFoundError();
   }
 
-  return {
-    encContentStream: Readable.toWeb(
-      Readable.from(
-        (async function* () {
-          if (start < ivSize) {
-            yield iv!.subarray(start, Math.min(end + 1, ivSize));
-          }
-          if (end >= ivSize) {
-            yield* createReadStream(path, {
-              start: Math.max(0, start - ivSize),
-              end: end - ivSize,
-            });
-          }
-        })(),
-      ),
-    ),
-    range: { start, end, total: totalSize },
-  };
+  const categories = await FileRepo.getAllFileCategories(db, fileId);
+  return { ...file, categories };
 };
 
-export const getFileStream = async (
+export const getFiles = async (userId: number, fileIds: number[]) => {
+  return await FileRepo.getFilesWithCategories(db, userId, fileIds);
+};
+
+export const getAllFileIds = async (userId: number) => {
+  return await FileRepo.getAllFileIds(db, userId);
+};
+
+export const getFileIdsByContentHmac = async (
+  userId: number,
+  hskVersion: number,
+  contentHmac: string,
+) => {
+  return await FileRepo.getAllFileIdsByContentHmac(db, userId, hskVersion, contentHmac);
+};
+
+export const getFilesWithoutThumbnail = async (userId: number) => {
+  return await FileRepo.getFilesWithoutThumbnail(db, userId);
+};
+
+export const renameFile = async (
   userId: number,
   fileId: number,
-  range?: { start?: number; end?: number },
+  dekVersion: Date,
+  encName: Ciphertext,
 ) => {
-  const file = await FileRepo.getFile(userId, fileId);
-  if (!file) {
-    error(404, "Invalid file id");
-  }
+  await transaction(async (trx) => {
+    if (!(await FileRepo.setFileEncName(trx, userId, fileId, dekVersion, encName))) {
+      throw await dekVersionMismatchOrNotFound(
+        FileRepo.getFile(trx, userId, fileId),
+        "File not found",
+      );
+    }
 
-  return createEncContentStream(
-    file.path,
-    file.encContentIv ? Buffer.from(file.encContentIv, "base64") : undefined,
-    range,
-  );
+    await LogRepo.appendFileLog(trx, { file_id: fileId, action: "rename", new_name: encName });
+  });
+};
+
+export const deleteFile = async (userId: number, fileId: number) => {
+  await transaction(async (trx) => {
+    const file = await FileRepo.lockFileForDeletion(trx, userId, fileId);
+    if (!file) {
+      throw fileNotFoundError();
+    }
+
+    const uploadPaths = await UploadRepo.deleteUploadSessionsOf(trx, { fileIds: [fileId] });
+    await FileRepo.deleteFiles(trx, [fileId]);
+    await FileDeletionRepo.enqueueFileDeletions(trx, [
+      file.path,
+      file.thumbnailPath,
+      ...uploadPaths,
+    ]);
+  });
+
+  schedulePendingFileDeletions();
+};
+
+export const getFavoriteFiles = async (userId: number) => {
+  return await FileRepo.getAllFavoriteFiles(db, userId);
+};
+
+// Does nothing if the file is already in the state
+export const setFileFavorite = async (userId: number, fileId: number, isFavorite: boolean) => {
+  await transaction(async (trx) => {
+    if (!(await FileRepo.setFileFavorite(trx, userId, fileId, isFavorite))) {
+      if (!(await FileRepo.getFile(trx, userId, fileId))) {
+        throw fileNotFoundError();
+      }
+      return;
+    }
+
+    await LogRepo.appendFileLog(trx, {
+      file_id: fileId,
+      action: isFavorite ? "add-to-favorites" : "remove-from-favorites",
+    });
+  });
+};
+
+export const getFileThumbnail = async (userId: number, fileId: number) => {
+  const thumbnail = await MediaRepo.getFileThumbnail(db, userId, fileId);
+  if (!thumbnail) {
+    throw new AppError("NOT_FOUND", "File or its thumbnail not found");
+  }
+  return thumbnail;
+};
+
+const decodeIv = (iv: string | null) => (iv ? Buffer.from(iv, "base64") : undefined);
+
+export const getFileStream = async (userId: number, fileId: number, range?: RangeRequest) => {
+  const file = await FileRepo.getFile(db, userId, fileId);
+  if (!file) {
+    throw fileNotFoundError();
+  }
+  return await createEncContentStream(file.path, decodeIv(file.encContentIv), range);
 };
 
 export const getFileThumbnailStream = async (
   userId: number,
   fileId: number,
-  range?: { start?: number; end?: number },
+  range?: RangeRequest,
 ) => {
-  const thumbnail = await MediaRepo.getFileThumbnail(userId, fileId);
-  if (!thumbnail) {
-    error(404, "File or its thumbnail not found");
-  }
-
-  return createEncContentStream(
-    thumbnail.path,
-    thumbnail.encContentIv ? Buffer.from(thumbnail.encContentIv, "base64") : undefined,
-    range,
-  );
+  const thumbnail = await getFileThumbnail(userId, fileId);
+  return await createEncContentStream(thumbnail.path, decodeIv(thumbnail.encContentIv), range);
 };

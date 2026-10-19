@@ -30,3 +30,6 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# E2E tests
+/test/e2e/results

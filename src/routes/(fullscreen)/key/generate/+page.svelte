@@ -1,22 +1,28 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { BottomDiv, Button, FullscreenDiv, TextButton } from "$lib/components/atoms";
-  import { TitledDiv } from "$lib/components/molecules";
-  import { ForceLoginModal } from "$lib/components/organisms";
-  import { storeClientKeys } from "$lib/modules/key";
-  import { clientKeyStore } from "$lib/stores";
-  import { gotoStateful } from "$lib/utils";
-  import Order from "./Order.svelte";
   import {
     generateClientKeys,
-    generateInitialMasterKey,
     generateInitialHmacSecret,
+    generateInitialMasterKey,
     importClientKeys,
+    keyring,
+    registerInitialMasterKeyAndHmacSecret,
     requestClientRegistrationAndSessionUpgrade,
-    requestInitialMasterKeyAndHmacSecretRegistration,
-    requestDeletedFilesCleanup,
-  } from "./service";
+  } from "#lib/client/keys/index.ts";
+  import { ForceLoginModal } from "#lib/features/auth/components/index.ts";
+  import { cleanupDeletedFileCaches } from "#lib/features/filesystem/index.ts";
+  import { withRedirectPath } from "#lib/shared/redirect.ts";
+  import {
+    BottomDiv,
+    Button,
+    FullscreenDiv,
+    TextButton,
+    TitledDiv,
+    showToast,
+  } from "#lib/ui/index.ts";
+  import { gotoStateful } from "#lib/utils/index.ts";
+  import Order from "./Order.svelte";
 
   import IconKey from "~icons/material-symbols/key";
 
@@ -47,8 +53,6 @@
   ];
 
   const generateKeys = async () => {
-    // TODO: Loading indicator
-
     const { encryptKey, ...clientKeys } = await generateClientKeys();
     const { masterKey, masterKeyWrapped } = await generateInitialMasterKey(encryptKey);
     const { hmacSecretWrapped } = await generateInitialHmacSecret(masterKey);
@@ -62,56 +66,47 @@
   };
 
   const upgradeSession = async (force: boolean) => {
-    const [upgradeRes, upgradeError] = await requestClientRegistrationAndSessionUpgrade(
-      $clientKeyStore!,
-      force,
-    );
+    const [upgradeRes, upgradeError] = await requestClientRegistrationAndSessionUpgrade(force);
     if (!force && upgradeError === "Already logged in") {
       isForceLoginModalOpen = true;
       return;
     } else if (!upgradeRes) {
-      // TODO: Error Handling
+      showToast("이 디바이스를 등록하지 못했어요.");
       return;
     }
 
     const { masterKey, masterKeyWrapped } = await generateInitialMasterKey(
-      $clientKeyStore!.encryptKey,
+      keyring.requireClientKeys().encryptKey,
     );
     const { hmacSecretWrapped } = await generateInitialHmacSecret(masterKey);
 
-    await storeClientKeys($clientKeyStore!);
+    await keyring.persistClientKeys();
 
-    if (
-      !(await requestInitialMasterKeyAndHmacSecretRegistration(
-        masterKeyWrapped,
-        hmacSecretWrapped,
-        $clientKeyStore!.signKey,
-      ))
-    ) {
-      // TODO: Error Handling
+    if (!(await registerInitialMasterKeyAndHmacSecret(masterKeyWrapped, hmacSecretWrapped))) {
+      showToast("암호 키를 등록하지 못했어요.");
       return;
     }
 
-    await requestDeletedFilesCleanup();
-    await goto("/client/pending?redirect=" + encodeURIComponent(data.redirectPath));
+    await cleanupDeletedFileCaches().catch(console.error);
+    await goto(withRedirectPath("/client/pending", data.redirectPath));
   };
 
   const importKeys = async () => {
     const file = fileInput?.files?.[0];
     if (!file) return;
 
-    if (await importClientKeys(await file.text())) {
+    if (await importClientKeys(await file.text()).catch(() => false)) {
       await upgradeSession(false);
     } else {
-      // TODO: Error Handling
+      showToast("올바른 암호 키 파일이 아니에요.");
     }
 
     fileInput!.value = "";
   };
 
   onMount(async () => {
-    if ($clientKeyStore) {
-      await goto(data.redirectPath, { replaceState: true });
+    if (keyring.clientKeys) {
+      await goto(data.redirectPath, { replace: true });
     }
   });
 </script>

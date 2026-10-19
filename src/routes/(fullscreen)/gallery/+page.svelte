@@ -1,15 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { FileThumbnailButton, FullscreenDiv, RowVirtualizer } from "$lib/components/atoms";
-  import { TopBar } from "$lib/components/molecules";
+  import { FileThumbnailButton } from "#lib/features/filesystem/components/index.ts";
   import {
     bulkGetFileInfo,
     type MaybeFileInfo,
     type SummarizedFileInfo,
-  } from "$lib/modules/filesystem";
-  import { masterKeyStore } from "$lib/stores";
-  import { formatDate, formatDateSortable, SortBy, sortEntries } from "$lib/utils";
+  } from "#lib/features/filesystem/index.ts";
+  import { FullscreenDiv, RowVirtualizer, TopBar } from "#lib/ui/index.ts";
+  import { formatDate, formatDateSortable, SortBy, sortEntries } from "#lib/utils/index.ts";
 
   let { data } = $props();
 
@@ -51,7 +50,7 @@
   });
 
   onMount(async () => {
-    files = Array.from((await bulkGetFileInfo(data.files, $masterKeyStore?.get(1)?.key!)).values());
+    files = Array.from((await bulkGetFileInfo(data.files)).values());
   });
 </script>
 
@@ -65,7 +64,7 @@
     count={rows.length}
     estimateItemHeight={(index) =>
       rows[index]!.type === "header" ? 28 : 181 + (rows[index]!.isLast ? 16 : 4)}
-    class="flex flex-grow flex-col"
+    class="flex grow flex-col"
   >
     {#snippet item(index)}
       {@const row = rows[index]!}
@@ -83,7 +82,7 @@
       {/if}
     {/snippet}
     {#snippet placeholder()}
-      <div class="flex h-full flex-grow items-center justify-center">
+      <div class="flex h-full grow items-center justify-center">
         <p class="text-gray-500">
           {#if files.length === 0}
             업로드된 파일이 없어요.

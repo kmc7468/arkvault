@@ -1,0 +1,54 @@
+# Runs the app built from the Dockerfile and the E2E tests in isolation (see run.sh)
+name: arkvault-e2e
+
+services:
+  database:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: arkvault
+      POSTGRES_PASSWORD: e2e
+      POSTGRES_DB: arkvault
+    tmpfs: /var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U arkvault
+      interval: 1s
+      retries: 30
+
+  app:
+    build: ../..
+    user: ${E2E_UID:-0}:${E2E_GID:-0}
+    environment:
+      NODE_ENV: production
+      PORT: 4173
+      ORIGIN: http://127.0.0.1:4173
+      DATABASE_HOST: database
+      DATABASE_USER: arkvault
+      DATABASE_PASSWORD: e2e
+      DATABASE_NAME: arkvault
+      SESSION_SECRET: e2e
+      LIBRARY_PATH: /data/library
+      THUMBNAILS_PATH: /data/thumbnails
+    volumes:
+      - ${E2E_DATA_DIR:?}:/data
+    depends_on:
+      database:
+        condition: service_healthy
+
+  playwright:
+    # Must match the version of @playwright/test
+    image: mcr.microsoft.com/playwright:v1.64.0-noble
+    user: ${E2E_UID:-0}:${E2E_GID:-0}
+    # Shares the network with the app, so that it is served from a secure context (127.0.0.1)
+    # which service workers require
+    network_mode: service:app
+    working_dir: /work
+    environment:
+      HOME: /tmp
+      CI: ${CI:-}
+    volumes:
+      - ../..:/work
+      # Accessed by the tests to manipulate the stored files
+      - ${E2E_DATA_DIR:?}:/data
+    command: npx playwright test -c test/e2e/playwright.config.ts ${E2E_ARGS:-}
+    depends_on:
+      - app

@@ -1,97 +1,44 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { FileRepo, MediaRepo, IntegrityError } from "$lib/server/db";
-import { safeUnlink } from "$lib/server/modules/filesystem";
-import { router, roleProcedure } from "../init.server";
+import { FileService } from "#lib/server/services/index.ts";
+import { toFileDto, toFileWithCategoriesDto } from "#trpc/dto.ts";
+import { router, roleProcedure } from "#trpc/init.server.ts";
+import { Base64Schema, EncryptedNameSchema, IdSchema, toCiphertext } from "#trpc/schemas.ts";
 
 const fileRouter = router({
   get: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: z.int().positive(),
+        id: IdSchema,
       }),
     )
     .query(async ({ ctx, input }) => {
-      const file = await FileRepo.getFile(ctx.session.userId, input.id);
-      if (!file) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Invalid file id" });
-      }
-
-      const categories = await FileRepo.getAllFileCategories(input.id);
-      return {
-        isLegacy: !!file.encContentIv,
-        parent: file.parentId,
-        mekVersion: file.mekVersion,
-        dek: file.encDek,
-        dekVersion: file.dekVersion,
-        contentType: file.contentType,
-        name: file.encName.ciphertext,
-        nameIv: file.encName.iv,
-        createdAt: file.encCreatedAt?.ciphertext,
-        createdAtIv: file.encCreatedAt?.iv,
-        lastModifiedAt: file.encLastModifiedAt.ciphertext,
-        lastModifiedAtIv: file.encLastModifiedAt.iv,
-        isFavorite: file.isFavorite,
-        categories: categories.map((category) => ({
-          id: category.id,
-          parent: category.parentId,
-          mekVersion: category.mekVersion,
-          dek: category.encDek,
-          dekVersion: category.dekVersion,
-          name: category.encName.ciphertext,
-          nameIv: category.encName.iv,
-        })),
-      };
+      return toFileWithCategoriesDto(await FileService.getFile(ctx.session.userId, input.id));
     }),
 
   bulkGet: roleProcedure["activeClient"]
     .input(
       z.object({
-        ids: z.number().positive().array(),
+        ids: IdSchema.array(),
       }),
     )
     .query(async ({ ctx, input }) => {
-      const files = await FileRepo.getFilesWithCategories(ctx.session.userId, input.ids);
-      return files.map((file) => ({
-        id: file.id,
-        isLegacy: !!file.encContentIv,
-        parent: file.parentId,
-        mekVersion: file.mekVersion,
-        dek: file.encDek,
-        dekVersion: file.dekVersion,
-        contentType: file.contentType,
-        name: file.encName.ciphertext,
-        nameIv: file.encName.iv,
-        createdAt: file.encCreatedAt?.ciphertext,
-        createdAtIv: file.encCreatedAt?.iv,
-        lastModifiedAt: file.encLastModifiedAt.ciphertext,
-        lastModifiedAtIv: file.encLastModifiedAt.iv,
-        isFavorite: file.isFavorite,
-        categories: file.categories.map((category) => ({
-          id: category.id,
-          parent: category.parentId,
-          mekVersion: category.mekVersion,
-          dek: category.encDek,
-          dekVersion: category.dekVersion,
-          name: category.encName.ciphertext,
-          nameIv: category.encName.iv,
-        })),
-      }));
+      const files = await FileService.getFiles(ctx.session.userId, input.ids);
+      return files.map(toFileWithCategoriesDto);
     }),
 
   list: roleProcedure["activeClient"].query(async ({ ctx }) => {
-    return await FileRepo.getAllFileIds(ctx.session.userId);
+    return await FileService.getAllFileIds(ctx.session.userId);
   }),
 
   listByHash: roleProcedure["activeClient"]
     .input(
       z.object({
-        hskVersion: z.int().positive(),
-        contentHmac: z.base64().nonempty(),
+        hskVersion: IdSchema,
+        contentHmac: Base64Schema,
       }),
     )
     .query(async ({ ctx, input }) => {
-      return await FileRepo.getAllFileIdsByContentHmac(
+      return await FileService.getFileIdsByContentHmac(
         ctx.session.userId,
         input.hskVersion,
         input.contentHmac,
@@ -99,84 +46,46 @@ const fileRouter = router({
     }),
 
   listWithoutThumbnail: roleProcedure["activeClient"].query(async ({ ctx }) => {
-    const files = await FileRepo.getFilesWithoutThumbnail(ctx.session.userId);
-    return files.map((file) => ({
-      id: file.id,
-      isLegacy: !!file.encContentIv,
-      parent: file.parentId,
-      mekVersion: file.mekVersion,
-      dek: file.encDek,
-      dekVersion: file.dekVersion,
-      contentType: file.contentType,
-      name: file.encName.ciphertext,
-      nameIv: file.encName.iv,
-      createdAt: file.encCreatedAt?.ciphertext,
-      createdAtIv: file.encCreatedAt?.iv,
-      lastModifiedAt: file.encLastModifiedAt.ciphertext,
-      lastModifiedAtIv: file.encLastModifiedAt.iv,
-      isFavorite: file.isFavorite,
-    }));
+    const files = await FileService.getFilesWithoutThumbnail(ctx.session.userId);
+    return files.map(toFileDto);
   }),
 
   rename: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: z.int().positive(),
+        id: IdSchema,
         dekVersion: z.date(),
-        name: z.base64().nonempty(),
-        nameIv: z.base64().nonempty(),
+        ...EncryptedNameSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      try {
-        await FileRepo.setFileEncName(ctx.session.userId, input.id, input.dekVersion, {
-          ciphertext: input.name,
-          iv: input.nameIv,
-        });
-      } catch (e) {
-        if (e instanceof IntegrityError) {
-          if (e.message === "File not found") {
-            throw new TRPCError({ code: "NOT_FOUND", message: "Invalid file id" });
-          } else if (e.message === "Invalid DEK version") {
-            throw new TRPCError({ code: "BAD_REQUEST", message: e.message });
-          }
-        }
-        throw e;
-      }
+      await FileService.renameFile(
+        ctx.session.userId,
+        input.id,
+        input.dekVersion,
+        toCiphertext(input.name, input.nameIv),
+      );
     }),
 
   delete: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: z.int().positive(),
+        id: IdSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      try {
-        const { path, thumbnailPath } = await FileRepo.unregisterFile(ctx.session.userId, input.id);
-        safeUnlink(path); // Intended
-        safeUnlink(thumbnailPath); // Intended
-      } catch (e) {
-        if (e instanceof IntegrityError && e.message === "File not found") {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Invalid file id" });
-        }
-        throw e;
-      }
+      await FileService.deleteFile(ctx.session.userId, input.id);
     }),
 
   thumbnail: roleProcedure["activeClient"]
     .input(
       z.object({
-        id: z.int().positive(),
+        id: IdSchema,
       }),
     )
     .query(async ({ ctx, input }) => {
-      const thumbnail = await MediaRepo.getFileThumbnail(ctx.session.userId, input.id);
-      if (!thumbnail) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "File or its thumbnail not found" });
-      }
-
-      return { updatedAt: thumbnail.updatedAt };
+      const { updatedAt } = await FileService.getFileThumbnail(ctx.session.userId, input.id);
+      return { updatedAt };
     }),
 });
 

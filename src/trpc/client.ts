@@ -1,30 +1,47 @@
-import { createTRPCClient, httpBatchLink, TRPCClientError } from "@trpc/client";
+import { createTRPCClient, httpBatchLink, TRPCClientError, type TRPCLink } from "@trpc/client";
+import { observable } from "@trpc/server/observable";
 import superjson from "superjson";
-import { browser } from "$app/environment";
-import type { AppRouter } from "./router.server";
+import { goto } from "$app/navigation";
+import { navigating } from "$app/state";
+import { withRedirectPath } from "#lib/shared/redirect.ts";
+import type { AppRouter } from "./router.server.ts";
 
-const createClient = (fetch: typeof globalThis.fetch) =>
-  createTRPCClient<AppRouter>({
-    links: [
-      httpBatchLink({
-        url: "/api/trpc",
-        maxURLLength: 4096,
-        methodOverride: "POST",
-        transformer: superjson,
-        fetch,
+// Procedures that report invalid credentials as UNAUTHORIZED, not an expired session
+const CREDENTIAL_PROCEDURES = new Set(["auth.login", "auth.upgrade"]);
+
+const sessionExpiryLink: TRPCLink<AppRouter> = () => {
+  return ({ op, next }) =>
+    observable((observer) =>
+      next(op).subscribe({
+        next: (value) => observer.next(value),
+        error: (err) => {
+          // Prefer the destination when the request failed during a navigation's load
+          const url = navigating.to?.url ?? location;
+          if (
+            err.data?.code === "UNAUTHORIZED" &&
+            !CREDENTIAL_PROCEDURES.has(op.path) &&
+            url.pathname !== "/auth/login"
+          ) {
+            void goto(withRedirectPath("/auth/login", url.pathname + url.search));
+          }
+          observer.error(err);
+        },
+        complete: () => observer.complete(),
       }),
-    ],
-  });
-
-let browserClient: ReturnType<typeof createClient>;
-
-export const trpc = (fetch = globalThis.fetch) => {
-  const client = browserClient ?? createClient(fetch);
-  if (browser) {
-    browserClient ??= client;
-  }
-  return client;
+    );
 };
+
+export const trpc = createTRPCClient<AppRouter>({
+  links: [
+    sessionExpiryLink,
+    httpBatchLink({
+      url: "/api/trpc",
+      maxURLLength: 4096,
+      methodOverride: "POST",
+      transformer: superjson,
+    }),
+  ],
+});
 
 export const isTRPCClientError = (e: unknown): e is TRPCClientError<AppRouter> => {
   return e instanceof TRPCClientError;

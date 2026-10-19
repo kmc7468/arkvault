@@ -1,6 +1,6 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
-import { createContext } from "$trpc/init.server";
-import { appRouter } from "$trpc/router.server";
+import { createContext } from "#trpc/init.server.ts";
+import { appRouter } from "#trpc/router.server.ts";
 import type { RequestHandler } from "./$types";
 
 const trpcHandler: RequestHandler = (event) =>

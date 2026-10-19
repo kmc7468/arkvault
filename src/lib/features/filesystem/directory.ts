@@ -1,0 +1,151 @@
+import { deleteFileCache, deleteFileThumbnailCache } from "#lib/client/cache/index.ts";
+import * as IndexedDB from "#lib/client/storage/indexed-db/index.ts";
+import { isTRPCClientError, trpc } from "#trpc/client.ts";
+import { FilesystemCache } from "./cache.svelte.ts";
+import { toDirectoryInfo, toFileInfo, type DirectoryDto } from "./dto.ts";
+import { encryptName, generateEntryKeys } from "./metadata.ts";
+import { useResource } from "./resource.svelte.ts";
+import type { DataKey, DirectoryInfo, MaybeDirectoryInfo } from "./types.ts";
+
+const cache = new FilesystemCache<DirectoryId, MaybeDirectoryInfo>({
+  async fetchFromIndexedDB(id) {
+    const [directory, subDirectories, files] = await Promise.all([
+      id !== "root" ? IndexedDB.getDirectoryInfo(id) : undefined,
+      IndexedDB.getDirectoryInfos(id),
+      IndexedDB.getFileInfos(id),
+    ]);
+
+    if (id === "root") {
+      return {
+        id,
+        exists: true,
+        subDirectories,
+        files,
+      };
+    } else if (directory) {
+      return {
+        id,
+        exists: true,
+        parentId: directory.parentId,
+        name: directory.name,
+        subDirectories,
+        files,
+        isFavorite: directory.isFavorite,
+      };
+    }
+  },
+
+  async fetchFromServer(id) {
+    try {
+      const directory = await trpc.directory.get.query({ id });
+      const [subDirectories, files, metadata] = await Promise.all([
+        Promise.all(directory.subDirectories.map(toDirectoryInfo)),
+        Promise.all(directory.files.map(toFileInfo)),
+        directory.metadata && toDirectoryInfo(directory.metadata),
+      ]);
+
+      return storeToIndexedDB(
+        metadata ? { ...metadata, subDirectories, files } : { id: "root", subDirectories, files },
+      );
+    } catch (e) {
+      if (isTRPCClientError(e) && e.data?.code === "NOT_FOUND") {
+        await IndexedDB.deleteDirectoryInfo(id as number);
+        return { id, exists: false as const };
+      }
+      throw e;
+    }
+  },
+});
+
+const storeToIndexedDB = (info: DirectoryInfo) => {
+  if (info.id !== "root") {
+    void IndexedDB.storeDirectoryInfo(info);
+  }
+
+  // TODO: Bulk Upsert
+  info.subDirectories.forEach((subDirectory) => {
+    void IndexedDB.storeDirectoryInfo(subDirectory);
+  });
+
+  // TODO: Bulk Upsert
+  info.files.forEach((file) => {
+    void IndexedDB.storeFileInfo(file);
+  });
+
+  void IndexedDB.deleteDanglingDirectoryInfos(
+    info.id,
+    new Set(info.subDirectories.map(({ id }) => id)),
+  );
+  void IndexedDB.deleteDanglingFileInfos(info.id, new Set(info.files.map(({ id }) => id)));
+
+  return { ...info, exists: true as const };
+};
+
+// Uses `serverResponse` instead of fetching the directory from the server if given
+export const getDirectoryInfo = (id: DirectoryId, options?: { serverResponse?: DirectoryDto }) => {
+  const serverResponse = options?.serverResponse;
+  return cache.get(id, {
+    fetchFromServer:
+      serverResponse &&
+      (async (cachedValue) =>
+        storeToIndexedDB({
+          subDirectories: [],
+          files: [],
+          ...cachedValue,
+          ...(await toDirectoryInfo(serverResponse)),
+        })),
+  });
+};
+
+export const useDirectory = (getId: () => DirectoryId) => {
+  return useResource(getId, (id) => getDirectoryInfo(id));
+};
+
+export const invalidateDirectory = (id: DirectoryId) => {
+  cache.invalidate(id);
+};
+
+export const createDirectory = async (parentId: DirectoryId, name: string) => {
+  await trpc.directory.create.mutate({ parent: parentId, ...(await generateEntryKeys(name)) });
+  invalidateDirectory(parentId);
+};
+
+export const renameDirectory = async (
+  directory: { id: number; parentId: DirectoryId; dataKey?: DataKey },
+  newName: string,
+) => {
+  if (!directory.dataKey) {
+    throw new Error("Data key not loaded");
+  }
+
+  await trpc.directory.rename.mutate({
+    id: directory.id,
+    dekVersion: directory.dataKey.version,
+    ...(await encryptName(newName, directory.dataKey.key)),
+  });
+  invalidateDirectory(directory.parentId);
+  invalidateDirectory(directory.id);
+};
+
+export const deleteDirectory = async (directory: { id: number; parentId: DirectoryId }) => {
+  const { deletedFiles } = await trpc.directory.delete.mutate({ id: directory.id });
+  cache.evict(directory.id);
+  invalidateDirectory(directory.parentId);
+
+  await Promise.all(
+    deletedFiles.flatMap((fileId) => [deleteFileCache(fileId), deleteFileThumbnailCache(fileId)]),
+  );
+};
+
+export const setDirectoryFavorite = async (
+  directory: { id: number; parentId: DirectoryId },
+  isFavorite: boolean,
+) => {
+  if (isFavorite) {
+    await trpc.favorites.addDirectory.mutate({ id: directory.id });
+  } else {
+    await trpc.favorites.removeDirectory.mutate({ id: directory.id });
+  }
+  invalidateDirectory(directory.parentId);
+  invalidateDirectory(directory.id);
+};

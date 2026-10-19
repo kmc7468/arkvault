@@ -4,19 +4,18 @@
   import { untrack } from "svelte";
   import { slide } from "svelte/transition";
   import { goto } from "$app/navigation";
-  import { Chip, FullscreenDiv, RowVirtualizer } from "$lib/components/atoms";
+  import { showErrorToast } from "#lib/features/errors.ts";
+  import { DirectoryEntry, FileEntry } from "#lib/features/filesystem/components/index.ts";
   import {
     getDirectoryInfo,
     type LocalCategoryInfo,
     type MaybeDirectoryInfo,
-  } from "$lib/modules/filesystem";
-  import { masterKeyStore } from "$lib/stores";
-  import { HybridPromise, searchString, sortEntries } from "$lib/utils";
-  import Directory from "./Directory.svelte";
-  import File from "./File.svelte";
+  } from "#lib/features/filesystem/index.ts";
+  import { search, type SearchFilter, type SearchResult } from "#lib/features/search/index.ts";
+  import { Chip, FullscreenDiv, RowVirtualizer } from "#lib/ui/index.ts";
+  import { searchString, sortEntries } from "#lib/utils/index.ts";
   import SearchBar from "./SearchBar.svelte";
   import SelectCategoryBottomSheet from "./SelectCategoryBottomSheet.svelte";
-  import { requestSearch, type SearchFilter, type SearchResult } from "./service";
 
   let { data } = $props();
 
@@ -122,12 +121,18 @@
 
   $effect.pre(() => {
     if (data.directoryId) {
-      HybridPromise.resolve(getDirectoryInfo(data.directoryId, $masterKeyStore?.get(1)?.key!)).then(
-        (res) => {
-          directoryInfo = res;
-          filters.searchInDirectory = res.exists;
-        },
-      );
+      const applyDirectoryInfo = (res: MaybeDirectoryInfo) => {
+        directoryInfo = res;
+        filters.searchInDirectory = res.exists;
+      };
+
+      // Apply synchronously if cached so that a restored snapshot isn't overwritten later
+      const res = getDirectoryInfo(data.directoryId);
+      if (res instanceof Promise) {
+        res.then(applyDirectoryInfo).catch(() => {});
+      } else {
+        applyDirectoryInfo(res);
+      }
     } else {
       directoryInfo = undefined;
       filters.searchInDirectory = false;
@@ -151,16 +156,15 @@
     }
 
     if (hasAnyFilter) {
-      requestSearch(
-        {
-          ancestorId: filters.searchInDirectory ? data.directoryId! : "root",
-          inFavorites: filters.searchInFavorites,
-          categories: filters.categories,
-        },
-        $masterKeyStore?.get(1)?.key!,
-      ).then((res) => {
-        serverResult = res;
-      });
+      search({
+        ancestorId: filters.searchInDirectory ? data.directoryId! : "root",
+        inFavorites: filters.searchInFavorites,
+        categories: filters.categories,
+      })
+        .then((res) => {
+          serverResult = res;
+        })
+        .catch((e) => showErrorToast(e, "검색하지 못했어요."));
     }
   });
 </script>
@@ -170,9 +174,9 @@
 </svelte:head>
 
 <SearchBar bind:value={filters.name} />
-<FullscreenDiv class="bg-gray-100 !px-0">
-  <div class="flex flex-grow flex-col space-y-4">
-    <div class="space-y-2 bg-white p-4 !pt-0">
+<FullscreenDiv class="bg-gray-100 px-0!">
+  <div class="flex grow flex-col space-y-4">
+    <div class="space-y-2 bg-white p-4 pt-0!">
       <div class="space-y-3">
         <div class="flex flex-wrap gap-2">
           <Chip bind:selected={filters.includeImages}>사진</Chip>
@@ -214,7 +218,7 @@
       </div>
     </div>
     {#if hasAnyFilter}
-      <div class="flex flex-grow flex-col space-y-2 bg-white p-4">
+      <div class="flex grow flex-col space-y-2 bg-white p-4">
         <p class="text-lg font-bold text-gray-800">
           검색 결과
           {#if result.length > 0}
@@ -231,14 +235,14 @@
             {#snippet item(index)}
               {@const info = result[index]!}
               {#if info.type === "directory"}
-                <Directory {info} onclick={() => goto(`/directory/${info.id}?from=search`)} />
+                <DirectoryEntry {info} onclick={() => goto(`/directory/${info.id}?from=search`)} />
               {:else}
-                <File {info} onclick={() => goto(`/file/${info.id}?from=search`)} />
+                <FileEntry {info} onclick={() => goto(`/file/${info.id}?from=search`)} />
               {/if}
             {/snippet}
           </RowVirtualizer>
         {:else}
-          <div class="flex flex-grow items-center justify-center py-8">
+          <div class="flex grow items-center justify-center py-8">
             <p class="text-gray-500">검색 결과가 없어요.</p>
           </div>
         {/if}

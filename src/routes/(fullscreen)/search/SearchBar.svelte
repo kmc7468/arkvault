@@ -8,10 +8,10 @@
   let { value = $bindable() }: Props = $props();
 </script>
 
-<div class={"sticky top-0 z-10 flex items-center gap-x-2 px-2 py-3 backdrop-blur-2xl"}>
+<div class="sticky top-0 z-10 flex items-center gap-x-2 px-2 py-3 backdrop-blur-2xl">
   <button
     onclick={() => history.back()}
-    class="w-[2.3rem] flex-shrink-0 rounded-full p-1 active:bg-black active:bg-opacity-[0.04]"
+    class="w-[2.3rem] shrink-0 rounded-full p-1 active:bg-black/4"
   >
     <IconArrowBack class="text-2xl" />
   </button>
@@ -19,6 +19,6 @@
     bind:value
     type="text"
     placeholder="검색"
-    class="mr-1 h-[2.3rem] min-w-0 flex-grow rounded-lg bg-gray-100 px-3 py-1.5 placeholder-gray-600 focus:outline-none"
+    class="mr-1 h-[2.3rem] min-w-0 grow rounded-lg bg-gray-100 px-3 py-1.5 placeholder-gray-600 focus:outline-hidden"
   />
 </div>

@@ -1,26 +1,54 @@
 import type { RequestEvent } from "@sveltejs/kit";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
-import { authorizeMiddleware, authorizeClientMiddleware } from "./middlewares/authorize";
+import { authorize, type ClientSession, type Session } from "#lib/server/auth.ts";
+import { AppError, type ErrorCode } from "#lib/server/errors.ts";
 
 export const createContext = (event: RequestEvent) => event;
 export type Context = Awaited<ReturnType<typeof createContext>>;
 
 export const t = initTRPC.context<Context>().create({ transformer: superjson });
 export const router = t.router;
-export const publicProcedure = t.procedure;
 
-const authedProcedure = publicProcedure.use(async ({ ctx, next }) => {
-  if (!ctx.locals.session) {
-    throw new TRPCError({ code: "UNAUTHORIZED" });
+const trpcErrorCodes = {
+  BAD_REQUEST: "BAD_REQUEST",
+  UNAUTHORIZED: "UNAUTHORIZED",
+  FORBIDDEN: "FORBIDDEN",
+  NOT_FOUND: "NOT_FOUND",
+  CONFLICT: "CONFLICT",
+  RANGE_NOT_SATISFIABLE: "BAD_REQUEST",
+  INTERNAL_SERVER_ERROR: "INTERNAL_SERVER_ERROR",
+} as const satisfies Record<ErrorCode, TRPCError["code"]>;
+
+// Converts `AppError`s thrown by services into tRPC errors
+export const publicProcedure = t.procedure.use(async ({ next }) => {
+  const result = await next();
+  if (!result.ok && result.error.cause instanceof AppError) {
+    const { code, message } = result.error.cause;
+    throw new TRPCError({ code: trpcErrorCodes[code], message, cause: result.error.cause });
   }
-  return next();
+  return result;
 });
 
+// `authorize` also rejects unauthenticated requests
+const sessionProcedure = (requiredPermission: "any" | "notClient") =>
+  publicProcedure.use(async ({ ctx, next }) => {
+    const session: Session = await authorize(ctx.locals, requiredPermission);
+    return next({ ctx: { session } });
+  });
+
+const clientSessionProcedure = (
+  requiredPermission: "anyClient" | "pendingClient" | "activeClient",
+) =>
+  publicProcedure.use(async ({ ctx, next }) => {
+    const session: ClientSession = await authorize(ctx.locals, requiredPermission);
+    return next({ ctx: { session } });
+  });
+
 export const roleProcedure = {
-  any: authedProcedure.use(authorizeMiddleware("any")),
-  notClient: authedProcedure.use(authorizeMiddleware("notClient")),
-  anyClient: authedProcedure.use(authorizeClientMiddleware("anyClient")),
-  pendingClient: authedProcedure.use(authorizeClientMiddleware("pendingClient")),
-  activeClient: authedProcedure.use(authorizeClientMiddleware("activeClient")),
+  any: sessionProcedure("any"),
+  notClient: sessionProcedure("notClient"),
+  anyClient: clientSessionProcedure("anyClient"),
+  pendingClient: clientSessionProcedure("pendingClient"),
+  activeClient: clientSessionProcedure("activeClient"),
 };

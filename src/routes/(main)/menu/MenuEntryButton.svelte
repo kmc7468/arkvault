@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Component, Snippet } from "svelte";
   import type { ClassValue, SvelteHTMLElements } from "svelte/elements";
-  import { IconEntryButton } from "$lib/components/molecules";
+  import { IconEntryButton } from "#lib/ui/index.ts";
 
   interface Props {
     children: Snippet;
@@ -17,7 +17,7 @@
   {icon}
   {onclick}
   class="w-full"
-  iconClass={["rounded-lg bg-gray-200 p-1 !text-base", iconColor]}
+  iconClass={["rounded-lg bg-gray-200 p-1 text-base!", iconColor]}
 >
   {@render children()}
 </IconEntryButton>

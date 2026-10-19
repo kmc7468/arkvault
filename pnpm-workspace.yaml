@@ -1,4 +1,6 @@
-onlyBuiltDependencies:
-  - argon2
-  - esbuild
-  - exifreader
+allowBuilds:
+  argon2: true
+  cpu-features: false
+  exifreader: false
+  protobufjs: false
+  ssh2: false

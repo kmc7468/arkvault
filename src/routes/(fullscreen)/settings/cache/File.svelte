@@ -1,7 +1,8 @@
 <script lang="ts">
-  import type { FileCacheIndex } from "$lib/indexedDB";
-  import type { MaybeFileInfo } from "$lib/modules/filesystem";
-  import { formatDate, formatFileSize } from "$lib/utils";
+  import type { FileCacheIndex } from "#lib/client/storage/indexed-db/index.ts";
+  import type { MaybeFileInfo } from "#lib/features/filesystem/index.ts";
+  import { afterPress } from "#lib/ui/index.ts";
+  import { formatDate, formatFileSize } from "#lib/utils/index.ts";
 
   import IconDraft from "~icons/material-symbols/draft";
   import IconScanDelete from "~icons/material-symbols/scan-delete";
@@ -18,15 +19,15 @@
 
 <div class="flex h-14 items-center gap-x-4 p-2">
   {#if info.exists}
-    <div class="flex-shrink-0 rounded-full bg-blue-100 p-1 text-xl">
+    <div class="shrink-0 rounded-full bg-blue-100 p-1 text-xl">
       <IconDraft class="text-blue-400" />
     </div>
   {:else}
-    <div class="flex-shrink-0 rounded-full bg-red-100 p-1 text-xl">
+    <div class="shrink-0 rounded-full bg-red-100 p-1 text-xl">
       <IconScanDelete class="text-red-400" />
     </div>
   {/if}
-  <div class="flex-grow overflow-hidden">
+  <div class="grow overflow-hidden">
     {#if info.exists}
       <p title={info.name} class="truncate font-medium">{info.name}</p>
     {:else}
@@ -34,11 +35,14 @@
     {/if}
     <p class="text-xs text-gray-800">
       읽음 {formatDate(index.lastRetrievedAt)} · {formatFileSize(index.size)}
+      {#if !index.isComplete}
+        · 일부
+      {/if}
     </p>
   </div>
   <button
-    onclick={() => setTimeout(() => onDeleteClick(index.fileId), 100)}
-    class="flex-shrink-0 rounded-full p-1 active:bg-gray-100"
+    onclick={afterPress(() => onDeleteClick(index.fileId))}
+    class="shrink-0 rounded-full p-1 active:bg-gray-100"
   >
     <IconDelete class="text-lg text-gray-600" />
   </button>

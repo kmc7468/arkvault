@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { AdaptiveDiv } from "$lib/components/atoms";
+  import { AdaptiveDiv } from "#lib/ui/index.ts";
 
   import IconHome from "~icons/material-symbols/home";
   import IconFolder from "~icons/material-symbols/folder";
@@ -18,11 +18,11 @@
   ];
 </script>
 
-<div class="sticky bottom-0 h-20 flex-shrink-0 rounded-t-2xl border-t border-gray-300 bg-white">
+<div class="sticky bottom-0 h-20 shrink-0 rounded-t-2xl border-t border-gray-300 bg-white">
   <AdaptiveDiv class="flex justify-evenly px-4 py-2">
     {#each pages as { path, label, icon: Icon }}
       <button
-        onclick={() => goto(path, { replaceState: true })}
+        onclick={() => goto(path, { replace: true })}
         class={[
           "w-16 active:rounded-xl active:bg-gray-100",
           !page.url.pathname.startsWith(path) && "text-gray-600",

@@ -2,8 +2,8 @@
 FROM node:22-alpine AS base
 WORKDIR /app
 
-RUN npm install -g pnpm@10
-COPY pnpm-lock.yaml .
+RUN npm install -g pnpm@12
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Build Stage
 FROM base AS build

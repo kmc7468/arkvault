@@ -1,17 +1,24 @@
 <script lang="ts">
   import FileSaver from "file-saver";
   import { goto } from "$app/navigation";
-  import { BottomDiv, Button, FullscreenDiv, TextButton } from "$lib/components/atoms";
-  import { TitledDiv } from "$lib/components/molecules";
-  import { serializeClientKeys, storeClientKeys } from "$lib/modules/key";
-  import { clientKeyStore } from "$lib/stores";
-  import BeforeContinueBottomSheet from "./BeforeContinueBottomSheet.svelte";
-  import BeforeContinueModal from "./BeforeContinueModal.svelte";
   import {
+    keyring,
+    registerInitialMasterKeyAndHmacSecret,
     requestClientRegistration,
     requestSessionUpgrade,
-    requestInitialMasterKeyAndHmacSecretRegistration,
-  } from "./service";
+    serializeClientKeys,
+  } from "#lib/client/keys/index.ts";
+  import { withRedirectPath } from "#lib/shared/redirect.ts";
+  import {
+    BottomDiv,
+    Button,
+    FullscreenDiv,
+    TextButton,
+    TitledDiv,
+    showToast,
+  } from "#lib/ui/index.ts";
+  import BeforeContinueBottomSheet from "./BeforeContinueBottomSheet.svelte";
+  import BeforeContinueModal from "./BeforeContinueModal.svelte";
 
   import IconKey from "~icons/material-symbols/key";
 
@@ -33,49 +40,26 @@
   };
 
   const registerPubKeys = async () => {
-    if (!$clientKeyStore) {
-      throw new Error("Failed to find client keys");
+    if (!(await requestClientRegistration())) {
+      showToast("이 디바이스를 등록하지 못했어요.");
+      return;
     }
 
-    try {
-      if (
-        !(await requestClientRegistration(
-          data.encryptKeyBase64,
-          $clientKeyStore.decryptKey,
-          data.verifyKeyBase64,
-          $clientKeyStore.signKey,
-        ))
-      )
-        throw new Error("Failed to register client");
+    await keyring.persistClientKeys();
 
-      await storeClientKeys($clientKeyStore);
-
-      if (
-        !(
-          await requestSessionUpgrade(
-            data.encryptKeyBase64,
-            $clientKeyStore.decryptKey,
-            data.verifyKeyBase64,
-            $clientKeyStore.signKey,
-          )
-        )[0]
-      )
-        throw new Error("Failed to upgrade session");
-
-      if (
-        !(await requestInitialMasterKeyAndHmacSecretRegistration(
-          data.masterKeyWrapped,
-          data.hmacSecretWrapped,
-          $clientKeyStore.signKey,
-        ))
-      )
-        throw new Error("Failed to register initial MEK and HSK");
-
-      await goto("/client/pending?redirect=" + encodeURIComponent(data.redirectPath));
-    } catch (e) {
-      // TODO: Error handling
-      throw e;
+    if (!(await requestSessionUpgrade())[0]) {
+      showToast("로그인하지 못했어요.");
+      return;
     }
+
+    if (
+      !(await registerInitialMasterKeyAndHmacSecret(data.masterKeyWrapped, data.hmacSecretWrapped))
+    ) {
+      showToast("암호 키를 등록하지 못했어요.");
+      return;
+    }
+
+    await goto(withRedirectPath("/client/pending", data.redirectPath));
   };
 </script>
 
@@ -89,7 +73,7 @@
       암호 키를 파일로 내보낼까요?
     {/snippet}
 
-    <div class="space-y-2 break-keep text-lg text-gray-800">
+    <div class="space-y-2 text-lg break-keep text-gray-800">
       <p>
         모든 디바이스의 암호 키가 유실되면, 서버에 저장된 데이터를 영원히 복호화할 수 없게 돼요.
       </p>

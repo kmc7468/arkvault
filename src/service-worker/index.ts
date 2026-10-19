@@ -1,14 +1,11 @@
-/// <reference no-default-lib="true"/>
-/// <reference lib="esnext" />
-/// <reference lib="webworker" />
-/// <reference types="@sveltejs/kit" />
-
-import { DECRYPTED_FILE_URL_PREFIX } from "./constants";
-import { decryptFile } from "./handlers";
-import { fileMetadataStore } from "./stores";
-import type { ServiceWorkerMessage, ServiceWorkerResponse } from "./types";
-
-const self = globalThis.self as unknown as ServiceWorkerGlobalScope;
+import { self } from "$app/service-worker";
+import {
+  DECRYPTED_FILE_URL_PREFIX,
+  type ServiceWorkerMessage,
+  type ServiceWorkerResponse,
+} from "#lib/shared/service-worker.ts";
+import { decryptFile } from "./handlers/index.ts";
+import { fileMetadataStore } from "./stores.ts";
 
 self.addEventListener("message", (event) => {
   const message: ServiceWorkerMessage = event.data;
@@ -30,7 +27,7 @@ self.addEventListener("message", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.pathname.startsWith(DECRYPTED_FILE_URL_PREFIX)) {
-    event.respondWith(decryptFile(event.request));
+    event.respondWith(decryptFile(event.request, event.clientId));
   }
 });
 

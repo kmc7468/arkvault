@@ -1,12 +1,13 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { FullscreenDiv } from "$lib/components/atoms";
-  import { TopBar } from "$lib/components/molecules";
-  import type { FileCacheIndex } from "$lib/indexedDB";
-  import { getFileCacheIndex, deleteFileCache as doDeleteFileCache } from "$lib/modules/file";
-  import { bulkGetFileInfo, type MaybeFileInfo } from "$lib/modules/filesystem";
-  import { masterKeyStore } from "$lib/stores";
-  import { formatFileSize } from "$lib/utils";
+  import {
+    getFileCacheIndex,
+    deleteFileCache as doDeleteFileCache,
+  } from "#lib/client/cache/index.ts";
+  import type { FileCacheIndex } from "#lib/client/storage/indexed-db/index.ts";
+  import { bulkGetFileInfo, type MaybeFileInfo } from "#lib/features/filesystem/index.ts";
+  import { FullscreenDiv, TopBar } from "#lib/ui/index.ts";
+  import { formatFileSize } from "#lib/utils/index.ts";
   import File from "./File.svelte";
 
   interface FileCache {
@@ -25,11 +26,8 @@
   };
 
   onMount(async () => {
-    const indexes = getFileCacheIndex();
-    const infos = await bulkGetFileInfo(
-      indexes.map(({ fileId }) => fileId),
-      $masterKeyStore?.get(1)?.key!,
-    );
+    const indexes = await getFileCacheIndex();
+    const infos = await bulkGetFileInfo(indexes.map(({ fileId }) => fileId));
     fileCache = indexes
       .map((index) => ({ index, info: infos.get(index.fileId)! }))
       .sort((a, b) => a.index.lastRetrievedAt.getTime() - b.index.lastRetrievedAt.getTime());
@@ -58,7 +56,7 @@
       </div>
     </div>
   {:else}
-    <div class="flex flex-grow items-center justify-center">
+    <div class="flex grow items-center justify-center">
       <p class="text-gray-500">
         {#if fileCache}
           캐시된 파일이 없어요.

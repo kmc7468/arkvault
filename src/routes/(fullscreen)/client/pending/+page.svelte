@@ -1,28 +1,26 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { FullscreenDiv } from "$lib/components/atoms";
-  import { TitledDiv } from "$lib/components/molecules";
-  import { clientKeyStore, masterKeyStore } from "$lib/stores";
-  import { generatePublicKeyFingerprint, requestMasterKeyDownload } from "./service";
+  import {
+    downloadMasterKeys,
+    generatePublicKeyFingerprint,
+    keyring,
+  } from "#lib/client/keys/index.ts";
+  import { FullscreenDiv, TitledDiv } from "#lib/ui/index.ts";
 
   import IconFingerprint from "~icons/material-symbols/fingerprint";
 
   let { data } = $props();
 
   let fingerprint = $derived(
-    $clientKeyStore
-      ? generatePublicKeyFingerprint($clientKeyStore.encryptKey, $clientKeyStore.verifyKey)
+    keyring.clientKeys
+      ? generatePublicKeyFingerprint(keyring.clientKeys.encryptKey, keyring.clientKeys.verifyKey)
       : undefined,
   );
 
   onMount(async () => {
-    if (
-      $masterKeyStore ||
-      ($clientKeyStore &&
-        (await requestMasterKeyDownload($clientKeyStore.decryptKey, $clientKeyStore.verifyKey)))
-    ) {
-      await goto(data.redirectPath, { replaceState: true });
+    if (keyring.hasMasterKeys || (keyring.clientKeys && (await downloadMasterKeys()))) {
+      await goto(data.redirectPath, { replace: true });
     }
   });
 </script>

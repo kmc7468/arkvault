@@ -1,0 +1,10 @@
+export * as AuthService from "./auth.ts";
+export * as CategoryService from "./category.ts";
+export * as ClientService from "./client.ts";
+export * as DirectoryService from "./directory.ts";
+export * as FileService from "./file.ts";
+export * as FileDeletionService from "./file-deletion.ts";
+export * as KeyService from "./key.ts";
+export * as SearchService from "./search.ts";
+export * as UploadService from "./upload.ts";
+export * as UserService from "./user.ts";

@@ -1,7 +1,8 @@
-import type { ClientInit } from "@sveltejs/kit";
-import { cleanupDanglingInfos, getClientKey, getMasterKeys, getHmacSecrets } from "$lib/indexedDB";
-import { prepareFileCache } from "$lib/modules/file";
-import { clientKeyStore, masterKeyStore, hmacSecretStore } from "$lib/stores";
+import type { ClientInit } from "@sveltejs/kit/hooks";
+import { cleanupFileCaches } from "#lib/client/cache/index.ts";
+import { keyring } from "#lib/client/keys/index.ts";
+import { listenForServiceWorkerMessages } from "#lib/client/service-worker.ts";
+import { cleanupDanglingInfos } from "#lib/client/storage/indexed-db/index.ts";
 
 const requestPersistentStorage = async () => {
   const isPersistent = await navigator.storage.persist();
@@ -12,40 +13,11 @@ const requestPersistentStorage = async () => {
   }
 };
 
-const prepareClientKeyStore = async () => {
-  const [encryptKey, decryptKey, signKey, verifyKey] = await Promise.all([
-    getClientKey("encrypt"),
-    getClientKey("decrypt"),
-    getClientKey("sign"),
-    getClientKey("verify"),
-  ]);
-  if (encryptKey && decryptKey && signKey && verifyKey) {
-    clientKeyStore.set({ encryptKey, decryptKey, signKey, verifyKey });
-  }
-};
-
-const prepareMasterKeyStore = async () => {
-  const masterKeys = await getMasterKeys();
-  if (masterKeys.length > 0) {
-    masterKeyStore.set(new Map(masterKeys.map((masterKey) => [masterKey.version, masterKey])));
-  }
-};
-
-const prepareHmacSecretStore = async () => {
-  const hmacSecrets = await getHmacSecrets();
-  if (hmacSecrets.length > 0) {
-    hmacSecretStore.set(new Map(hmacSecrets.map((hmacSecret) => [hmacSecret.version, hmacSecret])));
-  }
-};
-
 export const init: ClientInit = async () => {
-  await Promise.all([
-    requestPersistentStorage(),
-    prepareFileCache(),
-    prepareClientKeyStore(),
-    prepareMasterKeyStore(),
-    prepareHmacSecretStore(),
-  ]);
+  listenForServiceWorkerMessages();
+
+  await Promise.all([requestPersistentStorage(), keyring.load()]);
 
   cleanupDanglingInfos(); // Intended
+  cleanupFileCaches().catch(console.error);
 };
