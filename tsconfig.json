@@ -2,9 +2,8 @@
   "extends": "$app/tsconfig",
   "compilerOptions": {
     "sourceMap": true,
-    "strict": true,
     "noUncheckedIndexedAccess": true
   },
-  "include": ["src", "vite.config.ts", "tests"],
+  "include": ["src", "test", "*.ts"],
   "exclude": ["src/service-worker"]
 }

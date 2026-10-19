@@ -49,6 +49,6 @@ services:
       - ../..:/work
       # Accessed by the tests to manipulate the stored files
       - ${E2E_DATA_DIR:?}:/data
-    command: npx playwright test -c tests/e2e/playwright.config.ts ${E2E_ARGS:-}
+    command: npx playwright test -c test/e2e/playwright.config.ts ${E2E_ARGS:-}
     depends_on:
       - app

@@ -1,7 +1,6 @@
 allowBuilds:
   argon2: true
   cpu-features: false
-  esbuild: true
-  exifreader: true
+  exifreader: false
   protobufjs: false
   ssh2: false

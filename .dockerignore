@@ -32,4 +32,4 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 # E2E tests
-/tests/e2e/results
+/test/e2e/results

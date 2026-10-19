@@ -10,17 +10,17 @@ export default defineConfig({
         extends: true,
         test: {
           name: "unit",
-          include: ["tests/unit/**/*.test.ts"],
-          setupFiles: ["tests/setup/polyfills.ts"],
+          include: ["test/unit/**/*.test.ts"],
+          setupFiles: ["test/setup/polyfills.ts"],
         },
       },
       {
         extends: true,
         test: {
           name: "server",
-          include: ["tests/server/**/*.test.ts"],
-          globalSetup: ["tests/setup/database.ts"],
-          setupFiles: ["tests/setup/server.ts"],
+          include: ["test/server/**/*.test.ts"],
+          globalSetup: ["test/setup/database.ts"],
+          setupFiles: ["test/setup/server.ts"],
           // Test files share a single database
           fileParallelism: false,
           hookTimeout: 60_000,

@@ -15,14 +15,15 @@ const cacheIndex = new Dexie("cacheIndex") as Dexie & {
   fileCache: EntityTable<FileCacheIndex, "fileId">;
 };
 
-cacheIndex.version(1).stores({
-  fileCache: "fileId",
-});
-
 // Files were cached as single files before version 2
-cacheIndex.version(2).upgrade(async (trx) => {
-  await trx.table("fileCache").clear();
-});
+cacheIndex
+  .version(2)
+  .stores({
+    fileCache: "fileId",
+  })
+  .upgrade(async (trx) => {
+    await trx.table("fileCache").clear();
+  });
 
 export const getFileCacheIndex = async () => {
   return await cacheIndex.fileCache.toArray();
